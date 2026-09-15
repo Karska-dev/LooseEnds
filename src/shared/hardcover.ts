@@ -3,6 +3,9 @@ export interface Edition {
   releaseDate: string | null
   languageId: number | null
   readers: number
+  coverUrl: string | null
+  /** Links back to hardcover.app, which is also the attribution. */
+  slug: string | null
 }
 
 export interface Volume {
@@ -105,20 +108,41 @@ async function gql<T>(token: string, query: string): Promise<Outcome<T>> {
  * with readers and books, and empty shells with the same name. Rank by book
  * count then readers so the shells never win.
  */
-function bestHit(hits: SearchHit[], author?: string): SearchHit | null {
-  const withBooks = hits.filter((hit) => (hit.primary_books_count ?? 0) > 0)
-  let pool = withBooks.length > 0 ? withBooks : hits
+/** "The Mistborn Saga" is about "Mistborn"; "The Cosmere" is not. */
+function nameRelated(name: string, query: string): boolean {
+  const left = normaliseName(name)
+  const right = normaliseName(query)
+  return left.includes(right) || right.includes(left)
+}
 
-  // A one-word series name like "Villain" matches dozens of series. The author
-  // is the only thing that makes such a lookup unambiguous.
+/**
+ * Narrow progressively, keeping each filter only when it leaves something.
+ *
+ * Name similarity has to come first. Searching "Mistborn" returns both "The
+ * Mistborn Saga" (10 books, 32k readers) and "The Cosmere" (34 books, 73k
+ * readers), which is a superset containing it — so neither book count nor
+ * reader count picks the right one. Only the name does.
+ */
+function bestHit(hits: SearchHit[], query: string, author?: string): SearchHit | null {
+  let pool = hits
+
+  // Empty shells that users created and never filled in.
+  const withBooks = pool.filter((hit) => (hit.primary_books_count ?? 0) > 0)
+  if (withBooks.length > 0) pool = withBooks
+
+  const byName = pool.filter((hit) => nameRelated(hit.name, query))
+  if (byName.length > 0) pool = byName
+
+  // A one-word name like "Villain" matches dozens of series; the author is
+  // what makes that lookup unambiguous.
   const byAuthor = pool.filter((hit) => sameAuthor(hit.author_name, author))
   if (byAuthor.length > 0) pool = byAuthor
 
   return (
     [...pool].sort(
       (a, b) =>
-        (b.primary_books_count ?? 0) - (a.primary_books_count ?? 0) ||
-        (b.readers_count ?? 0) - (a.readers_count ?? 0),
+        (b.readers_count ?? 0) - (a.readers_count ?? 0) ||
+        (b.primary_books_count ?? 0) - (a.primary_books_count ?? 0),
     )[0] ?? null
   )
 }
@@ -139,13 +163,15 @@ async function searchSeries(
   )
   if (!outcome.ok) return outcome
   const hits = (outcome.data.search?.results?.hits ?? []).map((hit) => hit.document)
-  return { ok: true, data: bestHit(hits, author) }
+  return { ok: true, data: bestHit(hits, name, author) }
 }
 
 interface BookNode {
   title: string
+  slug: string | null
   release_date: string | null
   users_read_count: number | null
+  image: { url: string | null } | null
   default_ebook_edition: { language_id: number | null } | null
   default_physical_edition: { language_id: number | null } | null
 }
@@ -188,6 +214,8 @@ function editionsByPosition(node: SeriesNode): Volume[] {
       releaseDate: book.release_date,
       languageId,
       readers: book.users_read_count ?? 0,
+      coverUrl: book.image?.url ?? null,
+      slug: book.slug,
     }
     const current = perLanguage.get(key)
     if (!current || candidate.readers > current.readers) {
@@ -203,7 +231,7 @@ function editionsByPosition(node: SeriesNode): Volume[] {
     .sort((a, b) => a.position - b.position)
 }
 
-const SERIES_FIELDS = `name primary_books_count book_series(order_by: {position: asc}) { position book { title release_date users_read_count default_ebook_edition { language_id } default_physical_edition { language_id } } }`
+const SERIES_FIELDS = `name primary_books_count book_series(order_by: {position: asc}) { position book { title slug release_date users_read_count image { url } default_ebook_edition { language_id } default_physical_edition { language_id } } }`
 
 async function fetchSeriesBatch(
   token: string,

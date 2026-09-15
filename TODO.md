@@ -34,3 +34,14 @@
 - [ ] D1 cache with TTL
 - [ ] Series state engine: next unread, published / announced / unannounced
 - [ ] Series list and detail screens
+
+## Known matching weaknesses
+
+- **Superset series.** Searching "Mistborn" returns both "The Mistborn Saga"
+  and "The Cosmere", which contains it and is larger and more read. Name
+  similarity now decides, but a series whose name genuinely differs from the
+  Goodreads string will still mis-hit. The manual override table in v0.2 is
+  the real answer.
+- **Aggregate entries.** Hardcover has user-created series that lump an
+  author's whole output together. Nothing distinguishes them from a real
+  series except size and name.

@@ -7,7 +7,7 @@ import type { SeriesSummary } from './series'
 import { resolveAllSeries } from './resolve'
 import type { SeriesResult } from './resolve'
 import { buildSeriesState, sortSeriesStates } from './state'
-import type { SeriesState } from './state'
+import type { SeriesState, VolumeRow } from './state'
 
 export default function App() {
   const [parsed, setParsed] = useState<ParseResult | null>(null)
@@ -62,7 +62,11 @@ export default function App() {
       {summary && <SeriesBoard summary={summary} />}
 
       <footer className="colophon">
-        Series data from Hardcover. Your library never leaves this browser.
+        Series data and covers from{' '}
+        <a href="https://hardcover.app" target="_blank" rel="noopener noreferrer">
+          Hardcover
+        </a>
+        . Your library never leaves this browser.
       </footer>
     </main>
   )
@@ -78,6 +82,7 @@ function SeriesBoard({ summary }: { summary: SeriesSummary }) {
   const [dismissed, setDismissed] = useState<Set<string>>(new Set())
   const [showDismissed, setShowDismissed] = useState(false)
   const [showComplete, setShowComplete] = useState(false)
+  const [openKey, setOpenKey] = useState<string | null>(null)
 
   async function lookUp() {
     setProgress({ done: 0, total: started.length })
@@ -90,9 +95,18 @@ function SeriesBoard({ summary }: { summary: SeriesSummary }) {
     )
     setResolved(results)
     setProgress(null)
-    // A DNF is a strong hint the reader is done with the series.
+    // A DNF part-way through means the reader walked away — set those aside.
+    // A DNF in a series with nothing left to read is just how it ended, and
+    // belongs with the finished ones instead.
     setDismissed(
-      new Set(started.filter((group) => group.hasDnf).map((group) => group.key)),
+      new Set(
+        started
+          .filter((group) => {
+            if (!group.hasDnf) return false
+            return buildSeriesState(group, results.get(group.key)).status !== 'complete'
+          })
+          .map((group) => group.key),
+      ),
     )
   }
 
@@ -204,6 +218,8 @@ function SeriesBoard({ summary }: { summary: SeriesSummary }) {
             state={state}
             dismissed={dismissed.has(state.key)}
             onToggle={() => toggle(state.key)}
+            open={openKey === state.key}
+            onOpen={() => setOpenKey(openKey === state.key ? null : state.key)}
           />
         ))}
       </ul>
@@ -215,29 +231,139 @@ function SeriesRow({
   state,
   dismissed,
   onToggle,
+  open,
+  onOpen,
 }: {
   state: SeriesState
   dismissed: boolean
   onToggle: () => void
+  open: boolean
+  onOpen: () => void
 }) {
+  const panelId = `volumes-${state.key.replace(/[^a-z0-9]+/g, '-')}`
+
   return (
-    <li className={`series-row${dismissed ? ' is-dismissed' : ''}`}>
+    <li className={`series-row${dismissed ? ' is-dismissed' : ''}${open ? ' is-open' : ''}`}>
       <div className="series-head">
-        <div className="series-id">
-          <h3>{state.name}</h3>
-          <p className="byline">{state.author}</p>
-        </div>
-        <button type="button" className="ghost" onClick={onToggle}>
-          {dismissed ? 'Bring back' : 'Set aside'}
+        <button
+          type="button"
+          className="disclose"
+          aria-expanded={open}
+          aria-controls={panelId}
+          onClick={onOpen}
+        >
+          <span className="chevron" aria-hidden="true">
+            {open ? '\u2212' : '+'}
+          </span>
+          <Cover url={state.coverUrl} alt="" size="lg" />
+          <span className="series-id">
+            <span className="series-name">{state.name}</span>
+            <span className="byline">{state.author}</span>
+          </span>
         </button>
+
+        <span className="series-meta">
+          <span className="progress-line">
+            <b>{state.readCount}</b>
+            {state.totalBooks !== null ? ` of ${state.totalBooks}` : ''}
+          </span>
+          <button type="button" className="ghost" onClick={onToggle}>
+            {dismissed ? 'Bring back' : 'Set aside'}
+          </button>
+        </span>
       </div>
 
-      <p className="progress-line">
-        <b>{state.readCount}</b>
-        {state.totalBooks !== null ? ` of ${state.totalBooks} read` : ' read'}
-      </p>
-
       <Verdict state={state} />
+
+      {open && (
+        <div className="volumes" id={panelId}>
+          {state.rows.length === 0 ? (
+            <p className="note">No volume list yet. Run the lookup first.</p>
+          ) : (
+            <ol className="volume-list">
+              {state.rows.map((row) => (
+                <VolumeLine key={`${row.position}-${row.title}`} row={row} />
+              ))}
+            </ol>
+          )}
+        </div>
+      )}
+    </li>
+  )
+}
+
+/**
+ * A fixed-size slot, present from first paint whether or not an image ever
+ * arrives. The image never decides layout, so nothing shifts when it loads
+ * and lazy loading stays safe.
+ */
+function Cover({ url, alt, size }: { url: string | null; alt: string; size: 'lg' | 'sm' }) {
+  return (
+    <span className={`cover cover-${size}`} aria-hidden={url ? undefined : true}>
+      {url && <img src={url} alt={alt} loading="lazy" decoding="async" />}
+    </span>
+  )
+}
+
+const SHELF_LABEL: Record<string, string> = {
+  read: 'Read',
+  reading: 'Reading',
+  to_read: 'On your list',
+  dnf: 'Did not finish',
+}
+
+function VolumeLine({ row }: { row: VolumeRow }) {
+  const mine = row.mine
+  const shelf = mine?.shelf ?? 'none'
+
+  return (
+    <li className={`volume volume-${shelf}${row.isNext ? ' is-next' : ''}`}>
+      <span className="vol-pos">#{row.position}</span>
+      <Cover url={row.coverUrl} alt="" size="sm" />
+
+      <span className="vol-main">
+        <span className="vol-title">
+          {row.slug ? (
+            <a
+              href={`https://hardcover.app/books/${row.slug}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {row.title}
+            </a>
+          ) : (
+            row.title
+          )}
+        </span>
+        {mine && mine.title !== row.title && (
+          <span className="vol-alt">your copy: {mine.title}</span>
+        )}
+        <span className="vol-facts">
+          {mine ? (
+            <>
+              <span className={`chip chip-${shelf}`}>{SHELF_LABEL[shelf]}</span>
+              {mine.dateRead && <span className="muted">{mine.dateRead}</span>}
+              {mine.rating !== null && (
+                <span className="rating" title={`${mine.rating} of 5`}>
+                  {'\u2605'.repeat(mine.rating)}
+                  <span className="muted">{'\u2605'.repeat(5 - mine.rating)}</span>
+                </span>
+              )}
+            </>
+          ) : (
+            <span className="muted">Not in your library</span>
+          )}
+          {row.isNext && <span className="chip chip-next">Next up</span>}
+        </span>
+      </span>
+
+      <span className="vol-date muted">
+        {row.releaseDate
+          ? row.publication === 'announced'
+            ? `due ${row.releaseDate}`
+            : row.releaseDate.slice(0, 4)
+          : ''}
+      </span>
     </li>
   )
 }
