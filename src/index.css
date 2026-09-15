@@ -167,3 +167,44 @@ td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
 @media (prefers-color-scheme: dark) {
   .pill-dnf { border-color: #e58468; color: #e58468; }
 }
+
+td .pill { margin-left: 8px; }
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+button {
+  font: inherit;
+  font-size: 15px;
+  padding: 9px 16px;
+  border-radius: 4px;
+  border: 1px solid var(--primary);
+  background: var(--primary);
+  color: var(--surface);
+  cursor: pointer;
+}
+
+button:disabled { opacity: 0.6; cursor: default; }
+button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+.meter {
+  flex: 1 1 160px;
+  min-width: 140px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.meter span {
+  display: block;
+  height: 100%;
+  background: var(--primary);
+  transition: width 320ms ease;
+}
+
+tbody tr { transition: background 400ms ease; }
