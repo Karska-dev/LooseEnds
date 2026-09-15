@@ -1,21 +1,32 @@
 {
-  "name": "looseends",
-  "main": "worker/index.ts",
-  "compatibility_date": "2026-09-15",
-  // Persists logs for 3 days on the free plan, 200k events/day, queryable in
-  // the dashboard. Without this you only see problems while `wrangler tail`
-  // happens to be running.
-  "observability": {
-    "enabled": true,
-    "head_sampling_rate": 1
-  },
-  "assets": {
-    "directory": "./dist",
-    "binding": "ASSETS",
-    // The Worker sees every request first and hands anything that is not
-    // /api/* to ASSETS. Without this, the asset server answers /api/series
-    // itself — which is what returned 405, since static files only do GET.
-    "run_worker_first": true,
-    "not_found_handling": "single-page-application"
-  }
+	"name": "looseends",
+	"main": "worker/index.ts",
+	"compatibility_date": "2026-09-15",
+	// Persists logs for 3 days on the free plan, 200k events/day, queryable in
+	// the dashboard. Without this you only see problems while `wrangler tail`
+	// happens to be running.
+	// Shared cache of public series metadata. Create it once with
+	//   npx wrangler d1 create looseends-cache
+	// then paste the printed database_id below.
+	"d1_databases": [
+		{
+			"binding": "looseends_cache",
+			"database_name": "looseends-cache",
+			"database_id": "65ebce26-94dc-47f8-996e-8d83f5060898",
+			"remote": true
+		}
+	],
+	"observability": {
+		"enabled": true,
+		"head_sampling_rate": 1
+	},
+	"assets": {
+		"directory": "./dist",
+		"binding": "ASSETS",
+		// The Worker sees every request first and hands anything that is not
+		// /api/* to ASSETS. Without this, the asset server answers /api/series
+		// itself — which is what returned 405, since static files only do GET.
+		"run_worker_first": true,
+		"not_found_handling": "single-page-application"
+	}
 }

@@ -1,10 +1,14 @@
 import { resolveSeriesNames } from '../src/shared/hardcover'
-import type { SeriesQuery } from '../src/shared/hardcover'
+import type { SeriesQuery, SeriesResult } from '../src/shared/hardcover'
+import { cacheKey, readCache, writeCache } from './cache'
+import type { D1Database } from './cache'
 
 interface Env {
   HARDCOVER_TOKEN: string
   /** Static asset binding: the built Vite output. */
   ASSETS: { fetch(request: Request): Promise<Response> }
+  /** Absent in local development, where the cache is simply skipped. */
+  DB?: D1Database
 }
 
 /** Keep each request well inside the Worker's subrequest budget. */
@@ -55,18 +59,56 @@ async function handleSeries(request: Request, env: Env): Promise<Response> {
     return json({ error: `Send between 1 and ${MAX_SERIES} series.` }, 400)
   }
 
+  const now = Date.now()
+  const today = new Date(now).toISOString().slice(0, 10)
+
   try {
-    const results = await resolveSeriesNames(series, env.HARDCOVER_TOKEN)
+    const keys = series.map((item) => cacheKey(item.name, item.author))
+    const byKey = new Map(keys.map((key, index) => [key, series[index]]))
+
+    let cached = new Map<string, SeriesResult>()
+    let misses = keys
+    if (env.DB) {
+      const lookup = await readCache(env.DB, keys, now)
+      cached = lookup.hits
+      misses = lookup.misses
+    }
+
+    // Two series names can normalise to one key. Look each key up once.
+    const uniqueMisses = [...new Set(misses)]
+
+    const fetched = uniqueMisses.length
+      ? await resolveSeriesNames(
+          uniqueMisses.map((key) => byKey.get(key)!),
+          env.HARDCOVER_TOKEN,
+        )
+      : []
+
+    if (env.DB && fetched.length > 0) {
+      await writeCache(
+        env.DB,
+        fetched.map((result, index) => ({ key: uniqueMisses[index], result })),
+        now,
+        today,
+      )
+    }
+
+    const byQuery = new Map(fetched.map((result) => [result.query, result]))
+    const results = series.map((item, index) => {
+      const hit = cached.get(keys[index])
+      return hit ?? byQuery.get(item.name) ?? fallback(item.name)
+    })
+
     const tally = { ok: 0, not_found: 0, error: 0 }
     for (const result of results) tally[result.status] += 1
 
     log('series.resolved', {
       status: 200,
       requested: series.length,
+      cacheHits: cached.size,
+      upstreamFetches: uniqueMisses.length,
       ...tally,
       ms: Date.now() - started,
-      // The first upstream failure, so a bad token or a rate limit is visible
-      // in the logs rather than only in the browser.
       firstError: results.find((result) => result.detail)?.detail ?? null,
     })
     return json({ results })
@@ -78,6 +120,18 @@ async function handleSeries(request: Request, env: Env): Promise<Response> {
       stack: error instanceof Error ? error.stack?.slice(0, 600) : undefined,
     })
     return json({ error: 'Series lookup failed unexpectedly.' }, 500)
+  }
+}
+
+function fallback(query: string): SeriesResult {
+  return {
+    query,
+    matchedName: null,
+    hardcoverId: null,
+    totalBooks: null,
+    volumes: [],
+    status: 'error',
+    detail: 'no result',
   }
 }
 
