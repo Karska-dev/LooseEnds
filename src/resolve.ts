@@ -37,9 +37,23 @@ export async function resolveAllSeries(
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ series: names }),
       })
-      if (!response.ok) throw new Error(String(response.status))
-      results = ((await response.json()) as { results: SeriesResult[] }).results
-    } catch {
+      const body = await response.text()
+      if (!response.ok) {
+        // Keep the server's own words: "not configured", "Use POST", a 405
+        // from a misrouted deploy. Throwing away the body cost a debugging
+        // round trip once already.
+        let detail = `HTTP ${response.status}`
+        try {
+          const parsed = JSON.parse(body) as { error?: string }
+          if (parsed.error) detail = parsed.error
+        } catch {
+          detail = `HTTP ${response.status} (not JSON)`
+        }
+        throw new Error(detail)
+      }
+      results = (JSON.parse(body) as { results: SeriesResult[] }).results
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : 'request failed'
       results = names.map((item) => ({
         query: item.name,
         matchedName: null,
@@ -47,6 +61,7 @@ export async function resolveAllSeries(
         totalBooks: null,
         volumes: [],
         status: 'error' as const,
+        detail,
       }))
     }
 

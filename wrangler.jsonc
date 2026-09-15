@@ -1,0 +1,14 @@
+{
+  "name": "looseends",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-09-15",
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    // The Worker sees every request first and hands anything that is not
+    // /api/* to ASSETS. Without this, the asset server answers /api/series
+    // itself — which is what returned 405, since static files only do GET.
+    "run_worker_first": true,
+    "not_found_handling": "single-page-application"
+  }
+}
