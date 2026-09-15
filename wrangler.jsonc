@@ -2,20 +2,20 @@
 	"name": "looseends",
 	"main": "worker/index.ts",
 	"compatibility_date": "2026-09-15",
-	// Persists logs for 3 days on the free plan, 200k events/day, queryable in
-	// the dashboard. Without this you only see problems while `wrangler tail`
-	// happens to be running.
-	// Shared cache of public series metadata. Create it once with
-	//   npx wrangler d1 create looseends-cache
-	// then paste the printed database_id below.
+	// Shared cache of public series metadata. The binding name must stay "DB":
+	// that is what worker/index.ts reads. `wrangler d1 create` suggests a block
+	// naming the binding after the database, which does not match.
 	"d1_databases": [
 		{
-			"binding": "looseends_cache",
+			"binding": "DB",
 			"database_name": "looseends-cache",
 			"database_id": "65ebce26-94dc-47f8-996e-8d83f5060898",
 			"remote": true
 		}
 	],
+	// Persists logs for 3 days on the free plan, 200k events/day, queryable in
+	// the dashboard. Without this you only see problems while `wrangler tail`
+	// happens to be running.
 	"observability": {
 		"enabled": true,
 		"head_sampling_rate": 1

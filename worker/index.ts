@@ -72,6 +72,10 @@ async function handleSeries(request: Request, env: Env): Promise<Response> {
       const lookup = await readCache(env.DB, keys, now)
       cached = lookup.hits
       misses = lookup.misses
+    } else {
+      // Name the bindings that DO exist. A binding declared under the wrong
+      // name looks identical to no binding at all from inside the Worker.
+      log('cache.unavailable', { expected: 'DB', bindings: Object.keys(env).sort() })
     }
 
     // Two series names can normalise to one key. Look each key up once.
@@ -105,6 +109,9 @@ async function handleSeries(request: Request, env: Env): Promise<Response> {
     log('series.resolved', {
       status: 200,
       requested: series.length,
+      // Without this, a missing D1 binding is indistinguishable from a cold
+      // cache: both report zero hits and a 200.
+      hasDb: Boolean(env.DB),
       cacheHits: cached.size,
       upstreamFetches: uniqueMisses.length,
       ...tally,
