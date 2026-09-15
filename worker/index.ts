@@ -88,8 +88,9 @@ async function handleSeries(request: Request, env: Env): Promise<Response> {
         )
       : []
 
+    let written: { attempted: number; error: string | null } = { attempted: 0, error: null }
     if (env.DB && fetched.length > 0) {
-      await writeCache(
+      written = await writeCache(
         env.DB,
         fetched.map((result, index) => ({ key: uniqueMisses[index], result })),
         now,
@@ -114,6 +115,11 @@ async function handleSeries(request: Request, env: Env): Promise<Response> {
       hasDb: Boolean(env.DB),
       cacheHits: cached.size,
       upstreamFetches: uniqueMisses.length,
+      cacheWrites: written.attempted,
+      cacheWriteError: written.error,
+      // The exact strings used as keys, so a read/write mismatch is visible
+      // rather than inferred.
+      sampleKey: keys[0] ?? null,
       ...tally,
       ms: Date.now() - started,
       firstError: results.find((result) => result.detail)?.detail ?? null,

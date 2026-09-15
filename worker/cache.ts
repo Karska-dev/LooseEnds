@@ -89,11 +89,28 @@ export async function writeCache(
   entries: { key: string; result: SeriesResult }[],
   now: number,
   today: string,
-): Promise<void> {
+): Promise<{ attempted: number; error: string | null }> {
   // Never cache a failure. A rate limit is not a fact about a series.
   const storable = entries.filter(({ result }) => result.status !== 'error')
-  if (storable.length === 0) return
+  if (storable.length === 0) return { attempted: 0, error: null }
 
+  try {
+    await writeBatch(db, storable, now, today)
+    return { attempted: storable.length, error: null }
+  } catch (error) {
+    return {
+      attempted: storable.length,
+      error: error instanceof Error ? error.message : String(error),
+    }
+  }
+}
+
+async function writeBatch(
+  db: D1Database,
+  storable: { key: string; result: SeriesResult }[],
+  now: number,
+  today: string,
+): Promise<void> {
   await db.batch(
     storable.map(({ key, result }) =>
       db
