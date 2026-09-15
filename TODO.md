@@ -19,6 +19,15 @@
 
 - [ ] **Rotate the Hardcover token** before launch, for the same reason.
 
+## Deferred
+
+- [ ] **Multi-language editions.** v0.1 shows English only (`language_id: 1`),
+      falling back to the most-read edition when no English one exists. The API
+      already returns every language per position, and `SeriesEntry.cleanTitle`
+      is kept for this: match the reader's own titles against the editions to
+      infer which language they read, then use it for the whole series. Decide
+      language once per series, never per position, or a list comes back mixed.
+
 ## Next build steps
 
 - [ ] Pages Function at `/api/series` — Hardcover primary, Wikidata fallback

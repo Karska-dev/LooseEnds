@@ -13,6 +13,8 @@ export interface SeriesRef {
 
 export interface SeriesEntry {
   book: Book
+  /** Title with the series suffix removed, for matching against editions. */
+  cleanTitle: string
   position: number | null
   isOmnibus: boolean
 }
@@ -79,7 +81,7 @@ export function groupIntoSeries(books: Book[]): SeriesSummary {
   const unmatched: Book[] = []
 
   for (const book of books) {
-    const { series } = extractSeries(book.title)
+    const { title, series } = extractSeries(book.title)
     if (!series) {
       unmatched.push(book)
       continue
@@ -92,6 +94,7 @@ export function groupIntoSeries(books: Book[]): SeriesSummary {
     group.names.push(series.name)
     group.entries.push({
       book,
+      cleanTitle: title,
       position: series.position,
       isOmnibus: series.isOmnibus,
     })

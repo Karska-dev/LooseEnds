@@ -1,7 +1,14 @@
-export interface Volume {
-  position: number
+export interface Edition {
   title: string
   releaseDate: string | null
+  languageId: number | null
+  readers: number
+}
+
+export interface Volume {
+  position: number
+  /** One entry per language, best-read first. The client picks. */
+  editions: Edition[]
 }
 
 export interface SeriesResult {
@@ -135,45 +142,68 @@ async function searchSeries(
   return { ok: true, data: bestHit(hits, author) }
 }
 
+interface BookNode {
+  title: string
+  release_date: string | null
+  users_read_count: number | null
+  default_ebook_edition: { language_id: number | null } | null
+  default_physical_edition: { language_id: number | null } | null
+}
+
 interface SeriesNode {
   name: string
   primary_books_count: number | null
-  book_series: {
-    position: number | null
-    book: { title: string; release_date: string | null; users_read_count: number | null } | null
-  }[]
+  book_series: { position: number | null; book: BookNode | null }[]
+}
+
+/** Ebook first: translations often have no ebook edition, originals do. */
+function languageOf(book: BookNode): number | null {
+  return book.default_ebook_edition?.language_id ?? book.default_physical_edition?.language_id ?? null
 }
 
 /**
- * Every translation and box set shares a position with the original, so one
- * position yields many rows. The edition with the most readers is the one
- * people mean — far more reliable than Hardcover's `compilation` flag, which
- * hides real books and keeps box sets.
+ * Every translation and box set shares a position with the original. Rather
+ * than choosing here, keep the best-read edition per language and let the
+ * client pick — it knows which language the reader actually reads, and this
+ * keeps the response identical for every visitor so it stays cacheable.
  */
-function pickOnePerPosition(node: SeriesNode): Volume[] {
-  const best = new Map<number, { title: string; releaseDate: string | null; readers: number }>()
+function editionsByPosition(node: SeriesNode): Volume[] {
+  const byPosition = new Map<number, Map<string, Edition>>()
 
   for (const entry of node.book_series) {
     const position = entry.position
     const book = entry.book
     if (position === null || !book) continue
-    const readers = book.users_read_count ?? 0
-    const current = best.get(position)
-    if (!current || readers > current.readers) {
-      best.set(position, { title: book.title, releaseDate: book.release_date, readers })
+
+    let perLanguage = byPosition.get(position)
+    if (!perLanguage) {
+      perLanguage = new Map()
+      byPosition.set(position, perLanguage)
+    }
+
+    const languageId = languageOf(book)
+    const key = String(languageId ?? 'unknown')
+    const candidate: Edition = {
+      title: book.title,
+      releaseDate: book.release_date,
+      languageId,
+      readers: book.users_read_count ?? 0,
+    }
+    const current = perLanguage.get(key)
+    if (!current || candidate.readers > current.readers) {
+      perLanguage.set(key, candidate)
     }
   }
 
-  return [...best.entries()]
-    .map(([position, value]) => ({
+  return [...byPosition.entries()]
+    .map(([position, perLanguage]) => ({
       position,
-      title: value.title,
-      releaseDate: value.releaseDate,
+      editions: [...perLanguage.values()].sort((a, b) => b.readers - a.readers).slice(0, 8),
     }))
     .sort((a, b) => a.position - b.position)
 }
 
-const SERIES_FIELDS = `name primary_books_count book_series(order_by: {position: asc}) { position book { title release_date users_read_count } }`
+const SERIES_FIELDS = `name primary_books_count book_series(order_by: {position: asc}) { position book { title release_date users_read_count default_ebook_edition { language_id } default_physical_edition { language_id } } }`
 
 async function fetchSeriesBatch(
   token: string,
@@ -249,7 +279,7 @@ export async function resolveSeriesNames(
         continue
       }
       const node = outcome.data.get(item.id)
-      const volumes = node ? pickOnePerPosition(node) : []
+      const volumes = node ? editionsByPosition(node) : []
       results.set(item.query, {
         query: item.query,
         matchedName: node?.name ?? item.name,
