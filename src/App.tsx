@@ -46,6 +46,23 @@ export default function App() {
 
       <section className="intake">
         <h2>Your Goodreads export</h2>
+
+        <ol className="how">
+          <li>
+            On Goodreads, open <b>My Books</b>
+          </li>
+          <li>
+            In the left sidebar under Tools, choose <b>Import and export</b>
+          </li>
+          <li>
+            Click <b>Export Library</b>, wait a few seconds, then download the file
+          </li>
+        </ol>
+        <p className="note">
+          Desktop browser only &mdash; the Goodreads app has no export. Don&rsquo;t open
+          the file in Excel first; it quietly changes ISBNs and dates.
+        </p>
+
         <input type="file" id="export-file" accept=".csv" onChange={handleFile} />
         <p className="note">
           Read here in your browser. Nothing is uploaded and nothing is stored.
@@ -124,6 +141,7 @@ function SeriesBoard({ summary }: { summary: SeriesSummary }) {
     next_available: states.filter((s) => s.status === 'next_available' && !dismissed.has(s.key)).length,
     waiting: states.filter((s) => s.status === 'waiting' && !dismissed.has(s.key)).length,
     complete: states.filter((s) => s.status === 'complete').length,
+    failed: [...resolved.values()].filter((entry) => entry.status === 'error').length,
     reading: states.filter((s) => s.status === 'reading' && !dismissed.has(s.key)).length,
   }
 
@@ -158,6 +176,14 @@ function SeriesBoard({ summary }: { summary: SeriesSummary }) {
           </div>
         )}
       </div>
+
+      {!progress && counts.failed > 0 && (
+        <p className="error" role="status">
+          {counts.failed === states.length
+            ? failureMessage(firstDetail(resolved))
+            : `${counts.failed} series couldn\u2019t be looked up. Try again \u2014 it is usually temporary.`}
+        </p>
+      )}
 
       {resolved.size > 0 && (
         <dl className="tiles">
@@ -420,4 +446,26 @@ function Verdict({ state }: { state: SeriesState }) {
       {title}
     </p>
   )
+}
+
+function firstDetail(resolved: Map<string, SeriesResult>): string | null {
+  for (const entry of resolved.values()) {
+    if (entry.status === 'error' && entry.detail) return entry.detail
+  }
+  return null
+}
+
+/**
+ * A reader needs to know whether to wait, retry, or give up — not which HTTP
+ * status came back. The technical detail stays in the logs.
+ */
+function failureMessage(detail: string | null): string {
+  const text = (detail ?? '').toLowerCase()
+  if (text.includes('too many') || text.includes('429')) {
+    return 'Too many lookups just now. Wait a minute and try again.'
+  }
+  if (text.includes('not configured')) {
+    return 'Series lookup is not set up on this server yet.'
+  }
+  return 'Could not reach the series database. Try again in a moment — nothing was lost.'
 }
