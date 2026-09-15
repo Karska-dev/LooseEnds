@@ -9,6 +9,8 @@ interface Env {
   ASSETS: { fetch(request: Request): Promise<Response> }
   /** Absent in local development, where the cache is simply skipped. */
   DB?: D1Database
+  /** Absent in local development, where throttling is skipped. */
+  SERIES_LIMITER?: { limit(options: { key: string }): Promise<{ success: boolean }> }
 }
 
 /** Keep each request well inside the Worker's subrequest budget. */
@@ -22,6 +24,22 @@ export default {
       if (request.method !== 'POST') {
         return json({ error: 'Use POST with a JSON body.' }, 405)
       }
+
+      // Keyed by caller IP, not by path: the point is to stop one client
+      // exhausting the upstream token, not to cap the endpoint overall.
+      const ip = request.headers.get('CF-Connecting-IP') ?? 'unknown'
+      if (env.SERIES_LIMITER) {
+        const { success } = await env.SERIES_LIMITER.limit({ key: ip })
+        if (!success) {
+          log('series.rate_limited', { status: 429 })
+          return json(
+            { error: 'Too many lookups just now. Wait a minute and try again.' },
+            429,
+            { 'retry-after': '60' },
+          )
+        }
+      }
+
       return handleSeries(request, env)
     }
 
@@ -170,12 +188,17 @@ function log(event: string, fields: Record<string, unknown> = {}): void {
   console.log(JSON.stringify({ event, ...fields }))
 }
 
-function json(body: unknown, status = 200): Response {
+function json(
+  body: unknown,
+  status = 200,
+  extraHeaders: Record<string, string> = {},
+): Response {
   return new Response(JSON.stringify(body), {
     status,
     headers: {
       'content-type': 'application/json',
       'cache-control': status === 200 ? 'public, max-age=3600' : 'no-store',
+      ...extraHeaders,
     },
   })
 }

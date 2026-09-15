@@ -2,6 +2,18 @@
 	"name": "looseends",
 	"main": "worker/index.ts",
 	"compatibility_date": "2026-09-15",
+	// Per-IP throttle on /api/series. A full uncached library is 8 requests
+	// over ~90s; a cached one is 8 requests in about two seconds. 30 per
+	// minute leaves room for a few reloads and stops a script cold.
+	// Periods may only be 10 or 60 seconds.
+	"ratelimits": [
+		{
+			"name": "SERIES_LIMITER",
+			"namespace_id": "1001",
+			"simple": { "limit": 30, "period": 60 }
+		}
+	],
+
 	// Shared cache of public series metadata. The binding name must stay "DB":
 	// that is what worker/index.ts reads. `wrangler d1 create` suggests a block
 	// naming the binding after the database, which does not match.

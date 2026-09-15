@@ -27,7 +27,10 @@ export async function resolveAllSeries(
   }
 
   let done = 0
+  let stopped = false
+
   for (let index = 0; index < pending.length; index += CHUNK_SIZE) {
+    if (stopped) break
     const names = pending.slice(index, index + CHUNK_SIZE)
     let results: SeriesResult[]
 
@@ -38,6 +41,10 @@ export async function resolveAllSeries(
         body: JSON.stringify({ series: names }),
       })
       const body = await response.text()
+      if (response.status === 429) {
+        // Sending the remaining chunks would only deepen the throttle.
+        stopped = true
+      }
       if (!response.ok) {
         // Keep the server's own words: "not configured", "Use POST", a 405
         // from a misrouted deploy. Throwing away the body cost a debugging
