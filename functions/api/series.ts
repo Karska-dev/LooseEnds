@@ -5,10 +5,19 @@ interface Env {
   HARDCOVER_TOKEN: string
 }
 
+/**
+ * Minimal shape of what Cloudflare Pages passes in. Declared here rather than
+ * pulling in @cloudflare/workers-types for one annotation.
+ */
+interface PagesContext {
+  request: Request
+  env: Env
+}
+
 /** Keep each request well inside the Worker's subrequest budget. */
 const MAX_NAMES = 10
 
-export const onRequestPost: PagesFunction<Env> = async (context) => {
+export const onRequestPost = async (context: PagesContext): Promise<Response> => {
   const token = context.env.HARDCOVER_TOKEN
   if (!token) {
     return json({ error: 'Series lookup is not configured on this server.' }, 500)
