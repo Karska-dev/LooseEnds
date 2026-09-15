@@ -2,6 +2,13 @@
   "name": "looseends",
   "main": "worker/index.ts",
   "compatibility_date": "2026-09-15",
+  // Persists logs for 3 days on the free plan, 200k events/day, queryable in
+  // the dashboard. Without this you only see problems while `wrangler tail`
+  // happens to be running.
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  },
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",
