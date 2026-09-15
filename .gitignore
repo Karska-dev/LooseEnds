@@ -1,0 +1,29 @@
+# dependencies and build output
+node_modules
+dist
+dist-ssr
+*.local
+
+# environment and platform
+.env
+.env.local
+.wrangler
+
+# logs
+logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# editors and OS
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.sw?
+
+# NEVER commit a real library export: a Goodreads CSV contains your full
+# reading history, ratings, private notes and review text. Once pushed to a
+# public repo it stays in the git history even if deleted in a later commit.
+*.csv
+!tests/fixtures/*.csv
