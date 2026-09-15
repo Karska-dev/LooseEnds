@@ -2,9 +2,9 @@ import type { Shelf } from './goodreads'
 import type { SeriesGroup } from './series'
 import type { Edition, SeriesResult, Volume } from './shared/hardcover'
 
-export type PublicationState = 'published' | 'announced' | 'unannounced'
+type PublicationState = 'published' | 'announced' | 'unannounced'
 
-export type SeriesStatus =
+type SeriesStatus =
   /** The next book exists and is out. Act on this one. */
   | 'next_available'
   /** Mid-book right now. */
@@ -18,7 +18,7 @@ export type SeriesStatus =
   /** Not looked up. */
   | 'unknown'
 
-export interface NextVolume {
+interface NextVolume {
   position: number
   title: string
   releaseDate: string | null
@@ -123,7 +123,7 @@ function pickNext(volumes: Volume[], shelves: Shelves): Volume | null {
 const ENGLISH = 1
 
 /** Keeps the whole series in one language instead of a mix of translations. */
-export function chooseEdition(volume: Volume): Edition | null {
+function chooseEdition(volume: Volume): Edition | null {
   if (volume.editions.length === 0) return null
   const english = volume.editions.find((edition) => edition.languageId === ENGLISH)
   // No English edition: fall back to the most-read one rather than showing nothing.

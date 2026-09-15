@@ -1,7 +1,7 @@
 import type { SeriesResult, Volume } from '../src/shared/hardcover'
 
 /** Minimal shape of the D1 binding, so we need no extra dependency. */
-export interface D1PreparedStatement {
+interface D1PreparedStatement {
   bind(...values: unknown[]): D1PreparedStatement
   all<T>(): Promise<{ results: T[] }>
   run(): Promise<unknown>
@@ -45,11 +45,11 @@ function volumeReleased(volume: Volume, today: string): boolean {
   )
 }
 
-export function hasUnreleasedVolume(result: SeriesResult, today: string): boolean {
+function hasUnreleasedVolume(result: SeriesResult, today: string): boolean {
   return result.volumes.some((volume) => !volumeReleased(volume, today))
 }
 
-export interface CacheLookup {
+interface CacheLookup {
   hits: Map<string, SeriesResult>
   misses: string[]
 }

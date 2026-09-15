@@ -1,6 +1,6 @@
 import type { Book } from './goodreads'
 
-export interface SeriesRef {
+interface SeriesRef {
   /** Display name as Goodreads wrote it. */
   name: string
   /** Normalised key used for grouping. */
@@ -11,7 +11,7 @@ export interface SeriesRef {
   isOmnibus: boolean
 }
 
-export interface SeriesEntry {
+interface SeriesEntry {
   book: Book
   /** Title with the series suffix removed, for matching against editions. */
   cleanTitle: string
@@ -46,16 +46,7 @@ export interface SeriesSummary {
 const SERIES_PATTERN =
   /\s*\(([^()]+?),?\s*#(\d+(?:\.\d+)?)(\s*-\s*\d+(?:\.\d+)?)?\)\s*$/
 
-/** "The Stormlight Archive" and "Stormlight Archive" must land in one group. */
-export function normaliseSeriesKey(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/^the\s+/, '')
-    .replace(/[^a-z0-9]+/g, ' ')
-    .trim()
-}
-
-export function extractSeries(rawTitle: string): {
+function extractSeries(rawTitle: string): {
   title: string
   series: SeriesRef | null
 } {
@@ -69,7 +60,11 @@ export function extractSeries(rawTitle: string): {
     title: rawTitle.replace(SERIES_PATTERN, '').trim(),
     series: {
       name,
-      key: normaliseSeriesKey(name),
+      key: name
+        .toLowerCase()
+        .replace(/^the\s+/, '')
+        .replace(/[^a-z0-9]+/g, ' ')
+        .trim(),
       position: Number(match[2]),
       isOmnibus: match[3] !== undefined,
     },

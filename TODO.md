@@ -19,6 +19,9 @@
 
 - [ ] **Rotate the Hardcover token** before launch, for the same reason.
 
+- [ ] **Rotate the LibraryThing key** — also exposed in chat. Read-only, low
+      stakes, but it costs nothing to replace.
+
 ## Deferred
 
 - [ ] **Multi-language editions.** v0.1 shows English only (`language_id: 1`),
@@ -28,12 +31,22 @@
       infer which language they read, then use it for the whole series. Decide
       language once per series, never per position, or a list comes back mixed.
 
-## Next build steps
+## Before sharing the link
 
-- [ ] Pages Function at `/api/series` — Hardcover primary, Wikidata fallback
-- [ ] D1 cache with TTL
-- [ ] Series state engine: next unread, published / announced / unannounced
-- [ ] Series list and detail screens
+- [ ] Tests for the state engine (four real bugs so far: false "finished",
+      to-read treated as handled, box sets at position 0, superset series)
+- [ ] Surface the ~10% of books whose titles carry no series — currently dropped
+      silently
+- [ ] Serve sized cover images rather than full-resolution ones scaled to 36px
+
+## Closed questions
+
+- **Can another source reduce Hardcover usage?** No. Measured with
+  `npm run probe` against 30 real series: Hardcover 30/30, Wikidata 0/30,
+  Open Library 0/30, Google Books 0/30, BookBrainz 0/30, LibraryThing 0/30.
+  There is no fallback to build. Usage is instead controlled by the D1 cache,
+  which costs about 28 upstream requests a day for a whole library.
+  Re-run the probe if that ever seems worth revisiting.
 
 ## Known matching weaknesses
 
