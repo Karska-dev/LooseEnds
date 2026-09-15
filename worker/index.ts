@@ -14,19 +14,6 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url)
 
-    // TEMPORARY diagnostic. Reports which bindings exist and whether the
-    // token is non-empty. Never returns the value. Delete once deployment
-    // is sorted — see TODO.md.
-    if (url.pathname === '/api/health') {
-      const token = env.HARDCOVER_TOKEN
-      return json({
-        bindings: Object.keys(env).sort(),
-        hasHardcoverToken: typeof token === 'string' && token.length > 0,
-        tokenLength: typeof token === 'string' ? token.length : null,
-        tokenPrefix: typeof token === 'string' ? token.slice(0, 7) : null,
-      })
-    }
-
     if (url.pathname === '/api/series') {
       if (request.method !== 'POST') {
         return json({ error: 'Use POST with a JSON body.' }, 405)

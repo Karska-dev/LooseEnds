@@ -35,12 +35,6 @@
 - [ ] Series state engine: next unread, published / announced / unannounced
 - [ ] Series list and detail screens
 
-## Remove before sharing
-
-- [ ] **Delete the `/api/health` diagnostic** in `worker/index.ts`. It lists
-      binding names and the token's length and 7-character prefix. Harmless
-      while the site is private, but it should not exist on a public URL.
-
 ## Known matching weaknesses
 
 - **Superset series.** Searching "Mistborn" returns both "The Mistborn Saga"

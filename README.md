@@ -65,9 +65,18 @@ npm run dev
 ```
 
 A Hardcover token comes from **hardcover.app → account settings → Hardcover
-API**. The token is only ever read server-side: in development by the Vite
-middleware, in production by the Cloudflare Pages Function. It never reaches the
-browser.
+API**. It is only ever read server-side — by the Vite middleware in
+development, by the Worker in production — and never reaches the browser.
+
+Deployment needs the token set separately, as a Worker secret:
+
+```bash
+npx wrangler secret put HARDCOVER_TOKEN
+```
+
+`.env.local` is gitignored and never reaches Cloudflare. Note that a *build*
+variable in the dashboard is not the same thing as a *runtime* secret: the
+build one is visible to `npm run build` and invisible to the Worker.
 
 ## Status
 
