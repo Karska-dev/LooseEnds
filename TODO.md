@@ -33,11 +33,18 @@
 
 ## Before sharing the link
 
-- [ ] Tests for the state engine (four real bugs so far: false "finished",
-      to-read treated as handled, box sets at position 0, superset series)
 - [ ] Surface the ~10% of books whose titles carry no series — currently dropped
       silently
 - [ ] Serve sized cover images rather than full-resolution ones scaled to 36px
+
+## Open design question
+
+- **Should a book in progress mid-series outrank one merely available?**
+  A reader part-way through book 2 of 5 currently gets `next_available`,
+  the same rank as a series untouched for a year, because `reading` is only
+  reported when nothing remains after the book in hand. Pinned by a test in
+  `tests/sort.test.ts` so the current behaviour is deliberate rather than
+  accidental. A product call, not a bug.
 
 ## Closed questions
 
