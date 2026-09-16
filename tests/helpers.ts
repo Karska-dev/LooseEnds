@@ -40,6 +40,7 @@ export function edition(overrides: Partial<Edition> = {}): Edition {
     languageId: 1,
     readers: 100,
     coverUrl: null,
+    coverColor: null,
     slug: null,
     ...overrides,
   }

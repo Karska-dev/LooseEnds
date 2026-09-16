@@ -33,9 +33,16 @@
 
 ## Before sharing the link
 
-- [ ] Serve sized cover images rather than full-resolution ones scaled to 36px
 
 ## Closed questions
+
+- **Serve sized cover images?** No — measured at 42-65 KB each, roughly 92%
+  more than a 36x54 slot needs, but that is ~700 KB on first paint and lazy
+  loading already caps it to visible covers. Hardcover documents no resize
+  parameter, so the only options were a third-party image proxy or nothing,
+  and a proxy is a poor trade for an app whose pitch is that it needs nothing.
+  Instead the slot now holds the cover's dominant colour while it loads, which
+  addresses how slow it felt rather than how many bytes it was.
 
 - **Should a book in progress outrank one merely available?** Yes. `status`
   still answers "what is the next action", but sorting now checks `inProgress`

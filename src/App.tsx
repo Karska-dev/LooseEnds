@@ -416,7 +416,7 @@ function SeriesRow({
           <span className="chevron" aria-hidden="true">
             {open ? '\u2212' : '+'}
           </span>
-          <Cover url={state.coverUrl} alt="" size="lg" />
+          <Cover url={state.coverUrl} color={state.coverColor} alt="" size="lg" />
           <span className="series-id">
             <span className="series-name">{state.name}</span>
             <span className="byline">{state.author}</span>
@@ -453,15 +453,50 @@ function SeriesRow({
   )
 }
 
+/** Rendered size in CSS pixels, mirroring .cover-lg and .cover-sm. */
+const COVER_SIZE = { lg: { width: 36, height: 54 }, sm: { width: 28, height: 42 } }
+
 /**
  * A fixed-size slot, present from first paint whether or not an image ever
  * arrives. The image never decides layout, so nothing shifts when it loads
  * and lazy loading stays safe.
+ *
+ * The dimensions are also on the element itself: the preload scanner reads
+ * those before any stylesheet has applied, and they keep the slot correct if
+ * the CSS ever fails to load.
  */
-function Cover({ url, alt, size }: { url: string | null; alt: string; size: 'lg' | 'sm' }) {
+function Cover({
+  url,
+  color,
+  alt,
+  size,
+}: {
+  url: string | null
+  color?: string | null
+  alt: string
+  size: 'lg' | 'sm'
+}) {
   return (
-    <span className={`cover cover-${size}`} aria-hidden={url ? undefined : true}>
-      {url && <img src={url} alt={alt} loading="lazy" decoding="async" />}
+    <span
+      className={`cover cover-${size}`}
+      aria-hidden={url ? undefined : true}
+      // The book's own colour holds the slot while the image downloads, so
+      // the board reads as a shelf immediately rather than a row of holes.
+      style={color ? { backgroundColor: color } : undefined}
+    >
+      {url && (
+        <img
+          src={url}
+          alt={alt}
+          width={COVER_SIZE[size].width}
+          height={COVER_SIZE[size].height}
+          loading="lazy"
+          decoding="async"
+          // Volume thumbnails only exist inside an expanded row, below
+          // everything else on the page. Nothing waits on them.
+          fetchPriority={size === 'sm' ? 'low' : undefined}
+        />
+      )}
     </span>
   )
 }
@@ -480,7 +515,7 @@ function VolumeLine({ row }: { row: VolumeRow }) {
   return (
     <li className={`volume volume-${shelf}${row.isNext ? ' is-next' : ''}`}>
       <span className="vol-pos">#{row.position}</span>
-      <Cover url={row.coverUrl} alt="" size="sm" />
+      <Cover url={row.coverUrl} color={row.coverColor} alt="" size="sm" />
 
       <span className="vol-main">
         <span className="vol-title">

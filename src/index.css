@@ -425,3 +425,23 @@ button.ghost:hover { color: var(--ink); border-color: var(--ink-faint); }
 }
 
 .series-row.is-standalone .volume-list { max-height: 420px; overflow-y: auto; }
+
+
+/* ---------- cover placeholder ---------- */
+
+/*
+ * The slot carries the book's dominant colour as a background. The image
+ * paints over it once decoded, so there is no flash of empty grey and no
+ * JavaScript involved in the swap.
+ */
+.cover { background-color: var(--line-soft, var(--line)); }
+.cover img { animation: cover-in 0.22s ease-out both; }
+
+@keyframes cover-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cover img { animation: none; }
+}

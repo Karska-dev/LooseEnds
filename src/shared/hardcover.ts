@@ -4,6 +4,8 @@ export interface Edition {
   languageId: number | null
   readers: number
   coverUrl: string | null
+  /** Dominant colour of the cover, for the slot to hold while it loads. */
+  coverColor: string | null
   /** Links back to hardcover.app, which is also the attribution. */
   slug: string | null
 }
@@ -33,7 +35,7 @@ const ALIAS_LIMIT = 5
 /** Hardcover allows 60 requests per minute. Stay just under one per second. */
 const MIN_REQUEST_GAP_MS = 1100
 
-interface SearchHit {
+export interface SearchHit {
   id: string
   name: string
   author_name?: string
@@ -108,8 +110,12 @@ async function gql<T>(token: string, query: string): Promise<Outcome<T>> {
  * with readers and books, and empty shells with the same name. Rank by book
  * count then readers so the shells never win.
  */
-/** "The Mistborn Saga" is about "Mistborn"; "The Cosmere" is not. */
-function nameRelated(name: string, query: string): boolean {
+/**
+ * "The Mistborn Saga" is about "Mistborn"; "The Cosmere" is not.
+ * Exported for scripts/explain-match.mjs, so the diagnostic reports the real
+ * decision rather than a copy of it that can drift.
+ */
+export function nameRelated(name: string, query: string): boolean {
   const left = normaliseName(name)
   const right = normaliseName(query)
   return left.includes(right) || right.includes(left)
@@ -123,7 +129,11 @@ function nameRelated(name: string, query: string): boolean {
  * readers), which is a superset containing it — so neither book count nor
  * reader count picks the right one. Only the name does.
  */
-function bestHit(hits: SearchHit[], query: string, author?: string): SearchHit | null {
+export function bestHit(
+  hits: SearchHit[],
+  query: string,
+  author?: string,
+): SearchHit | null {
   let pool = hits
 
   // Empty shells that users created and never filled in.
@@ -171,7 +181,7 @@ interface BookNode {
   slug: string | null
   release_date: string | null
   users_read_count: number | null
-  image: { url: string | null } | null
+  image: { url: string | null; color: string | null } | null
   default_ebook_edition: { language_id: number | null } | null
   default_physical_edition: { language_id: number | null } | null
 }
@@ -193,6 +203,26 @@ function languageOf(book: BookNode): number | null {
  * client pick — it knows which language the reader actually reads, and this
  * keeps the response identical for every visitor so it stays cacheable.
  */
+/**
+ * Box sets do not only sit at position 0. "Drixonian Warriors: The Complete
+ * Series" is filed at position 1, beside the real book 1, and a popular one
+ * would win on readers and be shown as the first book of the series.
+ */
+const AGGREGATE_TITLE =
+  /\b(complete (series|collection)|box(ed)? set|omnibus|anthology|books?\s*\d+\s*[-\u2013]\s*\d+)\b/i
+
+function isAggregate(title: string): boolean {
+  return AGGREGATE_TITLE.test(title)
+}
+
+/** A real book beats a bundle at the same position, however many have read it. */
+function beats(candidate: Edition, current: Edition): boolean {
+  const candidateBundle = isAggregate(candidate.title)
+  const currentBundle = isAggregate(current.title)
+  if (candidateBundle !== currentBundle) return currentBundle
+  return candidate.readers > current.readers
+}
+
 function editionsByPosition(node: SeriesNode): Volume[] {
   const byPosition = new Map<number, Map<string, Edition>>()
 
@@ -215,10 +245,13 @@ function editionsByPosition(node: SeriesNode): Volume[] {
       languageId,
       readers: book.users_read_count ?? 0,
       coverUrl: book.image?.url ?? null,
+      // Entries cached before this field existed simply have no colour, and
+      // fall back to the empty slot until they expire.
+      coverColor: safeColor(book.image?.color),
       slug: book.slug,
     }
     const current = perLanguage.get(key)
-    if (!current || candidate.readers > current.readers) {
+    if (!current || beats(candidate, current)) {
       perLanguage.set(key, candidate)
     }
   }
@@ -231,7 +264,16 @@ function editionsByPosition(node: SeriesNode): Volume[] {
     .sort((a, b) => a.position - b.position)
 }
 
-const SERIES_FIELDS = `name primary_books_count book_series(order_by: {position: asc}) { position book { title slug release_date users_read_count image { url } default_ebook_edition { language_id } default_physical_edition { language_id } } }`
+/**
+ * Upstream values reach a style attribute, so only recognisable colours pass.
+ * Anything else becomes null rather than being handed to the browser.
+ */
+function safeColor(value: string | null | undefined): string | null {
+  if (!value) return null
+  return /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(value.trim()) ? value.trim() : null
+}
+
+const SERIES_FIELDS = `name primary_books_count book_series(order_by: {position: asc}) { position book { title slug release_date users_read_count image { url color } default_ebook_edition { language_id } default_physical_edition { language_id } } }`
 
 async function fetchSeriesBatch(
   token: string,

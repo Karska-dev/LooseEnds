@@ -32,6 +32,7 @@ export interface VolumeRow {
   position: number
   title: string
   coverUrl: string | null
+  coverColor: string | null
   slug: string | null
   releaseDate: string | null
   publication: PublicationState
@@ -54,6 +55,7 @@ export interface SeriesState {
   next: NextVolume | null
   /** Cover of the first volume, the thing that makes the list scannable. */
   coverUrl: string | null
+  coverColor: string | null
   /** Every volume in order, for the expanded view. */
   rows: VolumeRow[]
   status: SeriesStatus
@@ -164,6 +166,7 @@ export function buildSeriesState(
       next: null,
       rows: rowsFromLibraryOnly(group, today),
       coverUrl: null,
+      coverColor: null,
       status: 'unknown',
     }
   }
@@ -174,17 +177,19 @@ export function buildSeriesState(
   const nextVolume = pickNext(resolved.volumes, shelves)
 
   const rows = buildRows(group, resolved.volumes, nextVolume?.position ?? null, today)
-  const coverUrl =
-    rows.find((row) => row.position === 1 && row.coverUrl)?.coverUrl ??
-    rows.find((row) => row.coverUrl)?.coverUrl ??
+  const lead =
+    rows.find((row) => row.position === 1 && row.coverUrl) ??
+    rows.find((row) => row.coverUrl) ??
     null
+  const coverUrl = lead?.coverUrl ?? null
+  const coverColor = lead?.coverColor ?? null
 
   if (!nextVolume) {
     const readingNow = [...shelves.entries()].some(([position]) =>
       has(shelves, position, 'reading'),
     )
     if (readingNow) {
-      return { ...base, totalBooks, next: null, rows, coverUrl, status: 'reading' }
+      return { ...base, totalBooks, next: null, rows, coverUrl, coverColor, status: 'reading' }
     }
     // Finished means every main-line slot is accounted for — read, abandoned,
     // or both. A DNF is a decision, not a gap. Accept either Hardcover's list
@@ -200,13 +205,14 @@ export function buildSeriesState(
       next: null,
       rows,
       coverUrl,
+      coverColor,
       status: listLooksComplete ? 'complete' : 'partial',
     }
   }
 
   const edition = chooseEdition(nextVolume)
   if (!edition) {
-    return { ...base, totalBooks, next: null, rows, coverUrl, status: 'partial' }
+    return { ...base, totalBooks, next: null, rows, coverUrl, coverColor, status: 'partial' }
   }
 
   const publication = publicationOf(edition.releaseDate, today)
@@ -222,6 +228,7 @@ export function buildSeriesState(
     },
     rows,
     coverUrl,
+    coverColor,
     status: publication === 'published' ? 'next_available' : 'waiting',
   }
 }
@@ -265,6 +272,7 @@ function buildRows(
       position: volume.position,
       title: edition.title,
       coverUrl: edition.coverUrl,
+      coverColor: edition.coverColor,
       slug: edition.slug,
       releaseDate: edition.releaseDate,
       publication: publicationOf(edition.releaseDate, today),
@@ -280,6 +288,7 @@ function buildRows(
       position,
       title: entry!.title,
       coverUrl: null,
+      coverColor: null,
       slug: null,
       releaseDate: null,
       publication: 'unannounced',

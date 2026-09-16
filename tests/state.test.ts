@@ -254,8 +254,8 @@ describe('editions', () => {
       {
         position: 2,
         editions: [
-          { title: 'Zwei', releaseDate: PAST, languageId: 5, readers: 900, coverUrl: null, slug: null },
-          { title: 'Two', releaseDate: PAST, languageId: 1, readers: 10, coverUrl: null, slug: null },
+          { title: 'Zwei', releaseDate: PAST, languageId: 5, readers: 900, coverUrl: null, coverColor: null, slug: null },
+          { title: 'Two', releaseDate: PAST, languageId: 1, readers: 10, coverUrl: null, coverColor: null, slug: null },
         ],
       },
     ]
@@ -272,7 +272,7 @@ describe('editions', () => {
       {
         position: 2,
         editions: [
-          { title: 'Zwei', releaseDate: PAST, languageId: 5, readers: 900, coverUrl: null, slug: null },
+          { title: 'Zwei', releaseDate: PAST, languageId: 5, readers: 900, coverUrl: null, coverColor: null, slug: null },
         ],
       },
     ]
@@ -280,5 +280,32 @@ describe('editions', () => {
     const state = buildSeriesState(group, resolved(volumes, 2), TODAY)
 
     assert.equal(state.next?.title, 'Zwei')
+  })
+})
+
+describe('cover placeholder', () => {
+  test('the dominant colour rides along with the cover', () => {
+    const group = groupOf([['read', 'One (Test Series, #1)']])
+    const volumes = [
+      volume(1, { coverUrl: 'https://example.test/one.jpg', coverColor: '#2a4b7c' }),
+      volume(2),
+    ]
+
+    const state = buildSeriesState(group, resolved(volumes, 2), TODAY)
+
+    assert.equal(state.coverColor, '#2a4b7c')
+    assert.equal(state.rows[0].coverColor, '#2a4b7c')
+  })
+
+  test('a volume the reader owns but Hardcover lacks has no colour', () => {
+    const group = groupOf([
+      ['read', 'One (Test Series, #1)'],
+      ['read', 'Two (Test Series, #2)'],
+    ])
+
+    const state = buildSeriesState(group, resolved([volume(1)], 2), TODAY)
+
+    const merged = state.rows.find((row) => row.position === 2)
+    assert.equal(merged?.coverColor, null)
   })
 })
