@@ -35,16 +35,12 @@
 
 - [ ] Serve sized cover images rather than full-resolution ones scaled to 36px
 
-## Open design question
-
-- **Should a book in progress mid-series outrank one merely available?**
-  A reader part-way through book 2 of 5 currently gets `next_available`,
-  the same rank as a series untouched for a year, because `reading` is only
-  reported when nothing remains after the book in hand. Pinned by a test in
-  `tests/sort.test.ts` so the current behaviour is deliberate rather than
-  accidental. A product call, not a bug.
-
 ## Closed questions
+
+- **Should a book in progress outrank one merely available?** Yes. `status`
+  still answers "what is the next action", but sorting now checks `inProgress`
+  first, and the "Reading now" tile counts any series with a book on the
+  reading shelf rather than only those with nothing left after it.
 
 - **Can another source reduce Hardcover usage?** No. Measured with
   `npm run probe` against 30 real series: Hardcover 30/30, Wikidata 0/30,

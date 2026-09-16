@@ -59,6 +59,14 @@ export interface SeriesState {
   status: SeriesStatus
   /** A DNF anywhere in the series is a strong signal the reader stopped. */
   suggestDismiss: boolean
+  /**
+   * A volume is on the reading shelf — the book physically in your hands.
+   * Distinct from status 'reading', which only fires when nothing remains
+   * after it. Reading book 2 of 5 is still reading.
+   */
+  inProgress: boolean
+  /** Which volume that is, so the board can say so. */
+  inProgressPosition: number | null
 }
 
 function publicationOf(releaseDate: string | null, today: string): PublicationState {
@@ -135,12 +143,18 @@ export function buildSeriesState(
   resolved: SeriesResult | undefined,
   today = new Date().toISOString().slice(0, 10),
 ): SeriesState {
+  const readingPositions = group.entries
+    .filter((entry) => entry.book.shelf === 'reading' && entry.position !== null)
+    .map((entry) => entry.position as number)
+
   const base = {
     key: group.key,
     name: group.name,
     author: group.author,
     readCount: group.readCount,
     suggestDismiss: group.hasDnf,
+    inProgress: group.entries.some((entry) => entry.book.shelf === 'reading'),
+    inProgressPosition: readingPositions.length > 0 ? Math.min(...readingPositions) : null,
   }
 
   if (!resolved || resolved.volumes.length === 0) {
@@ -284,6 +298,9 @@ function rowsFromLibraryOnly(group: SeriesGroup, today: string): VolumeRow[] {
 /**
  * Reading order of attention: the book in your hands, then dates you are
  * waiting on, then what you could start tonight, then the rest.
+ *
+ * `rank` orders by what to do next; a book already open outranks all of it,
+ * which is why sortSeriesStates checks inProgress before calling this.
  */
 function rank(state: SeriesState): number {
   switch (state.status) {
@@ -305,6 +322,9 @@ function rank(state: SeriesState): number {
 export function sortSeriesStates(states: SeriesState[]): SeriesState[] {
   return [...states].sort(
     (a, b) =>
+      // A series you are part-way through beats one you merely could start,
+      // whatever its status says about the next action.
+      Number(b.inProgress) - Number(a.inProgress) ||
       rank(a) - rank(b) ||
       (a.next?.releaseDate ?? '').localeCompare(b.next?.releaseDate ?? '') ||
       b.readCount - a.readCount ||

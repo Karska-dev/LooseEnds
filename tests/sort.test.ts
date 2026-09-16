@@ -118,29 +118,44 @@ describe('sort order', () => {
   })
 })
 
-describe('open design question', () => {
-  /**
-   * Pins today's behaviour rather than endorsing it. A reader part-way
-   * through book 2 of 5 gets `next_available` — the same rank as a series
-   * they have not opened in a year — because `reading` is only reported when
-   * nothing is left after the book in progress. Whether a series with a book
-   * actually in hand should outrank one merely available is a product call,
-   * not a bug fix, so it is documented here until it is made.
-   */
-  test('a book in progress mid-series does not currently rank as reading', () => {
-    const group = groupOf([
-      ['read', 'One (Midway, #1)'],
-      ['reading', 'Two (Midway, #2)'],
-      ['to_read', 'Three (Midway, #3)'],
-    ])
-
-    const state = buildSeriesState(
-      group,
-      resolved([volume(1), volume(2), volume(3)], 3),
+describe('a book in your hands', () => {
+  const midway = () =>
+    buildSeriesState(
+      groupOf([
+        ['read', 'One (Midway, #1)'],
+        ['reading', 'Two (Midway, #2)'],
+        ['to_read', 'Three (Midway, #3)'],
+      ]),
+      resolved([volume(1), volume(2), volume(3, { releaseDate: '2019-01-01' })], 3),
       TODAY,
     )
 
-    assert.equal(state.status, 'next_available')
-    assert.equal(state.next?.position, 3)
+  const abandoned = () =>
+    buildSeriesState(
+      groupOf([['read', 'One (Abandoned, #1)']]),
+      // An older next volume, which used to win the release-date tiebreak.
+      resolved([volume(1), volume(2, { releaseDate: '2007-01-01' })], 2),
+      TODAY,
+    )
+
+  test('reading book 2 of 5 counts as in progress', () => {
+    const state = midway()
+
+    assert.equal(state.inProgress, true)
+    assert.equal(state.inProgressPosition, 2)
+    assert.equal(state.status, 'next_available', 'the next action is still book 3')
+  })
+
+  test('a series in progress outranks one merely available', () => {
+    // Previously the 2007 release date put the abandoned series first.
+    const sorted = sortSeriesStates([abandoned(), midway()])
+
+    assert.equal(sorted[0].name, 'Midway')
+    assert.equal(sorted[1].name, 'Abandoned')
+  })
+
+  test('a series with nothing on the reading shelf is not in progress', () => {
+    assert.equal(abandoned().inProgress, false)
+    assert.equal(abandoned().inProgressPosition, null)
   })
 })

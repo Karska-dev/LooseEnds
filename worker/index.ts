@@ -16,6 +16,13 @@ interface Env {
 /** Keep each request well inside the Worker's subrequest budget. */
 const MAX_SERIES = 10
 
+/**
+ * A cache-only request makes one D1 query and no upstream calls, so the batch
+ * can be far larger. This is what makes a warm library load in one round trip
+ * instead of one per ten series.
+ */
+const MAX_CACHED_ONLY = 200
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url)
@@ -51,18 +58,12 @@ export default {
 async function handleSeries(request: Request, env: Env): Promise<Response> {
   const started = Date.now()
 
-  if (!env.HARDCOVER_TOKEN) {
-    log('series.misconfigured', {
-      status: 500,
-      bindings: Object.keys(env).sort(),
-      reason: 'HARDCOVER_TOKEN missing or empty',
-    })
-    return json({ error: 'Series lookup is not configured on this server.' }, 500)
-  }
-
   let series: unknown
+  let cachedOnly = false
   try {
-    series = ((await request.json()) as { series?: unknown }).series
+    const body = (await request.json()) as { series?: unknown; cachedOnly?: unknown }
+    series = body.series
+    cachedOnly = body.cachedOnly === true
   } catch {
     log('series.bad_request', { status: 400, reason: 'body was not JSON' })
     return json({ error: 'Send a JSON body with a "series" array.' }, 400)
@@ -72,9 +73,10 @@ async function handleSeries(request: Request, env: Env): Promise<Response> {
     log('series.bad_request', { status: 400, reason: 'entries missing a name' })
     return json({ error: 'Each entry needs a "name", and may have an "author".' }, 400)
   }
-  if (series.length === 0 || series.length > MAX_SERIES) {
+  const limit = cachedOnly ? MAX_CACHED_ONLY : MAX_SERIES
+  if (series.length === 0 || series.length > limit) {
     log('series.bad_request', { status: 400, reason: 'batch size', size: series.length })
-    return json({ error: `Send between 1 and ${MAX_SERIES} series.` }, 400)
+    return json({ error: `Send between 1 and ${limit} series.` }, 400)
   }
 
   const now = Date.now()
@@ -97,7 +99,16 @@ async function handleSeries(request: Request, env: Env): Promise<Response> {
     }
 
     // Two series names can normalise to one key. Look each key up once.
-    const uniqueMisses = [...new Set(misses)]
+    const uniqueMisses = cachedOnly ? [] : [...new Set(misses)]
+
+    if (uniqueMisses.length > 0 && !env.HARDCOVER_TOKEN) {
+      log('series.misconfigured', {
+        status: 500,
+        bindings: Object.keys(env).sort(),
+        reason: 'HARDCOVER_TOKEN missing or empty',
+      })
+      return json({ error: 'Series lookup is not configured on this server.' }, 500)
+    }
 
     const fetched = uniqueMisses.length
       ? await resolveSeriesNames(
@@ -117,16 +128,22 @@ async function handleSeries(request: Request, env: Env): Promise<Response> {
     }
 
     const byQuery = new Map(fetched.map((result) => [result.query, result]))
-    const results = series.map((item, index) => {
-      const hit = cached.get(keys[index])
-      return hit ?? byQuery.get(item.name) ?? fallback(item.name)
-    })
+    const results = cachedOnly
+      ? series.flatMap((_, index) => {
+          const hit = cached.get(keys[index])
+          return hit ? [hit] : []
+        })
+      : series.map((item, index) => {
+          const hit = cached.get(keys[index])
+          return hit ?? byQuery.get(item.name) ?? fallback(item.name)
+        })
 
     const tally = { ok: 0, not_found: 0, error: 0 }
     for (const result of results) tally[result.status] += 1
 
     log('series.resolved', {
       status: 200,
+      cachedOnly,
       requested: series.length,
       // Without this, a missing D1 binding is indistinguishable from a cold
       // cache: both report zero hits and a 200.

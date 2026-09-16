@@ -166,7 +166,7 @@ function SeriesBoard({ summary }: { summary: SeriesSummary }) {
     waiting: states.filter((s) => s.status === 'waiting' && !dismissed.has(s.key)).length,
     complete: states.filter((s) => s.status === 'complete').length,
     failed: [...resolved.values()].filter((entry) => entry.status === 'error').length,
-    reading: states.filter((s) => s.status === 'reading' && !dismissed.has(s.key)).length,
+    reading: states.filter((s) => s.inProgress && !dismissed.has(s.key)).length,
   }
 
   function toggle(key: string) {
@@ -188,7 +188,7 @@ function SeriesBoard({ summary }: { summary: SeriesSummary }) {
             ? `Looking up… ${progress.done} of ${progress.total}`
             : `Look up ${started.length} series`}
         </button>
-        {progress && (
+        {progress && progress.total > 0 && (
           <div
             className="meter"
             role="progressbar"
@@ -565,6 +565,9 @@ function Verdict({ state }: { state: SeriesState }) {
       <p className="verdict">
         <span className="badge badge-go">Next</span>
         {title}
+        {state.inProgressPosition !== null && (
+          <span className="muted">&middot; you&rsquo;re on #{state.inProgressPosition}</span>
+        )}
         {next.onYourList && <span className="muted">&middot; already on your list</span>}
       </p>
     )
@@ -575,6 +578,9 @@ function Verdict({ state }: { state: SeriesState }) {
       <p className="verdict">
         <span className="badge badge-soon">Due {next.releaseDate}</span>
         {title}
+        {state.inProgressPosition !== null && (
+          <span className="muted">&middot; you&rsquo;re on #{state.inProgressPosition}</span>
+        )}
       </p>
     )
   }

@@ -5,7 +5,39 @@ export type { SeriesResult }
 /** The Function caps each request; keep the client in step with it. */
 const CHUNK_SIZE = 10
 
+/**
+ * The cache-only pass makes one D1 query and no upstream calls, so the whole
+ * library goes in one request. Matches MAX_CACHED_ONLY in the Worker.
+ */
+const PREFETCH_SIZE = 200
+
 const cache = new Map<string, SeriesResult>()
+
+/**
+ * Asks only for what the server already has. A failure here is not worth
+ * surfacing: the paced loop below fetches everything regardless, so the
+ * prefetch is an optimisation, never a dependency.
+ */
+async function readCached(
+  names: { name: string; author?: string }[],
+): Promise<Map<string, SeriesResult>> {
+  const found = new Map<string, SeriesResult>()
+  try {
+    const response = await fetch('/api/series', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ series: names, cachedOnly: true }),
+    })
+    if (!response.ok) return found
+    const body = (await response.json()) as { results: SeriesResult[] }
+    for (const result of body.results) {
+      if (result.status !== 'error') found.set(result.query, result)
+    }
+  } catch {
+    // Offline, throttled, or an older Worker without the fast path.
+  }
+  return found
+}
 
 export async function resolveAllSeries(
   input: { key: string; name: string; author?: string }[],
@@ -23,6 +55,26 @@ export async function resolveAllSeries(
       output.set(item.key, cached)
     } else {
       pending.push({ name: item.name, author: item.author })
+    }
+  }
+
+  /**
+   * One round trip for everything already cached, before the paced loop.
+   * Without it a warm library still costs one sequential request per ten
+   * series — eight round trips to fetch nothing.
+   */
+  if (pending.length > CHUNK_SIZE) {
+    const warm = await readCached(pending.slice(0, PREFETCH_SIZE))
+    if (warm.size > 0) {
+      for (const [query, result] of warm) {
+        const key = byName.get(query)
+        if (key) output.set(key, result)
+        cache.set(query, result)
+      }
+      for (let index = pending.length - 1; index >= 0; index -= 1) {
+        if (warm.has(pending[index].name)) pending.splice(index, 1)
+      }
+      onChunk?.(0, pending.length, new Map(output))
     }
   }
 
