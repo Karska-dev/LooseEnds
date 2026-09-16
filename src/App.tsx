@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import type { ChangeEvent } from 'react'
 import { parseGoodreadsCsv } from './goodreads'
-import type { ParseResult } from './goodreads'
+import type { Book, ParseResult } from './goodreads'
 import { groupIntoSeries } from './series'
 import type { SeriesSummary } from './series'
 import { resolveAllSeries } from './resolve'
@@ -74,6 +74,12 @@ export default function App() {
             {parsed.counts.to_read} to read &middot; {parsed.counts.dnf} did not finish
           </p>
         )}
+        {summary && (
+          <p className="note">
+            {parsed!.books.length - summary.unmatched.length} in a series &middot;{' '}
+            {summary.unmatched.length} not in a series
+          </p>
+        )}
       </section>
 
       {summary && <SeriesBoard summary={summary} />}
@@ -99,7 +105,25 @@ function SeriesBoard({ summary }: { summary: SeriesSummary }) {
   const [dismissed, setDismissed] = useState<Set<string>>(new Set())
   const [showDismissed, setShowDismissed] = useState(false)
   const [showComplete, setShowComplete] = useState(false)
+  const [showStandalone, setShowStandalone] = useState(false)
   const [openKey, setOpenKey] = useState<string | null>(null)
+
+  /**
+   * Books whose Goodreads title carried no series. Mostly genuine
+   * standalones, plus the occasional series book Goodreads never labelled —
+   * which is exactly why they are worth showing rather than dropping.
+   */
+  const standalone = useMemo(
+    () =>
+      [...summary.unmatched].sort(
+        (a, b) =>
+          DISPLAY_RANK[a.shelf] - DISPLAY_RANK[b.shelf] || a.title.localeCompare(b.title),
+      ),
+    [summary],
+  )
+
+  /** Series present in the export but never started: not loose ends, still counted. */
+  const notStarted = summary.groups.length - started.length
 
   async function lookUp() {
     setProgress({ done: 0, total: started.length })
@@ -210,7 +234,7 @@ function SeriesBoard({ summary }: { summary: SeriesSummary }) {
         </dl>
       )}
 
-      {(dismissed.size > 0 || counts.complete > 0) && (
+      {(dismissed.size > 0 || counts.complete > 0 || standalone.length > 0) && (
         <div className="toggles">
           {counts.complete > 0 && (
             <label className="toggle">
@@ -234,6 +258,17 @@ function SeriesBoard({ summary }: { summary: SeriesSummary }) {
               Show {dismissed.size} set aside
             </label>
           )}
+          {standalone.length > 0 && (
+            <label className="toggle">
+              <input
+                type="checkbox"
+                id="show-standalone"
+                checked={showStandalone}
+                onChange={(event) => setShowStandalone(event.target.checked)}
+              />
+              Show {standalone.length} not in a series
+            </label>
+          )}
         </div>
       )}
 
@@ -248,8 +283,108 @@ function SeriesBoard({ summary }: { summary: SeriesSummary }) {
             onOpen={() => setOpenKey(openKey === state.key ? null : state.key)}
           />
         ))}
+        {showStandalone && standalone.length > 0 && (
+          <StandaloneRow
+            books={standalone}
+            open={openKey === STANDALONE_KEY}
+            onOpen={() =>
+              setOpenKey(openKey === STANDALONE_KEY ? null : STANDALONE_KEY)
+            }
+          />
+        )}
       </ul>
+
+      {notStarted > 0 && (
+        <p className="note">
+          {notStarted} series in your export {notStarted === 1 ? 'has' : 'have'} nothing
+          read yet, so {notStarted === 1 ? 'it is' : 'they are'} not listed here.
+        </p>
+      )}
     </section>
+  )
+}
+
+const STANDALONE_KEY = '\u0000standalone'
+
+/** Read first, then in progress, then abandoned, then the wishlist. */
+const DISPLAY_RANK: Record<string, number> = { read: 0, reading: 1, dnf: 2, to_read: 3 }
+
+/**
+ * One collapsed row rather than several hundred loose ones: these are not
+ * series, and a series list is the wrong place to scatter them.
+ */
+function StandaloneRow({
+  books,
+  open,
+  onOpen,
+}: {
+  books: Book[]
+  open: boolean
+  onOpen: () => void
+}) {
+  const readCount = books.filter((book) => book.shelf === 'read').length
+
+  return (
+    <li className={`series-row is-standalone${open ? ' is-open' : ''}`}>
+      <div className="series-head">
+        <button
+          type="button"
+          className="disclose"
+          aria-expanded={open}
+          aria-controls="standalone-books"
+          onClick={onOpen}
+        >
+          <span className="chevron" aria-hidden="true">
+            {open ? '\u2212' : '+'}
+          </span>
+          <Cover url={null} alt="" size="lg" />
+          <span className="series-id">
+            <span className="series-name">Not in a series</span>
+            <span className="byline">
+              {books.length} book{books.length === 1 ? '' : 's'}
+            </span>
+          </span>
+        </button>
+
+        <span className="series-meta">
+          <span className="progress-line">
+            <b>{readCount}</b> read
+          </span>
+        </span>
+      </div>
+
+      <p className="verdict muted">
+        No series in the Goodreads title. A few may be series books Goodreads never
+        labelled &mdash; worth a look if one of yours is missing above.
+      </p>
+
+      {open && (
+        <div className="volumes" id="standalone-books">
+          <ol className="volume-list">
+            {books.map((book, index) => (
+              <BookLine key={`${book.title}-${index}`} book={book} />
+            ))}
+          </ol>
+        </div>
+      )}
+    </li>
+  )
+}
+
+function BookLine({ book }: { book: Book }) {
+  return (
+    <li className={`volume volume-book volume-${book.shelf}`}>
+      <Cover url={null} alt="" size="sm" />
+      <span className="vol-main">
+        <span className="vol-title">{book.title}</span>
+        <span className="vol-alt">{book.author}</span>
+        <span className="vol-facts">
+          <span className={`chip chip-${book.shelf}`}>{SHELF_LABEL[book.shelf]}</span>
+          {book.dateRead && <span className="muted">{book.dateRead}</span>}
+          {book.rating !== null && <Stars rating={book.rating} />}
+        </span>
+      </span>
+    </li>
   )
 }
 
@@ -369,12 +504,7 @@ function VolumeLine({ row }: { row: VolumeRow }) {
             <>
               <span className={`chip chip-${shelf}`}>{SHELF_LABEL[shelf]}</span>
               {mine.dateRead && <span className="muted">{mine.dateRead}</span>}
-              {mine.rating !== null && (
-                <span className="rating" title={`${mine.rating} of 5`}>
-                  {'\u2605'.repeat(mine.rating)}
-                  <span className="muted">{'\u2605'.repeat(5 - mine.rating)}</span>
-                </span>
-              )}
+              {mine.rating !== null && <Stars rating={mine.rating} />}
             </>
           ) : (
             <span className="muted">Not in your library</span>
@@ -391,6 +521,15 @@ function VolumeLine({ row }: { row: VolumeRow }) {
           : ''}
       </span>
     </li>
+  )
+}
+
+function Stars({ rating }: { rating: number }) {
+  return (
+    <span className="rating" title={`${rating} of 5`}>
+      {'\u2605'.repeat(rating)}
+      <span className="muted">{'\u2605'.repeat(5 - rating)}</span>
+    </span>
   )
 }
 

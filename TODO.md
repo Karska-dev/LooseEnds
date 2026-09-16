@@ -33,8 +33,6 @@
 
 ## Before sharing the link
 
-- [ ] Surface the ~10% of books whose titles carry no series — currently dropped
-      silently
 - [ ] Serve sized cover images rather than full-resolution ones scaled to 36px
 
 ## Open design question

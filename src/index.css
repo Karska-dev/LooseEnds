@@ -411,3 +411,17 @@ button.ghost:hover { color: var(--ink); border-color: var(--ink-faint); }
   .meter { width: 100%; }
   input[type="file"] { font-size: 13px; }
 }
+
+/* ---------- books with no series ---------- */
+
+/* No position column: these books have no place in an order. */
+.volume-book { grid-template-columns: 28px 1fr; }
+
+.series-row.is-standalone .series-name { color: var(--ink-soft); }
+
+.series-row.is-standalone .cover-lg {
+  border: 1px dashed var(--line);
+  background: transparent;
+}
+
+.series-row.is-standalone .volume-list { max-height: 420px; overflow-y: auto; }

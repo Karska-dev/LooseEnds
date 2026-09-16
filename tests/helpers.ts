@@ -8,10 +8,10 @@ import { groupIntoSeries } from '../src/series.ts'
  * so a change to series extraction shows up here rather than silently
  * invalidating every expectation below.
  */
-export function groupOf(
+export function booksOf(
   rows: Array<[Shelf, string] | [Shelf, string, Partial<Book>]>,
-): SeriesGroup {
-  const books: Book[] = rows.map(([shelf, title, extra]) => ({
+): Book[] {
+  return rows.map(([shelf, title, extra]) => ({
     title,
     author: 'Test Author',
     isbn13: null,
@@ -22,7 +22,12 @@ export function groupOf(
     shelves: [],
     ...extra,
   }))
-  const summary = groupIntoSeries(books)
+}
+
+export function groupOf(
+  rows: Array<[Shelf, string] | [Shelf, string, Partial<Book>]>,
+): SeriesGroup {
+  const summary = groupIntoSeries(booksOf(rows))
   const group = summary.groups[0]
   if (!group) throw new Error('fixture produced no series group')
   return group
