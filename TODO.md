@@ -58,6 +58,12 @@
 
 ## Known matching weaknesses
 
+- **Inconsistent series names beyond plurals.** Singular/plural is merged now
+  (same author required), but Goodreads also varies subtitles and punctuation.
+  If two rows for one series still appear, merging on the resolved Hardcover
+  id would catch what the name never can — the source of truth says they are
+  the same series. Deferred until a case shows up that plurals do not cover.
+
 - **Superset series.** Searching "Mistborn" returns both "The Mistborn Saga"
   and "The Cosmere", which contains it and is larger and more read. Name
   similarity now decides, but a series whose name genuinely differs from the

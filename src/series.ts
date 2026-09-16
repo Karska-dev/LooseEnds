@@ -46,6 +46,39 @@ export interface SeriesSummary {
 const SERIES_PATTERN =
   /\s*\(([^()]+?),?\s*#(\d+(?:\.\d+)?)(\s*-\s*\d+(?:\.\d+)?)?\)\s*$/
 
+function seriesKey(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/^the\s+/, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+}
+
+/**
+ * Goodreads spells the same series both ways: this library has
+ * "(Drixonian Warriors, #1)" and "(Drixonian Warrior, #0.5)". Left apart they
+ * become two series, each reading "what's next" from half the shelf — one of
+ * them offering a book the other shows as finished.
+ *
+ * Conservative on purpose: only a trailing plural "s", only on words long
+ * enough to survive it, and never on endings where the "s" is part of the
+ * word ("bliss", "chaos", "Atlas").
+ */
+function singularise(key: string): string {
+  return key
+    .split(' ')
+    .map((word) =>
+      word.length > 3 && word.endsWith('s') && !/(ss|us|is|as|os)$/.test(word)
+        ? word.slice(0, -1)
+        : word,
+    )
+    .join(' ')
+}
+
+function normaliseAuthor(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+}
+
 function extractSeries(rawTitle: string): {
   title: string
   series: SeriesRef | null
@@ -60,11 +93,7 @@ function extractSeries(rawTitle: string): {
     title: rawTitle.replace(SERIES_PATTERN, '').trim(),
     series: {
       name,
-      key: name
-        .toLowerCase()
-        .replace(/^the\s+/, '')
-        .replace(/[^a-z0-9]+/g, ' ')
-        .trim(),
+      key: seriesKey(name),
       position: Number(match[2]),
       isOmnibus: match[3] !== undefined,
     },
@@ -96,7 +125,7 @@ export function groupIntoSeries(books: Book[]): SeriesSummary {
   }
 
   const groups: SeriesGroup[] = []
-  for (const [key, group] of byKey) {
+  for (const group of mergeInflections(byKey)) {
     const entries = [...group.entries].sort(
       (a, b) => (a.position ?? Infinity) - (b.position ?? Infinity),
     )
@@ -104,9 +133,11 @@ export function groupIntoSeries(books: Book[]): SeriesSummary {
       .filter((entry) => entry.book.shelf === 'read' && entry.position !== null)
       .map((entry) => entry.position as number)
 
+    const name = mostCommon(group.names)
     groups.push({
-      key,
-      name: mostCommon(group.names),
+      // Derived from the winning spelling, so the key matches the name shown.
+      key: seriesKey(name),
+      name,
       author: mostCommon(entries.map((entry) => entry.book.author).filter(Boolean)),
       entries,
       readCount: entries.filter((entry) => entry.book.shelf === 'read').length,
@@ -122,6 +153,34 @@ export function groupIntoSeries(books: Book[]): SeriesSummary {
     unmatched,
     matchRate: books.length > 0 ? (books.length - unmatched.length) / books.length : 0,
   }
+}
+
+interface Bucket {
+  names: string[]
+  entries: SeriesEntry[]
+}
+
+/**
+ * Folds together buckets whose names differ only by a plural, and only when
+ * the author agrees — "Shadow" and "Shadows" by different authors are two
+ * series, not one badly spelled one.
+ */
+function mergeInflections(byKey: Map<string, Bucket>): Bucket[] {
+  const merged = new Map<string, Bucket>()
+
+  for (const [key, bucket] of byKey) {
+    const author = mostCommon(bucket.entries.map((entry) => entry.book.author).filter(Boolean))
+    const mergeKey = `${singularise(key)}|${normaliseAuthor(author ?? '')}`
+    const existing = merged.get(mergeKey)
+    if (existing) {
+      existing.names.push(...bucket.names)
+      existing.entries.push(...bucket.entries)
+    } else {
+      merged.set(mergeKey, { names: [...bucket.names], entries: [...bucket.entries] })
+    }
+  }
+
+  return [...merged.values()]
 }
 
 function mostCommon(values: string[]): string {

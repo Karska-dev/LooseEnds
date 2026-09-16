@@ -97,3 +97,70 @@ describe('grouping', () => {
     assert.equal(summary.groups[0].entries[0].position, 2.5)
   })
 })
+
+describe('inconsistent series names', () => {
+  test('singular and plural spellings become one series', () => {
+    // The real case: Goodreads tags book 1 "Drixonian Warriors" and the
+    // novella "Drixonian Warrior".
+    const summary = groupIntoSeries(
+      booksOf([
+        ['read', "The Alien's Ransom (Drixonian Warriors, #1)", { author: 'Ella Maven' }],
+        ['read', "The Alien's Future (Drixonian Warrior, #0.5)", { author: 'Ella Maven' }],
+        ['read', "The Alien's Escape (Drixonian Warriors, #2)", { author: 'Ella Maven' }],
+      ]),
+    )
+
+    assert.equal(summary.groups.length, 1)
+    assert.equal(summary.groups[0].readCount, 3)
+    assert.equal(summary.groups[0].name, 'Drixonian Warriors', 'the common spelling wins')
+    assert.equal(summary.groups[0].key, 'drixonian warriors')
+  })
+
+  test('the merged group sees every read position', () => {
+    // Split, each half offered a book the other had finished.
+    const summary = groupIntoSeries(
+      booksOf([
+        ['read', 'One (Test Warriors, #1)'],
+        ['read', 'Two (Test Warrior, #2)'],
+      ]),
+    )
+
+    assert.equal(summary.groups[0].highestReadPosition, 2)
+  })
+
+  test('the same plural by different authors stays two series', () => {
+    const summary = groupIntoSeries(
+      booksOf([
+        ['read', 'One (Shadows, #1)', { author: 'Author One' }],
+        ['read', 'One (Shadow, #1)', { author: 'Author Two' }],
+      ]),
+    )
+
+    assert.equal(summary.groups.length, 2)
+  })
+
+  test('a word whose ending only looks plural is left alone', () => {
+    // "Chaos" and "Bliss" must not become "Chao" and "Blis".
+    const summary = groupIntoSeries(
+      booksOf([
+        ['read', 'One (Chaos, #1)'],
+        ['read', 'One (Bliss, #1)'],
+        ['read', 'One (Atlas, #1)'],
+      ]),
+    )
+
+    assert.equal(summary.groups.length, 3)
+  })
+
+  test('short words keep their s', () => {
+    // "Ops" must not become "Op".
+    const summary = groupIntoSeries(
+      booksOf([
+        ['read', 'One (Ops, #1)'],
+        ['read', 'One (Op, #1)'],
+      ]),
+    )
+
+    assert.equal(summary.groups.length, 2)
+  })
+})
