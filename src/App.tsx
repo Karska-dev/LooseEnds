@@ -9,6 +9,19 @@ import type { SeriesResult } from './resolve'
 import { buildSeriesState, sortSeriesStates } from './state'
 import type { SeriesState, VolumeRow } from './state'
 
+/**
+ * A Goodreads export of 5,000 books is about 2 MB. Ten times that is not a
+ * library, and parsing it would hang the tab with no explanation — which
+ * looks exactly like the app being broken.
+ */
+const MAX_FILE_BYTES = 20 * 1024 * 1024
+
+function describeSize(bytes: number): string {
+  return bytes >= 1024 * 1024
+    ? `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+    : `${Math.round(bytes / 1024)} KB`
+}
+
 export default function App() {
   const [parsed, setParsed] = useState<ParseResult | null>(null)
   const [summary, setSummary] = useState<SeriesSummary | null>(null)
@@ -18,6 +31,23 @@ export default function App() {
     const file = event.target.files?.[0]
     if (!file) return
     setError(null)
+
+    if (file.size > MAX_FILE_BYTES) {
+      setError(
+        `That file is ${describeSize(file.size)}, which is far larger than any ` +
+          `Goodreads export. Is it the library export rather than something else?`,
+      )
+      setParsed(null)
+      setSummary(null)
+      return
+    }
+    if (file.size === 0) {
+      setError('That file is empty. Try exporting it again from Goodreads.')
+      setParsed(null)
+      setSummary(null)
+      return
+    }
+
     try {
       const result = parseGoodreadsCsv(await file.text())
       if (result.books.length === 0) {
@@ -63,7 +93,10 @@ export default function App() {
           the file in Excel first; it quietly changes ISBNs and dates.
         </p>
 
-        <input type="file" id="export-file" accept=".csv" onChange={handleFile} />
+        <label className="file-field" htmlFor="export-file">
+          <span>Your export file</span>
+          <input type="file" id="export-file" accept=".csv" onChange={handleFile} />
+        </label>
         <p className="note">
           Read here in your browser. Nothing is uploaded and nothing is stored.
         </p>

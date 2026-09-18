@@ -445,3 +445,15 @@ button.ghost:hover { color: var(--ink); border-color: var(--ink-faint); }
 @media (prefers-reduced-motion: reduce) {
   .cover img { animation: none; }
 }
+
+/* ---------- the file picker ---------- */
+
+.file-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+
+.file-field > span { font-weight: 600; color: var(--ink); }
