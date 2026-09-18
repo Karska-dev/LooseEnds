@@ -35,7 +35,7 @@ const ALIAS_LIMIT = 5
 /** Hardcover allows 60 requests per minute. Stay just under one per second. */
 const MIN_REQUEST_GAP_MS = 1100
 
-export interface SearchHit {
+interface SearchHit {
   id: string
   name: string
   author_name?: string
@@ -69,15 +69,29 @@ type Outcome<T> = { ok: true; data: T } | { ok: false; detail: string }
  * Returns an explicit failure rather than null. A throttled request and a
  * series that genuinely does not exist must never look the same.
  */
+/**
+ * Both token formats — legacy JWTs ("eyJ...") and personal access tokens
+ * ("hc_pat_...") — authenticate as "Bearer <token>". The API docs say to send
+ * "your token as the value", but the server is stricter than the prose:
+ * without the prefix it answers 400 "Invalid Authorization format".
+ *
+ * Strips a "Bearer " the reader may have copied along with the key, so the
+ * prefix is never doubled.
+ */
+export function authHeader(token: string): string {
+  return `Bearer ${token.trim().replace(/^Bearer\s+/i, '').trim()}`
+}
+
 async function gql<T>(token: string, query: string): Promise<Outcome<T>> {
   let lastDetail = 'unreachable'
+  const authorization = authHeader(token)
 
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
       const response = await fetch(ENDPOINT, {
         method: 'POST',
         headers: {
-          authorization: `Bearer ${token}`,
+          authorization,
           'content-type': 'application/json',
         },
         body: JSON.stringify({ query }),
@@ -87,6 +101,17 @@ async function gql<T>(token: string, query: string): Promise<Outcome<T>> {
         lastDetail = `HTTP ${response.status}`
         await delay(2000 * 2 ** attempt)
         continue
+      }
+
+      // Retrying a rejected token just spends the rate limit on the same
+      // answer, and "HTTP 401" alone sends you looking in the wrong place.
+      if (response.status === 401 || response.status === 403) {
+        return {
+          ok: false,
+          detail:
+            `Hardcover rejected the token (HTTP ${response.status}). ` +
+            'Check it is current, and copied whole with no "Bearer " prefix.',
+        }
       }
       if (!response.ok) return { ok: false, detail: `HTTP ${response.status}` }
 

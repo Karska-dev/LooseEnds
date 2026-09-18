@@ -4,8 +4,8 @@
  * returned, which survive each filter, and what finally won, then retries
  * with variations to show whether a different query would have found it.
  *
- *   node scripts/explain-match.mjs "Villain" --author "Victoria Vale"
- *   node scripts/explain-match.mjs "Drixonian Warriors" --author "Ella Maven"
+ *   node scripts/explain-match.mjs "Mistborn" --author "Brandon Sanderson"
+ *   node scripts/explain-match.mjs "Foundation" --author "Isaac Asimov"
  *
  * Uses the real predicates from src/shared/hardcover.ts, so what it reports
  * is what the Worker actually does.

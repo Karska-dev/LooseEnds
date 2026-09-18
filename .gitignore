@@ -9,6 +9,11 @@ dist-ssr
 .env.local
 .wrangler
 
+# operator runbook and working notes: deployment, secrets, database commands,
+# roadmap. Specific to one deployment and nobody else's business.
+OPERATIONS.md
+TODO.md
+
 # logs
 logs
 *.log
