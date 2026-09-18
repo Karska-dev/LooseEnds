@@ -38,3 +38,56 @@ Two things that should appear in a volume list but never as "next":
 
 Four of the six books with no series also have no Date Read, so the date
 coverage figure should be visibly below 100%.
+
+## Deliberately broken exports
+
+For manual testing of failure paths. Drop each into the app and check the
+message is one a reader can act on. None of them crash — that was verified by
+running every file through the real parser.
+
+| File | What it is | What the app does |
+|---|---|---|
+| `bad-empty.csv` | zero bytes | "That file is empty. Try exporting it again from Goodreads." |
+| `bad-not-a-csv.csv` | a saved HTML error page | 0 books → "That file has no book rows. Is it the Goodreads library export?" |
+| `bad-wrong-columns.csv` | valid CSV, different schema | same: 0 books, same message |
+| `bad-header-only.csv` | correct header, no rows | same: 0 books, same message |
+| `bad-malformed.csv` | unclosed quote, ragged rows | 4 books parsed, 1 series found; the broken rows land as unmatched rather than failing the file |
+| `bad-edge-cases.csv` | valid CSV, hostile content | 19 books of 21 rows, 11 series — the two title-less rows are dropped |
+
+### What `bad-edge-cases.csv` covers
+
+Each row tests one thing. Confirmed behaviour:
+
+- **Dropped entirely** — a row with no title, and one whose title is only
+  whitespace.
+- **Not treated as a series** — `(Vintage International)` with no `#` is an
+  imprint; `#-1` is not a position; `( , #1)` has no name; and
+  `(Nested (Parens) Series, #1)` is skipped because the pattern deliberately
+  refuses inner parentheses.
+- **Accepted, and should be** — `#0` (box sets), `#1.2345`, `#999999999`, a
+  600-character title, emoji in the series name (stripped from the grouping
+  key, kept in the display name), and a title starting with `=`, which is a
+  spreadsheet formula but only ever text here.
+- **Duplicate rows** — the same book twice appears twice in the volume list,
+  deduplicated per position by shelf rank.
+
+### Known quirk this file exposes
+
+An **unrecognised exclusive shelf becomes `to_read`**. Goodreads only has
+three, but the column can hold anything, and `toShelf()` falls through to
+`to_read` for anything that is not `read` or `currently-reading`. Rows 16 and
+17 test this: a shelf named `abandoned-forever` and an empty one both count as
+to-read. Nothing breaks, but those books are silently misfiled rather than
+reported.
+
+### Too large to commit
+
+The 20 MB size guard needs a file nobody wants in git. Generate one:
+
+```bash
+{ head -1 tests/fixtures/classics.csv
+  for i in $(seq 200000); do tail -n +2 tests/fixtures/classics.csv | head -1; done
+} > /tmp/huge.csv
+```
+
+Expect: "That file is NN MB, which is far larger than any Goodreads export."

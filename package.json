@@ -4,7 +4,7 @@
   "private": true,
   "description": "Find the book series you never finished. A Goodreads export, parsed in your browser.",
   "license": "MIT",
-  "author": "Oleksandra Panikarska",
+  "author": "karska.dev",
   "repository": {
     "type": "git",
     "url": "https://github.com/Karska-dev/LooseEnds.git"

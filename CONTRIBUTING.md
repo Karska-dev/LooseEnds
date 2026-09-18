@@ -115,10 +115,29 @@ something false.
 Node strips the types natively, and `erasableSyntaxOnly` in the tsconfig
 keeps the source strippable.
 
-Fixtures are written as **real Goodreads title strings** run through the real
-parser, so a change to series extraction fails loudly instead of quietly
-invalidating every expectation. See `tests/fixtures/README.md` for the two
-sample exports and what `classics.csv` should produce on the board.
+Unit-test fixtures are written as **real Goodreads title strings** run through
+the real parser, so a change to series extraction fails loudly instead of
+quietly invalidating every expectation.
+
+### Testing by hand
+
+`tests/fixtures/` also holds sample exports for driving the UI, which is the
+only way to check things no unit test covers — layout, error messages, the
+board's sort order:
+
+- **`classics.csv`** — well-known series arranged so every board state appears
+  at least once: finished, next-available, waiting-unannounced, reading-now,
+  set-aside, a gap in the middle, an omnibus, a half-numbered volume, six
+  standalones, and a series never started.
+- **`bad-*.csv`** — six deliberately broken exports: empty, a saved HTML error
+  page, the wrong schema, a header with no rows, ragged rows and unclosed
+  quotes, and one that is valid CSV with hostile *content* (no titles, nested
+  parentheses, `#0`, `#-1`, a 600-character title, emoji, duplicate rows).
+  None of them crash; use them to check that every message is one a reader can
+  act on.
+
+`tests/fixtures/README.md` records what each produces, verified by running
+them through the parser rather than predicted.
 
 ## Where this is fragile
 
