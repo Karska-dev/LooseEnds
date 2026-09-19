@@ -119,8 +119,37 @@ function isMainLine(position: number): boolean {
   return Number.isInteger(position) && position >= 1
 }
 
+/**
+ * Hardcover files appendices, companions and audio collections as ordinary
+ * numbered volumes: "The Lord of the Rings" ends at #4 "Appendices And
+ * Index", so a reader who finished the trilogy is told to read the index.
+ *
+ * The hard part is that an unreleased novel and a book of appendices look
+ * identical in the data — no date, no cover, few readers. So all three
+ * signals have to agree before a volume is passed over. A forthcoming novel
+ * will not be called "Appendices"; a real book with that word in its title
+ * will almost always have a cover or a date.
+ */
+const SUPPLEMENTARY_TITLE =
+  /\b(appendices|appendix|index|concordance|companion|bestiary|encyclopedia|glossary|atlas of|art of|making of|sketchbook|calendar|colou?ring book)\b/i
+
+function isSupplementary(volume: Volume): boolean {
+  const edition = chooseEdition(volume)
+  if (!edition) return false
+  return (
+    SUPPLEMENTARY_TITLE.test(edition.title) &&
+    edition.releaseDate === null &&
+    edition.coverUrl === null
+  )
+}
+
+/** A volume a reader could actually be told to read next. */
+function isReadable(volume: Volume): boolean {
+  return isMainLine(volume.position) && !isSupplementary(volume)
+}
+
 function pickNext(volumes: Volume[], shelves: Shelves): Volume | null {
-  return volumes.filter((volume) => isMainLine(volume.position)).find(
+  return volumes.filter(isReadable).find(
     (volume) => !isBlocked(shelves, volume.position),
   ) ?? null
 }
@@ -172,8 +201,15 @@ export function buildSeriesState(
   }
 
   const shelves = shelvesByPosition(group)
-  const totalBooks = resolved.totalBooks ?? resolved.volumes.length
-  const mainLine = resolved.volumes.filter((volume) => isMainLine(volume.position))
+  // Hardcover's own count includes the extras it files as volumes, so once
+  // the list is whole, trust what we would actually offer instead. When the
+  // list is SHORTER than the claimed count the shortfall is missing data, not
+  // extras, and overriding there would turn "partial" into a false "complete".
+  const readable = resolved.volumes.filter(isReadable).length
+  const claimed = resolved.totalBooks ?? resolved.volumes.length
+  const listIsWhole = resolved.volumes.length >= claimed
+  const totalBooks = listIsWhole && readable > 0 ? readable : claimed
+  const mainLine = resolved.volumes.filter(isReadable)
   const nextVolume = pickNext(resolved.volumes, shelves)
 
   const rows = buildRows(group, resolved.volumes, nextVolume?.position ?? null, today)

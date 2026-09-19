@@ -309,3 +309,81 @@ describe('cover placeholder', () => {
     assert.equal(merged?.coverColor, null)
   })
 })
+
+describe('volumes that are not books', () => {
+  /** The real case: Hardcover's Lord of the Rings ends at #4 "Appendices And Index". */
+  const appendices = {
+    position: 4,
+    editions: [
+      {
+        title: 'Appendices And Index',
+        releaseDate: null,
+        languageId: 1,
+        readers: 2,
+        coverUrl: null,
+        coverColor: null,
+        slug: null,
+      },
+    ],
+  }
+
+  test('a trilogy fully read is finished, not "3 of 4"', () => {
+    const group = groupOf([
+      ['read', 'One (Test Series, #1)'],
+      ['read', 'Two (Test Series, #2)'],
+      ['read', 'Three (Test Series, #3)'],
+    ])
+    const volumes = [volume(1), volume(2), volume(3), appendices]
+
+    const state = buildSeriesState(group, resolved(volumes, 4), TODAY)
+
+    assert.equal(state.status, 'complete')
+    assert.equal(state.totalBooks, 3, 'the appendices are not one of the books')
+    assert.equal(state.next, null)
+    assert.ok(
+      state.rows.some((row) => row.position === 4),
+      'still listed, just never offered',
+    )
+  })
+
+  test('an unreleased novel is still offered, despite looking the same', () => {
+    // No date, no cover, few readers — identical to the appendices except for
+    // the title. This is why all three signals have to agree.
+    const group = groupOf([['read', 'One (Test Series, #1)']])
+    const volumes = [
+      volume(1),
+      {
+        position: 2,
+        editions: [
+          {
+            title: 'The Winds of Winter',
+            releaseDate: null,
+            languageId: 1,
+            readers: 2,
+            coverUrl: null,
+            coverColor: null,
+            slug: null,
+          },
+        ],
+      },
+    ]
+
+    const state = buildSeriesState(group, resolved(volumes, 2), TODAY)
+
+    assert.equal(state.status, 'waiting')
+    assert.equal(state.next?.position, 2)
+  })
+
+  test('a supplementary title with a cover is treated as a real book', () => {
+    // A published companion volume people actually read is not hidden.
+    const group = groupOf([['read', 'One (Test Series, #1)']])
+    const volumes = [
+      volume(1),
+      volume(2, { title: 'The Official Companion', coverUrl: 'https://example.test/c.jpg' }),
+    ]
+
+    const state = buildSeriesState(group, resolved(volumes, 2), TODAY)
+
+    assert.equal(state.next?.position, 2)
+  })
+})

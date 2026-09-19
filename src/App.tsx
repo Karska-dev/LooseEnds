@@ -194,12 +194,16 @@ function SeriesBoard({ summary }: { summary: SeriesSummary }) {
     if (state.status === 'complete') return showComplete
     return true
   })
+  // Each series belongs to exactly one tile, so the figures add up to the
+  // list. A series you are part-way through is "reading now", not also
+  // "ready to read" — it was being counted in both.
+  const live = states.filter((state) => !dismissed.has(state.key))
   const counts = {
-    next_available: states.filter((s) => s.status === 'next_available' && !dismissed.has(s.key)).length,
-    waiting: states.filter((s) => s.status === 'waiting' && !dismissed.has(s.key)).length,
+    reading: live.filter((s) => s.inProgress).length,
+    next_available: live.filter((s) => !s.inProgress && s.status === 'next_available').length,
+    waiting: live.filter((s) => !s.inProgress && s.status === 'waiting').length,
     complete: states.filter((s) => s.status === 'complete').length,
     failed: [...resolved.values()].filter((entry) => entry.status === 'error').length,
-    reading: states.filter((s) => s.inProgress && !dismissed.has(s.key)).length,
   }
 
   function toggle(key: string) {
