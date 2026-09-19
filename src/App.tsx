@@ -7,6 +7,7 @@ import type { SeriesSummary } from './series'
 import { resolveAllSeries } from './resolve'
 import type { SeriesResult } from './resolve'
 import { buildSeriesState, sortSeriesStates } from './state'
+import { SkinPicker } from './SkinPicker.tsx'
 import type { SeriesState, VolumeRow } from './state'
 
 /**
@@ -26,6 +27,42 @@ export default function App() {
   const [parsed, setParsed] = useState<ParseResult | null>(null)
   const [summary, setSummary] = useState<SeriesSummary | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [fileName, setFileName] = useState<string | null>(null)
+
+  function reset() {
+    setParsed(null)
+    setSummary(null)
+    setError(null)
+    setFileName(null)
+  }
+
+  /** Reads a CSV from anywhere: a chosen file, or the bundled sample. */
+  function accept(text: string, name: string) {
+    const result = parseGoodreadsCsv(text)
+    if (result.books.length === 0) {
+      setError('That file has no book rows. Is it the Goodreads library export?')
+      reset()
+      return
+    }
+    setParsed(result)
+    setSummary(groupIntoSeries(result.books))
+    setFileName(name)
+  }
+
+  /**
+   * Seeing the board should not require owning a Goodreads account and doing a
+   * five-minute export first.
+   */
+  async function loadSample() {
+    setError(null)
+    try {
+      const response = await fetch('/sample-library.csv')
+      if (!response.ok) throw new Error(String(response.status))
+      accept(await response.text(), 'a sample library')
+    } catch {
+      setError('The sample could not be loaded. Try your own export instead.')
+    }
+  }
 
   async function handleFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
@@ -37,36 +74,27 @@ export default function App() {
         `That file is ${describeSize(file.size)}, which is far larger than any ` +
           `Goodreads export. Is it the library export rather than something else?`,
       )
-      setParsed(null)
-      setSummary(null)
+      reset()
       return
     }
     if (file.size === 0) {
       setError('That file is empty. Try exporting it again from Goodreads.')
-      setParsed(null)
-      setSummary(null)
+      reset()
       return
     }
 
     try {
-      const result = parseGoodreadsCsv(await file.text())
-      if (result.books.length === 0) {
-        setError('That file has no book rows. Is it the Goodreads library export?')
-        setParsed(null)
-        setSummary(null)
-        return
-      }
-      setParsed(result)
-      setSummary(groupIntoSeries(result.books))
+      accept(await file.text(), file.name)
     } catch {
       setError('That file could not be read. Try exporting it again from Goodreads.')
-      setParsed(null)
-      setSummary(null)
+      reset()
     }
   }
 
   return (
     <main className="page">
+      <SkinPicker />
+
       <header className="masthead">
         <h1>Loose Ends</h1>
         <p className="tagline">
@@ -75,6 +103,18 @@ export default function App() {
       </header>
 
       <section className="intake">
+        {parsed ? (
+          <p className="loaded">
+            <b>{fileName ?? 'Your export'}</b>
+            <span className="muted">
+              {parsed.books.length} book{parsed.books.length === 1 ? '' : 's'}
+            </span>
+            <button type="button" className="ghost" onClick={reset}>
+              Use a different file
+            </button>
+          </p>
+        ) : (
+          <>
         <h2>Your Goodreads export</h2>
 
         <ol className="how">
@@ -93,13 +133,34 @@ export default function App() {
           the file in Excel first; it quietly changes ISBNs and dates.
         </p>
 
-        <label className="file-field" htmlFor="export-file">
-          <span>Your export file</span>
-          <input type="file" id="export-file" accept=".csv" onChange={handleFile} />
-        </label>
+        <div className="dropzone">
+          {/* The input stays focusable for the keyboard; the label is what
+              anyone sees, so it can carry the same weight as every other
+              action on the page. */}
+          <input
+            type="file"
+            id="export-file"
+            className="file-input"
+            accept=".csv"
+            onChange={handleFile}
+          />
+          <label className="file-button" htmlFor="export-file">
+            Choose your export file
+          </label>
+
+          <span className="file-or">or</span>
+
+          <button type="button" className="ghost" onClick={loadSample}>
+            Try a sample library
+          </button>
+        </div>
+
         <p className="note">
-          Read here in your browser. Nothing is uploaded and nothing is stored.
+          Your library is read here in your browser. It is never uploaded and
+          never stored.
         </p>
+          </>
+        )}
         {error && <p className="error">{error}</p>}
         {parsed && (
           <p className="note">
@@ -248,23 +309,23 @@ function SeriesBoard({ summary }: { summary: SeriesSummary }) {
 
       {resolved.size > 0 && (
         <dl className="tiles">
-          <div className="tile">
+          <div className="tile tile-ready">
             <dt>Ready to read</dt>
             <dd>{counts.next_available}</dd>
           </div>
-          <div className="tile">
+          <div className="tile tile-reading">
             <dt>Reading now</dt>
             <dd>{counts.reading}</dd>
           </div>
-          <div className="tile">
+          <div className="tile tile-waiting">
             <dt>Waiting on author</dt>
             <dd>{counts.waiting}</dd>
           </div>
-          <div className="tile">
+          <div className="tile tile-done">
             <dt>Finished</dt>
             <dd>{counts.complete}</dd>
           </div>
-          <div className="tile">
+          <div className="tile tile-aside">
             <dt>Set aside</dt>
             <dd>{dismissed.size}</dd>
           </div>
@@ -441,7 +502,12 @@ function SeriesRow({
   const panelId = `volumes-${state.key.replace(/[^a-z0-9]+/g, '-')}`
 
   return (
-    <li className={`series-row${dismissed ? ' is-dismissed' : ''}${open ? ' is-open' : ''}`}>
+    <li
+      className={
+        `series-row${dismissed ? ' is-dismissed' : ''}${open ? ' is-open' : ''}` +
+        (state.status === 'unknown' ? ' is-pending' : '')
+      }
+    >
       <div className="series-head">
         <button
           type="button"
@@ -463,11 +529,13 @@ function SeriesRow({
         <span className="series-meta">
           <span className="progress-line">
             <b>{state.readCount}</b>
-            {state.totalBooks !== null ? ` of ${state.totalBooks}` : ''}
+            {state.totalBooks !== null ? ` of ${state.totalBooks}` : ' read'}
           </span>
-          <button type="button" className="ghost" onClick={onToggle}>
-            {dismissed ? 'Bring back' : 'Set aside'}
-          </button>
+          {state.status !== 'unknown' && (
+            <button type="button" className="ghost" onClick={onToggle}>
+              {dismissed ? 'Bring back' : 'Set aside'}
+            </button>
+          )}
         </span>
       </div>
 
@@ -606,9 +674,9 @@ function Stars({ rating }: { rating: number }) {
 }
 
 function Verdict({ state }: { state: SeriesState }) {
-  if (state.status === 'unknown') {
-    return <p className="verdict muted">Not looked up yet</p>
-  }
+  // Before the lookup the button already says what has not happened; five rows
+  // repeating it just makes a working page look broken.
+  if (state.status === 'unknown') return null
   if (state.status === 'reading') {
     return <p className="verdict muted">You&rsquo;re reading it now</p>
   }

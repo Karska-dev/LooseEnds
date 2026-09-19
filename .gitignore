@@ -32,3 +32,4 @@ pnpm-debug.log*
 # public repo it stays in the git history even if deleted in a later commit.
 *.csv
 !tests/fixtures/*.csv
+!public/sample-library.csv
