@@ -1,0 +1,26 @@
+# Runs on every push to any branch and on every pull request, including ones
+# opened from forks. Nothing here needs a secret: the checks are lint,
+# typecheck, build and tests, none of which talk to Hardcover.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # Must stay at 22 or newer: the tests rely on Node stripping
+          # TypeScript natively, which is why there is no test framework.
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+      - run: npm test
