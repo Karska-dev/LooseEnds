@@ -41,30 +41,30 @@ body {
   max-width: 720px;
   margin: 0 auto;
   padding-inline: 20px;
-  padding-block: 56px 72px;
+  padding-block: 36px 48px;
   display: flex;
   flex-direction: column;
-  gap: 40px;
+  gap: 28px;
 }
 
 .masthead { display: flex; flex-direction: column; gap: 8px; }
 
 h1 {
   margin: 0;
-  font-size: clamp(30px, 6vw, 40px);
+  font-size: clamp(28px, 5vw, 36px);
   letter-spacing: -0.02em;
 }
 
-.tagline { margin: 0; color: var(--ink-soft); font-size: 18px; }
+.tagline { margin: 0; color: var(--ink-soft); font-size: 17px; }
 
 .intake {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 4px;
-  padding: 24px;
+  padding: 20px 22px;
 }
 
 h2 {
@@ -388,7 +388,7 @@ button.ghost:hover { color: var(--ink); border-color: var(--ink-faint); }
   color: var(--ink-soft);
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
 .how li::marker { color: var(--ink-faint); }
@@ -457,3 +457,682 @@ button.ghost:hover { color: var(--ink); border-color: var(--ink-faint); }
 }
 
 .file-field > span { font-weight: 600; color: var(--ink); }
+
+/* ---------- before the lookup ---------- */
+
+/*
+ * Rows exist but hold no verdict yet. Dimming them says "pending" without five
+ * lines of text saying so, and an empty cover slot reads as waiting rather
+ * than broken.
+ */
+.series-row.is-pending { opacity: 0.72; }
+.series-row.is-pending .cover { background: var(--line-soft, var(--line)); }
+
+/* ---------- a loaded file ---------- */
+
+.loaded {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 15px;
+}
+
+.loaded .muted { font-size: 14px; }
+
+/* A button that reads as a link: same affordance, no form semantics lost. */
+.linklike {
+  border: 0;
+  padding: 0;
+  background: none;
+  font: inherit;
+  color: var(--primary);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.linklike:hover { text-decoration: none; }
+
+/* ==================================================================
+   Skins
+   ------------------------------------------------------------------
+   Three complete looks, switched by data-skin on <html>. Everything
+   is tokens and flat CSS — no images, no web fonts, nothing loaded
+   per skin, so switching costs a repaint and the page stays light.
+   The default (no attribute) is Quiet.
+   ================================================================== */
+
+/* ---------- Brutal: flat colour, one ink, hard offset shadows ---------- */
+
+[data-skin='brutal'] {
+  --ground: #f4efe4;
+  --surface: #ffffff;
+  --ink: #17140f;
+  --ink-soft: #554e44;
+  --ink-faint: #8a8176;
+  --line: #17140f;
+  --line-soft: #ded5c6;
+  --primary: #0f6e5c;
+  --primary-soft: #cfeae1;
+  --ok: #3a7d44;
+  --warn: #b5730c;
+  --accent: #d1462f;
+  --edge: 2px;
+  --drop: 4px 4px 0 var(--ink);
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-skin='brutal'] {
+    --ground: #14120e;
+    --surface: #1e1b16;
+    --ink: #f2ece0;
+    --ink-soft: #b3aa9c;
+    --ink-faint: #7d7568;
+    --line: #f2ece0;
+    --line-soft: #332e26;
+    --primary: #5fd6ba;
+    --primary-soft: #1d3b35;
+  }
+}
+
+[data-skin='brutal'] .intake,
+[data-skin='brutal'] .tiles,
+[data-skin='brutal'] .series-row.is-open {
+  border: var(--edge) solid var(--line);
+  border-radius: 0;
+  box-shadow: var(--drop);
+}
+
+[data-skin='brutal'] .tiles { gap: 0; background: var(--line); }
+[data-skin='brutal'] .tile { border: 0; border-right: var(--edge) solid var(--line); }
+[data-skin='brutal'] .tile:last-child { border-right: 0; }
+[data-skin='brutal'] .tile dd { font-size: 30px; font-weight: 700; }
+
+[data-skin='brutal'] button {
+  border: var(--edge) solid var(--line);
+  border-radius: 0;
+  box-shadow: 3px 3px 0 var(--ink);
+  font-weight: 600;
+  transition: transform 0.06s, box-shadow 0.06s;
+}
+
+[data-skin='brutal'] button:active:not(:disabled) {
+  transform: translate(3px, 3px);
+  box-shadow: none;
+}
+
+[data-skin='brutal'] button:disabled { box-shadow: none; opacity: 0.5; }
+[data-skin='brutal'] .ghost { box-shadow: none; }
+[data-skin='brutal'] .badge,
+[data-skin='brutal'] .chip { border-radius: 0; border-width: 1.5px; font-weight: 700; }
+[data-skin='brutal'] h1 { font-weight: 800; letter-spacing: -0.035em; }
+[data-skin='brutal'] .meter { border: var(--edge) solid var(--line); border-radius: 0; }
+[data-skin='brutal'] .meter span { border-radius: 0; }
+
+/* One collage gesture: covers sit like books, not table cells. */
+[data-skin='brutal'] .cover {
+  border: 1.5px solid var(--ink);
+  border-radius: 0;
+  box-shadow: 2px 2px 0 var(--ink);
+}
+
+[data-skin='brutal'] .series-head .cover-lg { transform: rotate(-2deg); }
+[data-skin='brutal'] .volume:nth-child(odd) .cover-sm { transform: rotate(1.5deg); }
+[data-skin='brutal'] .volume:nth-child(even) .cover-sm { transform: rotate(-1.5deg); }
+[data-skin='brutal'] .volume.is-next .cover-sm { transform: none; scale: 1.06; }
+
+/* ---------- Soft: one surface, light from the top-left ---------- */
+
+[data-skin='soft'] {
+  /*
+   * Warm marble rather than blue-grey, with a goldenrod accent. The shadow
+   * colours are derived from the ground — a neumorphic surface only reads as
+   * lit if the highlight and shade are the same hue as what they sit on.
+   */
+  --ground: #e9e6e1;
+  --surface: #e9e6e1;
+  --ink: #2a2724;
+  --ink-soft: #5f5a54;
+  --ink-faint: #8f8981;
+  --line: #d6d2cb;
+  --line-soft: #dedad4;
+  --primary: #a8780c;
+  --primary-soft: #f2e7cd;
+  --ok: #5b7a3a;
+  --warn: #a8780c;
+  --accent: #b5563c;
+
+  --raise: -5px -5px 11px #fbf9f6, 5px 5px 11px #c9c4bc;
+  --press: inset -3px -3px 7px #fbf9f6, inset 3px 3px 7px #c9c4bc;
+
+  /* Muted state colours: enough to tell the tiles apart, not enough to
+     break a monochrome surface. */
+  --tile-ready: #6f8f4e;
+  --tile-reading: #c8920f;
+  --tile-waiting: #7a7fa8;
+  --tile-done: #8a8d80;
+  --tile-aside: #b5735f;
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-skin='soft'] {
+    --ground: #2b2825;
+    --surface: #2b2825;
+    --ink: #ece7df;
+    --ink-soft: #aea79d;
+    --ink-faint: #7f786e;
+    --line: #3a3631;
+    --line-soft: #343029;
+    --primary: #e0b54a;
+    --primary-soft: #3d3524;
+    --tile-ready: #9ab87a;
+    --tile-reading: #e0b54a;
+    --tile-waiting: #a2a7cf;
+    --tile-done: #a9ac9f;
+    --tile-aside: #d1917d;
+    --raise: -5px -5px 11px #343029, 5px 5px 11px #211f1c;
+    --press: inset -3px -3px 7px #343029, inset 3px 3px 7px #211f1c;
+  }
+}
+
+[data-skin='soft'] .intake,
+[data-skin='soft'] .tiles,
+[data-skin='soft'] .tile,
+[data-skin='soft'] .series-row.is-open {
+  border: 0;
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: var(--raise);
+}
+
+[data-skin='soft'] .tiles { gap: 10px; background: transparent; }
+
+[data-skin='soft'] button {
+  border: 0;
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: var(--raise);
+  /* Text keeps full contrast: only the containers are soft, which is where
+     neumorphism usually fails accessibility. */
+  color: var(--ink);
+  transition: box-shadow 0.12s;
+}
+
+[data-skin='soft'] button:active:not(:disabled) { box-shadow: var(--press); }
+[data-skin='soft'] button:disabled { box-shadow: var(--press); opacity: 0.6; }
+[data-skin='soft'] .badge-go,
+[data-skin='soft'] .chip-next { color: var(--surface); }
+[data-skin='soft'] .cover { border-radius: 6px; box-shadow: var(--raise); }
+[data-skin='soft'] .meter { border: 0; border-radius: 99px; box-shadow: var(--press); }
+[data-skin='soft'] .meter span { border-radius: 99px; }
+
+/* ---------- the picker itself ---------- */
+
+.skins {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 10;
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+.skins button {
+  border: 0;
+  background: none;
+  box-shadow: none;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+
+.skins button[aria-pressed='true'] {
+  background: var(--primary);
+  color: var(--surface);
+}
+
+@media (max-width: 460px) {
+  .skins { top: 8px; right: 8px; }
+  .skins button { padding: 4px 8px; font-size: 11px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-skin] .cover,
+  [data-skin] button { transition: none; transform: none; }
+}
+
+/* ---------- Bold: colour that means something ----------
+   Each state gets its own flat fill, so the board is scannable before a
+   word is read. Mid-light saturated tints, always with the same near-black
+   text and border — that keeps contrast predictable and costs nothing to
+   paint (no gradients, no images). */
+
+[data-skin='brutal'] {
+  --tile-ready: #7ad2a4;
+  --tile-reading: #ffd166;
+  --tile-waiting: #a9b6f7;
+  --tile-done: #cdd8c2;
+  --tile-aside: #f2b3a9;
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-skin='brutal'] {
+    --tile-ready: #2a6b4f;
+    --tile-reading: #7a5c14;
+    --tile-waiting: #3f4780;
+    --tile-done: #414b3c;
+    --tile-aside: #7a3f38;
+  }
+}
+
+[data-skin='brutal'] .tile-ready { background: var(--tile-ready); }
+[data-skin='brutal'] .tile-reading { background: var(--tile-reading); }
+[data-skin='brutal'] .tile-waiting { background: var(--tile-waiting); }
+[data-skin='brutal'] .tile-done { background: var(--tile-done); }
+[data-skin='brutal'] .tile-aside { background: var(--tile-aside); }
+
+[data-skin='brutal'] .tile dt { color: var(--ink); opacity: 0.75; }
+[data-skin='brutal'] .tile dd { color: var(--ink); }
+
+/* Badges and chips fill rather than outline, so the verdict carries the
+   same colour language as the tile it belongs to. */
+
+[data-skin='brutal'] .badge-go {
+  background: var(--tile-ready);
+  color: var(--ink);
+  border-color: var(--ink);
+  box-shadow: 2px 2px 0 var(--ink);
+}
+
+[data-skin='brutal'] .badge-soon {
+  background: var(--tile-reading);
+  color: var(--ink);
+  border-color: var(--ink);
+  box-shadow: 2px 2px 0 var(--ink);
+}
+
+[data-skin='brutal'] .badge-wait {
+  background: var(--tile-waiting);
+  color: var(--ink);
+  border-color: var(--ink);
+}
+
+[data-skin='brutal'] .chip-read { background: var(--tile-done); color: var(--ink); border-color: var(--ink); }
+[data-skin='brutal'] .chip-reading { background: var(--tile-reading); color: var(--ink); border-color: var(--ink); }
+[data-skin='brutal'] .chip-dnf { background: var(--tile-aside); color: var(--ink); border-color: var(--ink); }
+[data-skin='brutal'] .chip-to_read { background: var(--surface); color: var(--ink); border-color: var(--ink); }
+
+[data-skin='brutal'] .chip-next {
+  background: var(--tile-ready);
+  color: var(--ink);
+  border-color: var(--ink);
+  box-shadow: 2px 2px 0 var(--ink);
+}
+
+/* The row you should act on is tinted, not just bordered. */
+[data-skin='brutal'] .volume.is-next { background: var(--tile-ready); }
+
+[data-skin='brutal'] .meter span { background: var(--tile-reading); }
+[data-skin='brutal'] .rating { color: var(--warn); }
+
+/* The picker matches the rest: stamped, not floating. */
+[data-skin='brutal'] .skins {
+  border: var(--edge) solid var(--line);
+  border-radius: 0;
+  box-shadow: 3px 3px 0 var(--ink);
+}
+
+[data-skin='brutal'] .skins button { border-radius: 0; font-weight: 700; }
+
+[data-skin='brutal'] .skins button[aria-pressed='true'] {
+  background: var(--tile-ready);
+  color: var(--ink);
+}
+
+/* ---------- the file picker ---------- */
+
+/* Off-screen but still focusable, so the keyboard path is unchanged. */
+.file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+  opacity: 0;
+}
+
+.dropzone {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 14px 16px;
+  border: 2px dashed var(--line);
+  border-radius: 4px;
+  background: var(--primary-soft, transparent);
+}
+
+.file-button {
+  padding: 10px 18px;
+  border: 1px solid var(--primary);
+  border-radius: 4px;
+  background: var(--primary);
+  color: var(--surface);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.file-or { color: var(--ink-faint); font-size: 14px; }
+
+.file-input:focus-visible + .file-button {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}
+
+@media (max-width: 460px) {
+  .dropzone { flex-direction: column; align-items: stretch; text-align: center; }
+}
+
+/* ---------- Bold: the empty state earns the name ---------- */
+
+[data-skin='brutal'] .intake { padding: 0; overflow: hidden; }
+
+/* A colour band, so the first thing on the page is not cream and black. */
+[data-skin='brutal'] .intake h2 {
+  margin: 0;
+  padding: 11px 20px;
+  background: var(--tile-reading);
+  border-bottom: var(--edge) solid var(--line);
+  color: var(--ink);
+  font-weight: 800;
+}
+
+[data-skin='brutal'] .intake > *:not(h2) { margin-inline: 20px; }
+[data-skin='brutal'] .intake > *:last-child { margin-bottom: 20px; }
+[data-skin='brutal'] .intake .how { margin-top: 14px; }
+
+/* Numbered steps get stamped markers rather than grey digits. */
+[data-skin='brutal'] .how { list-style: none; padding-left: 0; counter-reset: step; gap: 12px; }
+
+/* The marker is positioned, not laid out: a flex or grid list item promotes
+   every inline <b> inside it to a box of its own, which broke "My Books" and
+   "Import and export" onto their own lines. */
+[data-skin='brutal'] .how li {
+  counter-increment: step;
+  position: relative;
+  padding-left: 36px;
+  min-height: 24px;
+}
+
+[data-skin='brutal'] .how li::before {
+  content: counter(step);
+  position: absolute;
+  left: 0;
+  top: 1px;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: var(--edge) solid var(--line);
+  background: var(--tile-waiting);
+  font-weight: 800;
+  font-size: 13px;
+}
+
+[data-skin='brutal'] .dropzone {
+  border: var(--edge) dashed var(--line);
+  border-radius: 0;
+  background: var(--tile-ready);
+  box-shadow: inset 0 0 0 4px var(--surface);
+}
+
+[data-skin='brutal'] .file-button {
+  border: var(--edge) solid var(--line);
+  border-radius: 0;
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 700;
+  box-shadow: 3px 3px 0 var(--ink);
+  transition: transform 0.06s, box-shadow 0.06s;
+}
+
+[data-skin='brutal'] .file-button:active {
+  transform: translate(3px, 3px);
+  box-shadow: none;
+}
+
+[data-skin='brutal'] .file-or { font-weight: 700; color: var(--ink); }
+[data-skin='brutal'] .loaded { padding-top: 18px; }
+
+/* ---------- Soft: colour without breaking the surface ----------
+   Neumorphism depends on every panel being the same material, so the tiles
+   stay marble and the colour arrives in the numeral and a thin bar. Same
+   state language as Bold, a quieter voice. */
+
+[data-skin='soft'] .tile {
+  position: relative;
+  overflow: hidden;
+  padding-top: 18px;
+}
+
+[data-skin='soft'] .tile::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 5px;
+  background: var(--bar, transparent);
+}
+
+[data-skin='soft'] .tile-ready { --bar: var(--tile-ready); }
+[data-skin='soft'] .tile-reading { --bar: var(--tile-reading); }
+[data-skin='soft'] .tile-waiting { --bar: var(--tile-waiting); }
+[data-skin='soft'] .tile-done { --bar: var(--tile-done); }
+[data-skin='soft'] .tile-aside { --bar: var(--tile-aside); }
+
+[data-skin='soft'] .tile-ready dd { color: var(--tile-ready); }
+[data-skin='soft'] .tile-reading dd { color: var(--tile-reading); }
+[data-skin='soft'] .tile-waiting dd { color: var(--tile-waiting); }
+[data-skin='soft'] .tile-done dd { color: var(--tile-done); }
+[data-skin='soft'] .tile-aside dd { color: var(--tile-aside); }
+
+/* Badges and chips: pressed into the surface rather than stamped on it. */
+[data-skin='soft'] .badge,
+[data-skin='soft'] .chip {
+  border: 0;
+  border-radius: 999px;
+  box-shadow: var(--press);
+  background: var(--surface);
+  color: var(--ink);
+  padding: 3px 12px;
+}
+
+[data-skin='soft'] .badge-go { color: var(--tile-ready); font-weight: 700; }
+[data-skin='soft'] .badge-soon { color: var(--tile-reading); font-weight: 700; }
+[data-skin='soft'] .chip-read { color: var(--tile-done); }
+[data-skin='soft'] .chip-reading { color: var(--tile-reading); }
+[data-skin='soft'] .chip-dnf { color: var(--tile-aside); }
+[data-skin='soft'] .chip-next { color: var(--tile-ready); font-weight: 700; }
+[data-skin='soft'] .volume.is-next { background: var(--primary-soft); }
+[data-skin='soft'] .meter span { background: var(--tile-reading); }
+
+/* ---------- the collage gesture, softened ----------
+   Bold tilts covers with a hard edge, like paper on a desk. Here the same
+   idea arrives through the light instead: barely any rotation, and a raised
+   shadow so each cover sits on the marble rather than being pinned to it. */
+
+[data-skin='soft'] .cover {
+  border-radius: 5px;
+  box-shadow: var(--raise);
+}
+
+[data-skin='soft'] .series-head .cover-lg { transform: rotate(-1deg); }
+[data-skin='soft'] .volume:nth-child(odd) .cover-sm { transform: rotate(0.8deg); }
+[data-skin='soft'] .volume:nth-child(even) .cover-sm { transform: rotate(-0.8deg); }
+[data-skin='soft'] .volume.is-next .cover-sm { transform: none; scale: 1.05; }
+
+[data-skin='soft'] .dropzone {
+  border: 0;
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: var(--press);
+}
+
+[data-skin='soft'] .file-button {
+  border: 0;
+  border-radius: 12px;
+  background: var(--tile-reading);
+  color: #241d09;
+  font-weight: 700;
+  box-shadow: var(--raise);
+}
+
+[data-skin='soft'] .file-button:active { box-shadow: var(--press); }
+[data-skin='soft'] .skins { border: 0; box-shadow: var(--raise); background: var(--surface); }
+[data-skin='soft'] .skins button[aria-pressed='true'] {
+  background: var(--tile-reading);
+  color: #241d09;
+}
+
+/* ---------- Soft: the two views before the lookup ----------
+   Everything here happens before a single cover has loaded, so the page has
+   no colour of its own to borrow. It has to come from the furniture: the
+   state palette shown up front as a spine stack, gold on the numerals and
+   the one action that matters, and a tint on the panel being asked to act. */
+
+[data-skin='soft'] body {
+  background:
+    radial-gradient(900px 420px at 88% -8%, #f6ecd6 0%, transparent 62%),
+    radial-gradient(700px 380px at 6% 4%, #eef0ea 0%, transparent 58%),
+    var(--ground);
+  background-attachment: fixed;
+}
+
+/* A five-segment rule under the title: the board's state palette, stated
+   before there is a board. It also gives the empty page one horizontal line
+   of colour, which is what it was missing. */
+[data-skin='soft'] .masthead::after {
+  content: '';
+  height: 6px;
+  width: 168px;
+  margin-top: 6px;
+  border-radius: 99px;
+  box-shadow: var(--raise);
+  background: linear-gradient(
+    to right,
+    var(--tile-ready) 0 20%,
+    var(--tile-reading) 20% 40%,
+    var(--tile-waiting) 40% 60%,
+    var(--tile-aside) 60% 80%,
+    var(--tile-done) 80% 100%
+  );
+}
+
+[data-skin='soft'] .tagline b,
+[data-skin='soft'] h2 { color: var(--primary); }
+
+/* Numbered steps as pressed gold coins. Three of them down the left edge is
+   the most colour the instructions can carry without becoming decoration. */
+[data-skin='soft'] .how {
+  list-style: none;
+  padding-left: 0;
+  counter-reset: step;
+  gap: 12px;
+}
+
+[data-skin='soft'] .how li {
+  counter-increment: step;
+  position: relative;
+  padding-left: 38px;
+  min-height: 26px;
+}
+
+[data-skin='soft'] .how li::before {
+  content: counter(step);
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 99px;
+  background: var(--primary-soft);
+  box-shadow: var(--press);
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* The panel holding the action gets the accent tint, so the eye lands on it
+   before it reads anything. */
+[data-skin='soft'] .dropzone {
+  background: var(--primary-soft);
+  box-shadow: var(--press);
+}
+
+[data-skin='soft'] .file-or { color: var(--primary); font-weight: 600; }
+[data-skin='soft'] button.ghost { color: var(--primary); }
+[data-skin='soft'] button.ghost:hover { color: var(--ink); }
+[data-skin='soft'] .colophon a { color: var(--primary); }
+
+/* Once a file is loaded, the file name and the count are the only content on
+   the card, so they carry the colour. */
+[data-skin='soft'] .loaded b { color: var(--primary); }
+
+/* The lookup is the single thing left to do on this screen; it should not
+   look like the four ghost buttons around it. */
+[data-skin='soft'] .board .actions > button:first-child {
+  background: var(--primary);
+  color: #fdf8ec;
+  font-weight: 700;
+}
+
+[data-skin='soft'] .board .actions > button:first-child:disabled {
+  background: var(--surface);
+  color: var(--ink-soft);
+}
+
+/* Waiting rows: empty slots in five tints rather than five greys. The colours
+   cycle through the same state palette, so the list is already the right
+   shape when the covers arrive and paint over them. */
+[data-skin='soft'] .series-row.is-pending { opacity: 1; }
+[data-skin='soft'] .series-row.is-pending .series-name { color: var(--ink-soft); }
+[data-skin='soft'] .series-row.is-pending .progress-line b { color: var(--tint); }
+
+[data-skin='soft'] .series-row.is-pending .cover {
+  background: var(--tint);
+  opacity: 0.55;
+  box-shadow: var(--raise);
+}
+
+[data-skin='soft'] .series-row.is-pending:nth-child(5n + 1) { --tint: var(--tile-ready); }
+[data-skin='soft'] .series-row.is-pending:nth-child(5n + 2) { --tint: var(--tile-reading); }
+[data-skin='soft'] .series-row.is-pending:nth-child(5n + 3) { --tint: var(--tile-waiting); }
+[data-skin='soft'] .series-row.is-pending:nth-child(5n + 4) { --tint: var(--tile-aside); }
+[data-skin='soft'] .series-row.is-pending:nth-child(5n + 5) { --tint: var(--tile-done); }
+
+/* ---------- short viewports ----------
+   The empty state is one screen of instructions; on a laptop it should not
+   need a scroll to reach the button it is instructing you to press. */
+
+@media (max-height: 820px) {
+  .page { padding-block: 24px 32px; gap: 20px; }
+  .intake { gap: 8px; padding: 16px 20px; }
+  .dropzone { padding: 12px 14px; }
+  .how { font-size: 14px; }
+  [data-skin='brutal'] .how,
+  [data-skin='soft'] .how { gap: 9px; }
+  [data-skin='brutal'] .intake .how { margin-top: 10px; }
+  [data-skin='brutal'] .intake > *:last-child { margin-bottom: 16px; }
+}
