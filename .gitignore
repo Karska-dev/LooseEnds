@@ -33,3 +33,7 @@ pnpm-debug.log*
 *.csv
 !tests/fixtures/*.csv
 !public/sample-library.csv
+
+# Local helper scripts and issue/PR bodies handed over by an assistant.
+/ship-*.sh
+/.issue-bodies/
