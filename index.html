@@ -6,7 +6,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Loose Ends</title>
     <meta name="description" content="Find the book series you never finished. Your Goodreads export, parsed in your browser." />
-    <meta name="theme-color" content="#0E5C5F" />
+    <meta name="theme-color" content="#f1f3f7" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0f131a" media="(prefers-color-scheme: dark)" />
+
+    <!-- Instrument Serif sets the title, the counts and the series names;
+         DM Sans does everything else. Both are needed before first paint,
+         so they are preconnected rather than discovered in the CSS. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Instrument+Serif&display=swap"
+    />
 
     <!-- Shared links render as a bare URL without these. -->
     <meta property="og:type" content="website" />

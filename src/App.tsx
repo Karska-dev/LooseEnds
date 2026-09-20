@@ -432,8 +432,10 @@ function StandaloneRow({
           aria-controls="standalone-books"
           onClick={onOpen}
         >
+          {/* Drawn, not typed: a "+" in one skin's display face is a
+              different size and weight from the next one's. */}
           <span className="chevron" aria-hidden="true">
-            {open ? '\u2212' : '+'}
+            <i className="chev" />
           </span>
           <Cover url={null} alt="" size="lg" />
           <span className="series-id">
@@ -517,7 +519,7 @@ function SeriesRow({
           onClick={onOpen}
         >
           <span className="chevron" aria-hidden="true">
-            {open ? '\u2212' : '+'}
+            <i className="chev" />
           </span>
           <Cover url={state.coverUrl} color={state.coverColor} alt="" size="lg" />
           <span className="series-id">

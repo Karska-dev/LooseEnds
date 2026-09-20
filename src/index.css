@@ -1,30 +1,48 @@
 :root {
-  --ground: #f6f8f7;
-  --surface: #ffffff;
-  --ink: #14201f;
-  --ink-soft: #4a5957;
-  --ink-faint: #7e8c8a;
-  --line: #dce3e1;
-  --primary: #0e5c5f;
-  --ok: #2f6b3c;
-  --warn: #8a6410;
-  --accent: #b4472f;
+  /*
+   * Quiet, in the "Ink" palette: a near-white with a blue bias, a very dark
+   * ink, and one indigo accent. Quiet has no fills and no shadows, so the
+   * ground and the accent are the only things carrying temperature.
+   */
+  --ground: #f1f3f7;
+  --surface: #f1f3f7;       /* Quiet has no cards; surface == ground */
+  --ink: #0f141c;
+  --ink-soft: #525d6c;
+  --ink-faint: #858e9c;
+  --line: #dae0e8;
+  --line-soft: #e6eaf1;
+  --primary: #3b4a9e;
+  --primary-soft: #e6e9f6;
+  --ok: #2f6b5f;
+  --warn: #8a5a1f;
+  --accent: #a34a33;
+
+  --display: "Instrument Serif", Georgia, "Times New Roman", serif;
+  --body: "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
 
   color-scheme: light dark;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --ground: #101615;
-    --surface: #18211f;
-    --ink: #e8eeec;
-    --ink-soft: #a6b4b1;
-    --ink-faint: #74827f;
-    --line: #27332f;
-    --primary: #58c4c4;
-    --ok: #7bc08b;
-    --warn: #d9ac5a;
-    --accent: #e58468;
+    /*
+     * Dark is not an inversion. The hairlines sit one step off the GROUND
+     * rather than one step off white — a line computed by inverting #dae0e8
+     * would glow — and the indigo lifts, because #3b4a9e on black is a smudge.
+     */
+    --ground: #0f131a;
+    --surface: #0f131a;
+    --ink: #e9edf4;
+    --ink-soft: #8b95a4;
+    --ink-faint: #6b7483;
+    --line: #232b36;
+    --line-soft: #1a212a;
+    --primary: #8f9cff;
+    --primary-soft: #1b2233;
+    --ok: #57b394;
+    --warn: #d2a05e;
+    --accent: #e08a6f;
   }
 }
 
@@ -34,11 +52,13 @@ body {
   margin: 0;
   background: var(--ground);
   color: var(--ink);
-  font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif;
+  font: 16px/1.6 var(--body);
 }
 
 .page {
-  max-width: 720px;
+  /* Quiet draws its structure with rules that run the full width, so the
+     column needs more room than a text-only layout would. */
+  max-width: 880px;
   margin: 0 auto;
   padding-inline: 20px;
   padding-block: 36px 48px;
@@ -51,28 +71,35 @@ body {
 
 h1 {
   margin: 0;
-  font-size: clamp(28px, 5vw, 36px);
-  letter-spacing: -0.02em;
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: clamp(34px, 6vw, 52px);
+  line-height: 1;
+  letter-spacing: -0.015em;
 }
 
-.tagline { margin: 0; color: var(--ink-soft); font-size: 17px; }
+.tagline { margin: 0; color: var(--ink-soft); font-size: 15.5px; letter-spacing: 0.01em; }
 
+/* Structure comes from hairlines and alignment, never from a container. */
 .intake {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  padding: 20px 22px;
+  gap: 14px;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
 }
 
 h2 {
   margin: 0;
-  font-size: 13px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.24em;
+  text-transform: lowercase;
   color: var(--ink-faint);
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 12px;
 }
 
 input[type="file"] { max-width: 100%; }
@@ -103,36 +130,45 @@ input[type="file"] { max-width: 100%; }
   flex-wrap: wrap;
 }
 
+/* Outlined, not filled: in a skin with no fills anywhere, a solid block of
+   colour would be the loudest thing on the page. */
 button {
   font: inherit;
-  font-size: 15px;
-  padding: 9px 16px;
-  border-radius: 4px;
-  border: 1px solid var(--primary);
-  background: var(--primary);
-  color: var(--surface);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  padding: 13px 24px;
+  border-radius: 0;
+  border: 1px solid var(--ink);
+  background: none;
+  color: var(--ink);
   cursor: pointer;
 }
 
 button:disabled { opacity: 0.6; cursor: default; }
 button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 
+/* A ghost is a rule under a word, the way a footnote link is set. */
 button.ghost {
   background: none;
-  color: var(--ink-faint);
-  border-color: var(--line);
-  font-size: 13px;
-  padding: 5px 11px;
+  color: var(--ink);
+  border: 0;
+  border-bottom: 1px solid var(--ink-faint);
+  border-radius: 0;
+  font-size: 14px;
+  font-weight: 400;
+  letter-spacing: 0;
+  padding: 4px 1px;
   flex: none;
 }
 
-button.ghost:hover { color: var(--ink); border-color: var(--ink-faint); }
+button.ghost:hover { border-bottom-color: var(--ink); }
 
 .meter {
   flex: 1 1 160px;
   min-width: 140px;
-  height: 6px;
-  border-radius: 3px;
+  height: 2px;
+  border-radius: 0;
   background: var(--line);
   overflow: hidden;
 }
@@ -144,33 +180,54 @@ button.ghost:hover { color: var(--ink); border-color: var(--ink-faint); }
   transition: width 320ms ease;
 }
 
+/*
+ * Five readings of ONE library, so they sit on one ruled line rather than in
+ * five boxes — a card grid always implies the tiles are separate things.
+ */
 .tiles {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
-  gap: 1px;
+  gap: 0;
   margin: 0;
-  background: var(--line);
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  overflow: hidden;
+  background: none;
+  border: 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
 }
 
-.tile { background: var(--surface); padding: 14px 16px; }
+.tile {
+  background: none;
+  padding: 20px 18px;
+  border-left: 1px solid var(--line);
+}
+
+.tile:first-child { border-left: 0; padding-left: 0; }
 
 .tile dt {
-  font-size: 11px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: lowercase;
   color: var(--ink-faint);
-  margin-bottom: 4px;
+  margin-bottom: 10px;
 }
 
 .tile dd {
   margin: 0;
-  font-size: 26px;
-  font-weight: 600;
+  font-family: var(--display);
+  font-size: 40px;
+  font-weight: 400;
+  line-height: 1;
   font-variant-numeric: tabular-nums;
 }
+
+/* Colour only where it changes what you do next. */
+.tile-ready dd { color: var(--ok); }
+.tile-reading dd { color: var(--primary); }
+.tile-waiting dd,
+.tile-done dd,
+.tile-aside dd { color: var(--ink-soft); }
 
 .toggle {
   display: flex;
@@ -187,14 +244,14 @@ button.ghost:hover { color: var(--ink); border-color: var(--ink-faint); }
 .series-row {
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  padding: 13px 0;
+  gap: 9px;
+  padding: 20px 0;
   border-top: 1px solid var(--line);
 }
 
 .series-row:last-child { border-bottom: 1px solid var(--line); }
 .series-row.is-dismissed { opacity: 0.55; }
-.series-row.is-open { background: var(--surface); }
+.series-row.is-open { background: none; }
 
 .series-head {
   display: flex;
@@ -218,24 +275,51 @@ button.ghost:hover { color: var(--ink); border-color: var(--ink-faint); }
   flex: 1 1 auto;
 }
 
+/*
+ * The glyph is drawn with borders rather than typed: a character would take
+ * the size and weight of whichever display face the skin sets, and this
+ * control has to stay the same size everywhere. It also rotates rather than
+ * swapping shapes, so the open state is the same object turned.
+ */
 .chevron {
-  font-family: var(--mono, monospace);
-  font-size: 15px;
-  width: 14px;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
   flex: none;
   color: var(--ink-faint);
+}
+
+.chev {
+  display: block;
+  width: 8px;
+  height: 8px;
+  margin-left: -2px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform 0.16s ease;
+}
+
+.series-row.is-open .chev { transform: rotate(45deg); margin: -3px 0 0; }
+.disclose:hover .chevron { color: var(--ink); }
+
+@media (prefers-reduced-motion: reduce) {
+  .chev { transition: none; }
 }
 
 .series-id { display: flex; flex-direction: column; min-width: 0; }
 
 .series-name {
-  font-size: 17px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  font-family: var(--display);
+  font-size: 21px;
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 1.15;
   color: var(--ink);
 }
 
-.byline { font-size: 13px; color: var(--ink-faint); }
+.byline { font-size: 12.5px; letter-spacing: 0.02em; color: var(--ink-faint); }
 
 .series-meta {
   display: flex;
@@ -266,19 +350,22 @@ button.ghost:hover { color: var(--ink); border-color: var(--ink-faint); }
 .verdict.muted, .verdict .muted, .muted { color: var(--ink-faint); }
 .next-title { color: var(--ink); }
 
+/* A label, not a pill: outlines and fills would be the only boxes here. */
 .badge {
-  font-size: 11px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  padding: 3px 8px;
-  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  text-transform: lowercase;
+  padding: 0;
+  border-radius: 0;
   white-space: nowrap;
-  border: 1px solid;
+  border: 0;
+  background: none;
 }
 
-.badge-go { color: var(--surface); background: var(--ok); border-color: var(--ok); }
-.badge-soon { color: var(--warn); border-color: var(--warn); }
-.badge-wait { color: var(--ink-faint); border-color: var(--line); }
+.badge-go { color: var(--ok); }
+.badge-soon { color: var(--primary); }
+.badge-wait { color: var(--ink-faint); }
 
 /* ---------- expanded volumes ---------- */
 
@@ -288,7 +375,9 @@ button.ghost:hover { color: var(--ink); border-color: var(--ink-faint); }
   list-style: none;
   margin: 0;
   padding: 0;
-  border-left: 2px solid var(--line);
+  /* A hairline column hung off the title: the rule does the indenting that a
+     panel would otherwise have to do. */
+  border-left: 1px solid var(--line);
 }
 
 .volume {
@@ -302,16 +391,25 @@ button.ghost:hover { color: var(--ink); border-color: var(--ink-faint); }
 
 .volume + .volume { border-top: 1px solid var(--line-soft, var(--line)); }
 .volume-none { opacity: 0.62; }
-.volume.is-next { background: var(--primary-soft, transparent); }
+/* The next book is marked at the rule, not by a filled band — a fill would
+   be the only block of colour in the whole skin. */
+.volume.is-next {
+  background: none;
+  box-shadow: -1px 0 0 var(--accent);
+}
 
 .vol-pos {
+  font-family: var(--display);
   font-variant-numeric: tabular-nums;
   color: var(--ink-faint);
-  font-size: 13px;
+  font-size: 15px;
 }
 
 .vol-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.vol-title { color: var(--ink); }
+/* Read and unread differ by weight of ink, not by decoration. */
+.vol-title { color: var(--ink-soft); }
+.volume-read .vol-title { color: var(--ink); }
+.volume.is-next .vol-title { color: var(--accent); }
 .volume-read .vol-title { font-weight: 600; }
 .vol-alt { font-size: 12.5px; color: var(--ink-faint); }
 
@@ -326,20 +424,24 @@ button.ghost:hover { color: var(--ink); border-color: var(--ink-faint); }
 .vol-date { font-size: 12.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 .chip {
-  font-size: 11px;
-  padding: 2px 7px;
-  border-radius: 9px;
-  border: 1px solid var(--line);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: lowercase;
+  padding: 0;
+  border-radius: 0;
+  border: 0;
+  background: none;
   color: var(--ink-faint);
   white-space: nowrap;
 }
 
-.chip-read { color: var(--ok); border-color: var(--ok); }
-.chip-reading { color: var(--primary); border-color: var(--primary); }
-.chip-dnf { color: var(--accent, #b4472f); border-color: var(--accent, #b4472f); }
-.chip-next { color: var(--surface); background: var(--primary); border-color: var(--primary); }
+.chip-read { color: var(--ok); }
+.chip-reading { color: var(--primary); }
+.chip-dnf { color: var(--accent); }
+.chip-next { color: var(--primary); font-weight: 700; }
 
-.rating { letter-spacing: 1px; color: var(--warn); font-size: 12px; }
+.rating { letter-spacing: 1px; color: var(--ok); font-size: 12px; }
 
 @media (max-width: 460px) {
   .series-head { flex-direction: column; align-items: stretch; gap: 8px; }
@@ -356,7 +458,7 @@ button.ghost:hover { color: var(--ink); border-color: var(--ink-faint); }
   display: block;
   flex: none;
   background: var(--line-soft, var(--line));
-  border-radius: 2px;
+  border-radius: 0;
   overflow: hidden;
   align-self: center;
 }
@@ -383,15 +485,34 @@ button.ghost:hover { color: var(--ink); border-color: var(--ink-faint); }
 
 .how {
   margin: 0;
-  padding-left: 22px;
-  font-size: 14.5px;
+  padding-left: 0;
+  list-style: none;
+  counter-reset: step;
+  font-size: 15px;
   color: var(--ink-soft);
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 14px;
 }
 
-.how li::marker { color: var(--ink-faint); }
+.how li {
+  counter-increment: step;
+  position: relative;
+  padding-left: 32px;
+  min-height: 22px;
+}
+
+/* Positioned, not laid out: a flex or grid list item promotes every inline
+   <b> inside it to a box of its own and breaks the sentence apart. */
+.how li::before {
+  content: counter(step);
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-family: var(--display);
+  font-size: 15px;
+  color: var(--primary);
+}
 .how b { color: var(--ink); font-weight: 600; }
 
 .error {
@@ -815,21 +936,24 @@ button.ghost:hover { color: var(--ink); border-color: var(--ink-faint); }
 .dropzone {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 16px;
   flex-wrap: wrap;
-  padding: 14px 16px;
-  border: 2px dashed var(--line);
-  border-radius: 4px;
-  background: var(--primary-soft, transparent);
+  padding: 20px 22px;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  background: none;
 }
 
+/* The one filled element in the skin, because it is the one thing to do. */
 .file-button {
-  padding: 10px 18px;
-  border: 1px solid var(--primary);
-  border-radius: 4px;
-  background: var(--primary);
-  color: var(--surface);
-  font-weight: 600;
+  padding: 14px 26px;
+  border: 1px solid var(--ink);
+  border-radius: 0;
+  background: var(--ink);
+  color: var(--ground);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
   cursor: pointer;
 }
 
@@ -1135,4 +1259,58 @@ button.ghost:hover { color: var(--ink); border-color: var(--ink-faint); }
   [data-skin='soft'] .how { gap: 9px; }
   [data-skin='brutal'] .intake .how { margin-top: 10px; }
   [data-skin='brutal'] .intake > *:last-child { margin-bottom: 16px; }
+}
+
+/* ---------- the disclosure, per skin ----------
+   Same button, same box, same hit area; only the glyph changes. Each skin
+   gets the shape that matches how it draws everything else: Quiet turns a
+   hairline corner, Bold stamps a play head, Soft presses a plus into the
+   surface and takes the vertical bar away when it opens. */
+
+[data-skin='brutal'] .chev {
+  width: 0;
+  height: 0;
+  margin-left: 2px;
+  border: 0;
+  border-left: 8px solid currentColor;
+  border-top: 5.5px solid transparent;
+  border-bottom: 5.5px solid transparent;
+  transform: none;
+}
+
+[data-skin='brutal'] .series-row.is-open .chev {
+  transform: rotate(90deg);
+  margin: 2px 0 0 -1px;
+}
+
+[data-skin='soft'] .chev {
+  position: relative;
+  width: 12px;
+  height: 12px;
+  margin: 0;
+  border: 0;
+  transform: none;
+}
+
+[data-skin='soft'] .chev::before,
+[data-skin='soft'] .chev::after {
+  content: '';
+  position: absolute;
+  inset: 50% 0 auto 0;
+  height: 2px;
+  border-radius: 2px;
+  background: currentColor;
+  transform: translateY(-50%);
+}
+
+[data-skin='soft'] .chev::after {
+  transform: translateY(-50%) rotate(90deg);
+  transition: opacity 0.16s ease;
+}
+
+[data-skin='soft'] .series-row.is-open .chev { transform: none; }
+[data-skin='soft'] .series-row.is-open .chev::after { opacity: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  [data-skin='soft'] .chev::after { transition: none; }
 }
