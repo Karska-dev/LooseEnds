@@ -703,91 +703,6 @@ button.ghost:hover { border-bottom-color: var(--ink); }
 [data-skin='brutal'] .volume:nth-child(even) .cover-sm { transform: rotate(-1.5deg); }
 [data-skin='brutal'] .volume.is-next .cover-sm { transform: none; scale: 1.06; }
 
-/* ---------- Soft: one surface, light from the top-left ---------- */
-
-[data-skin='soft'] {
-  /*
-   * Warm marble rather than blue-grey, with a goldenrod accent. The shadow
-   * colours are derived from the ground — a neumorphic surface only reads as
-   * lit if the highlight and shade are the same hue as what they sit on.
-   */
-  --ground: #e9e6e1;
-  --surface: #e9e6e1;
-  --ink: #2a2724;
-  --ink-soft: #5f5a54;
-  --ink-faint: #8f8981;
-  --line: #d6d2cb;
-  --line-soft: #dedad4;
-  --primary: #a8780c;
-  --primary-soft: #f2e7cd;
-  --ok: #5b7a3a;
-  --warn: #a8780c;
-  --accent: #b5563c;
-
-  --raise: -5px -5px 11px #fbf9f6, 5px 5px 11px #c9c4bc;
-  --press: inset -3px -3px 7px #fbf9f6, inset 3px 3px 7px #c9c4bc;
-
-  /* Muted state colours: enough to tell the tiles apart, not enough to
-     break a monochrome surface. */
-  --tile-ready: #6f8f4e;
-  --tile-reading: #c8920f;
-  --tile-waiting: #7a7fa8;
-  --tile-done: #8a8d80;
-  --tile-aside: #b5735f;
-}
-
-@media (prefers-color-scheme: dark) {
-  [data-skin='soft'] {
-    --ground: #2b2825;
-    --surface: #2b2825;
-    --ink: #ece7df;
-    --ink-soft: #aea79d;
-    --ink-faint: #7f786e;
-    --line: #3a3631;
-    --line-soft: #343029;
-    --primary: #e0b54a;
-    --primary-soft: #3d3524;
-    --tile-ready: #9ab87a;
-    --tile-reading: #e0b54a;
-    --tile-waiting: #a2a7cf;
-    --tile-done: #a9ac9f;
-    --tile-aside: #d1917d;
-    --raise: -5px -5px 11px #343029, 5px 5px 11px #211f1c;
-    --press: inset -3px -3px 7px #343029, inset 3px 3px 7px #211f1c;
-  }
-}
-
-[data-skin='soft'] .intake,
-[data-skin='soft'] .tiles,
-[data-skin='soft'] .tile,
-[data-skin='soft'] .series-row.is-open {
-  border: 0;
-  border-radius: 16px;
-  background: var(--surface);
-  box-shadow: var(--raise);
-}
-
-[data-skin='soft'] .tiles { gap: 10px; background: transparent; }
-
-[data-skin='soft'] button {
-  border: 0;
-  border-radius: 12px;
-  background: var(--surface);
-  box-shadow: var(--raise);
-  /* Text keeps full contrast: only the containers are soft, which is where
-     neumorphism usually fails accessibility. */
-  color: var(--ink);
-  transition: box-shadow 0.12s;
-}
-
-[data-skin='soft'] button:active:not(:disabled) { box-shadow: var(--press); }
-[data-skin='soft'] button:disabled { box-shadow: var(--press); opacity: 0.6; }
-[data-skin='soft'] .badge-go,
-[data-skin='soft'] .chip-next { color: var(--surface); }
-[data-skin='soft'] .cover { border-radius: 6px; box-shadow: var(--raise); }
-[data-skin='soft'] .meter { border: 0; border-radius: 99px; box-shadow: var(--press); }
-[data-skin='soft'] .meter span { border-radius: 99px; }
-
 /* ---------- the picker itself ---------- */
 
 .skins {
@@ -1039,213 +954,6 @@ button.ghost:hover { border-bottom-color: var(--ink); }
 [data-skin='brutal'] .file-or { font-weight: 700; color: var(--ink); }
 [data-skin='brutal'] .loaded { padding-top: 18px; }
 
-/* ---------- Soft: colour without breaking the surface ----------
-   Neumorphism depends on every panel being the same material, so the tiles
-   stay marble and the colour arrives in the numeral and a thin bar. Same
-   state language as Bold, a quieter voice. */
-
-[data-skin='soft'] .tile {
-  position: relative;
-  overflow: hidden;
-  padding-top: 18px;
-}
-
-[data-skin='soft'] .tile::before {
-  content: '';
-  position: absolute;
-  inset: 0 0 auto 0;
-  height: 5px;
-  background: var(--bar, transparent);
-}
-
-[data-skin='soft'] .tile-ready { --bar: var(--tile-ready); }
-[data-skin='soft'] .tile-reading { --bar: var(--tile-reading); }
-[data-skin='soft'] .tile-waiting { --bar: var(--tile-waiting); }
-[data-skin='soft'] .tile-done { --bar: var(--tile-done); }
-[data-skin='soft'] .tile-aside { --bar: var(--tile-aside); }
-
-[data-skin='soft'] .tile-ready dd { color: var(--tile-ready); }
-[data-skin='soft'] .tile-reading dd { color: var(--tile-reading); }
-[data-skin='soft'] .tile-waiting dd { color: var(--tile-waiting); }
-[data-skin='soft'] .tile-done dd { color: var(--tile-done); }
-[data-skin='soft'] .tile-aside dd { color: var(--tile-aside); }
-
-/* Badges and chips: pressed into the surface rather than stamped on it. */
-[data-skin='soft'] .badge,
-[data-skin='soft'] .chip {
-  border: 0;
-  border-radius: 999px;
-  box-shadow: var(--press);
-  background: var(--surface);
-  color: var(--ink);
-  padding: 3px 12px;
-}
-
-[data-skin='soft'] .badge-go { color: var(--tile-ready); font-weight: 700; }
-[data-skin='soft'] .badge-soon { color: var(--tile-reading); font-weight: 700; }
-[data-skin='soft'] .chip-read { color: var(--tile-done); }
-[data-skin='soft'] .chip-reading { color: var(--tile-reading); }
-[data-skin='soft'] .chip-dnf { color: var(--tile-aside); }
-[data-skin='soft'] .chip-next { color: var(--tile-ready); font-weight: 700; }
-[data-skin='soft'] .volume.is-next { background: var(--primary-soft); }
-[data-skin='soft'] .meter span { background: var(--tile-reading); }
-
-/* ---------- the collage gesture, softened ----------
-   Bold tilts covers with a hard edge, like paper on a desk. Here the same
-   idea arrives through the light instead: barely any rotation, and a raised
-   shadow so each cover sits on the marble rather than being pinned to it. */
-
-[data-skin='soft'] .cover {
-  border-radius: 5px;
-  box-shadow: var(--raise);
-}
-
-[data-skin='soft'] .series-head .cover-lg { transform: rotate(-1deg); }
-[data-skin='soft'] .volume:nth-child(odd) .cover-sm { transform: rotate(0.8deg); }
-[data-skin='soft'] .volume:nth-child(even) .cover-sm { transform: rotate(-0.8deg); }
-[data-skin='soft'] .volume.is-next .cover-sm { transform: none; scale: 1.05; }
-
-[data-skin='soft'] .dropzone {
-  border: 0;
-  border-radius: 16px;
-  background: var(--surface);
-  box-shadow: var(--press);
-}
-
-[data-skin='soft'] .file-button {
-  border: 0;
-  border-radius: 12px;
-  background: var(--tile-reading);
-  color: #241d09;
-  font-weight: 700;
-  box-shadow: var(--raise);
-}
-
-[data-skin='soft'] .file-button:active { box-shadow: var(--press); }
-[data-skin='soft'] .skins { border: 0; box-shadow: var(--raise); background: var(--surface); }
-[data-skin='soft'] .skins button[aria-pressed='true'] {
-  background: var(--tile-reading);
-  color: #241d09;
-}
-
-/* ---------- Soft: the two views before the lookup ----------
-   Everything here happens before a single cover has loaded, so the page has
-   no colour of its own to borrow. It has to come from the furniture: the
-   state palette shown up front as a spine stack, gold on the numerals and
-   the one action that matters, and a tint on the panel being asked to act. */
-
-[data-skin='soft'] body {
-  background:
-    radial-gradient(900px 420px at 88% -8%, #f6ecd6 0%, transparent 62%),
-    radial-gradient(700px 380px at 6% 4%, #eef0ea 0%, transparent 58%),
-    var(--ground);
-  background-attachment: fixed;
-}
-
-/* A five-segment rule under the title: the board's state palette, stated
-   before there is a board. It also gives the empty page one horizontal line
-   of colour, which is what it was missing. */
-[data-skin='soft'] .masthead::after {
-  content: '';
-  height: 6px;
-  width: 168px;
-  margin-top: 6px;
-  border-radius: 99px;
-  box-shadow: var(--raise);
-  background: linear-gradient(
-    to right,
-    var(--tile-ready) 0 20%,
-    var(--tile-reading) 20% 40%,
-    var(--tile-waiting) 40% 60%,
-    var(--tile-aside) 60% 80%,
-    var(--tile-done) 80% 100%
-  );
-}
-
-[data-skin='soft'] .tagline b,
-[data-skin='soft'] h2 { color: var(--primary); }
-
-/* Numbered steps as pressed gold coins. Three of them down the left edge is
-   the most colour the instructions can carry without becoming decoration. */
-[data-skin='soft'] .how {
-  list-style: none;
-  padding-left: 0;
-  counter-reset: step;
-  gap: 12px;
-}
-
-[data-skin='soft'] .how li {
-  counter-increment: step;
-  position: relative;
-  padding-left: 38px;
-  min-height: 26px;
-}
-
-[data-skin='soft'] .how li::before {
-  content: counter(step);
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 26px;
-  height: 26px;
-  display: grid;
-  place-items: center;
-  border-radius: 99px;
-  background: var(--primary-soft);
-  box-shadow: var(--press);
-  color: var(--primary);
-  font-size: 13px;
-  font-weight: 700;
-}
-
-/* The panel holding the action gets the accent tint, so the eye lands on it
-   before it reads anything. */
-[data-skin='soft'] .dropzone {
-  background: var(--primary-soft);
-  box-shadow: var(--press);
-}
-
-[data-skin='soft'] .file-or { color: var(--primary); font-weight: 600; }
-[data-skin='soft'] button.ghost { color: var(--primary); }
-[data-skin='soft'] button.ghost:hover { color: var(--ink); }
-[data-skin='soft'] .colophon a { color: var(--primary); }
-
-/* Once a file is loaded, the file name and the count are the only content on
-   the card, so they carry the colour. */
-[data-skin='soft'] .loaded b { color: var(--primary); }
-
-/* The lookup is the single thing left to do on this screen; it should not
-   look like the four ghost buttons around it. */
-[data-skin='soft'] .board .actions > button:first-child {
-  background: var(--primary);
-  color: #fdf8ec;
-  font-weight: 700;
-}
-
-[data-skin='soft'] .board .actions > button:first-child:disabled {
-  background: var(--surface);
-  color: var(--ink-soft);
-}
-
-/* Waiting rows: empty slots in five tints rather than five greys. The colours
-   cycle through the same state palette, so the list is already the right
-   shape when the covers arrive and paint over them. */
-[data-skin='soft'] .series-row.is-pending { opacity: 1; }
-[data-skin='soft'] .series-row.is-pending .series-name { color: var(--ink-soft); }
-[data-skin='soft'] .series-row.is-pending .progress-line b { color: var(--tint); }
-
-[data-skin='soft'] .series-row.is-pending .cover {
-  background: var(--tint);
-  opacity: 0.55;
-  box-shadow: var(--raise);
-}
-
-[data-skin='soft'] .series-row.is-pending:nth-child(5n + 1) { --tint: var(--tile-ready); }
-[data-skin='soft'] .series-row.is-pending:nth-child(5n + 2) { --tint: var(--tile-reading); }
-[data-skin='soft'] .series-row.is-pending:nth-child(5n + 3) { --tint: var(--tile-waiting); }
-[data-skin='soft'] .series-row.is-pending:nth-child(5n + 4) { --tint: var(--tile-aside); }
-[data-skin='soft'] .series-row.is-pending:nth-child(5n + 5) { --tint: var(--tile-done); }
-
 /* ---------- short viewports ----------
    The empty state is one screen of instructions; on a laptop it should not
    need a scroll to reach the button it is instructing you to press. */
@@ -1264,8 +972,8 @@ button.ghost:hover { border-bottom-color: var(--ink); }
 /* ---------- the disclosure, per skin ----------
    Same button, same box, same hit area; only the glyph changes. Each skin
    gets the shape that matches how it draws everything else: Quiet turns a
-   hairline corner, Bold stamps a play head, Soft presses a plus into the
-   surface and takes the vertical bar away when it opens. */
+   hairline corner, Bold stamps a play head, and Soft presses a triangle into
+   the surface. */
 
 [data-skin='brutal'] .chev {
   width: 0;
@@ -1284,33 +992,442 @@ button.ghost:hover { border-bottom-color: var(--ink); }
 }
 
 [data-skin='soft'] .chev {
-  position: relative;
-  width: 12px;
-  height: 12px;
-  margin: 0;
+  width: 0;
+  height: 0;
+  margin-left: 2px;
   border: 0;
+  border-left: 8px solid currentColor;
+  border-top: 5.5px solid transparent;
+  border-bottom: 5.5px solid transparent;
   transform: none;
+  transition: transform 0.16s ease;
 }
 
-[data-skin='soft'] .chev::before,
-[data-skin='soft'] .chev::after {
-  content: '';
-  position: absolute;
-  inset: 50% 0 auto 0;
-  height: 2px;
-  border-radius: 2px;
-  background: currentColor;
-  transform: translateY(-50%);
+[data-skin='soft'] .series-row.is-open .chev {
+  transform: rotate(90deg);
+  margin: 2px 0 0 -1px;
 }
-
-[data-skin='soft'] .chev::after {
-  transform: translateY(-50%) rotate(90deg);
-  transition: opacity 0.16s ease;
-}
-
-[data-skin='soft'] .series-row.is-open .chev { transform: none; }
-[data-skin='soft'] .series-row.is-open .chev::after { opacity: 0; }
 
 @media (prefers-reduced-motion: reduce) {
-  [data-skin='soft'] .chev::after { transition: none; }
+  [data-skin='soft'] .chev { transition: none; }
+}
+
+/* ==================================================================
+   Soft — Clay
+   ------------------------------------------------------------------
+   Every surface is a raised pat of clay on a warm blush sheet, lit
+   from the top-left. The five reading states are the only saturated
+   fills and they are used as fills — tiles, badges, chips — because
+   clay is the one skin where colour is the material, not a mark on it.
+   Things that sit inside a raised panel are pressed into it: a raised
+   list on a raised card would read as two objects, a hollow as one.
+
+   Clay in the dark keeps its hue and loses its light. The white
+   highlight becomes a crisp 1.5px lit edge — a diffuse glow is
+   invisible on saturated fills — the shadow goes to near-black, and
+   the state fills drop in value but keep their chroma; a desaturated
+   dark tile reads as disabled.
+   ================================================================== */
+
+[data-skin='soft'] {
+  --display: Nunito, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --body: Nunito, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  --sheet: linear-gradient(160deg, #f8efe9 0%, #f3e6ee 55%, #eee9f7 100%);
+  --ground: #f4eaee;
+  --surface: #fdf6f1;
+  --ink: #3b2f3a;
+  --body-ink: #453a44;
+  --ink-soft: #7b6a76;
+  --ink-faint: #8d7c88;
+  --line: rgba(128, 100, 120, 0.18);
+  --line-soft: rgba(128, 100, 120, 0.12);
+  --primary: #6a5ab8;
+  --primary-soft: #cfc3f5;
+  --ok: #3f7d66;
+  --warn: #a8762e;
+  --accent: #b5536a;
+
+  --lift:
+    6px 8px 16px rgba(160, 120, 140, 0.28),
+    -5px -6px 14px rgba(255, 255, 255, 0.9),
+    inset 2px 3px 6px rgba(255, 255, 255, 0.55);
+  --press:
+    inset 5px 6px 12px rgba(150, 110, 130, 0.38),
+    inset -3px -4px 10px rgba(255, 255, 255, 0.7);
+
+  --ready: #a8dcc6;
+  --reading: #f6cf9a;
+  --waiting: #b9c6f0;
+  --done: #fdf6f1;
+  --aside: #f2b4bd;
+  --state-ink: #3b2f3a;
+
+  --lilac: linear-gradient(150deg, #b6a9ef, #9d8fe6);
+  --lilac-ink: #ffffff;
+  --peach: linear-gradient(150deg, #f5b9a0, #ef9f9c);
+  --peach-ink: #4a2f2b;
+  --track: rgba(160, 120, 140, 0.2);
+  --h2: #a1728f;
+  --step: #cfc3f5;
+  --stars: #e0a24e;
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-skin='soft'] {
+    --sheet: linear-gradient(160deg, #241f29 0%, #2a2230 55%, #241f2e 100%);
+    --ground: #272029;
+    --surface: #342b3a;
+    --ink: #f3eaf2;
+    --body-ink: #e2d7e1;
+    --ink-soft: #ab9baa;
+    --ink-faint: #938491;
+    --line: rgba(0, 0, 0, 0.32);
+    --line-soft: rgba(0, 0, 0, 0.22);
+    --primary: #b6a9ef;
+    --primary-soft: #554a7a;
+    --ok: #7fcfae;
+    --warn: #e2b36e;
+    --accent: #f0a0b2;
+
+    --lift:
+      10px 13px 26px rgba(0, 0, 0, 0.55),
+      -7px -8px 20px rgba(255, 255, 255, 0.035),
+      inset 1.5px 1.5px 0 rgba(255, 255, 255, 0.18),
+      inset -1.5px -2px 0 rgba(0, 0, 0, 0.42);
+    --press:
+      inset 7px 8px 16px rgba(0, 0, 0, 0.6),
+      inset -4px -5px 12px rgba(255, 255, 255, 0.07);
+
+    --ready: #3f6d5c;
+    --reading: #8a6a33;
+    --waiting: #4d5a8b;
+    --done: #302836;
+    --aside: #8c4f5e;
+    --state-ink: #f6eef4;
+
+    --lilac: linear-gradient(150deg, #7d6dcb, #6a5ab8);
+    --lilac-ink: #f6f2ff;
+    --peach: linear-gradient(150deg, #c98570, #b86f6c);
+    --peach-ink: #2a1a18;
+    --track: rgba(0, 0, 0, 0.35);
+    --h2: #cf9fbe;
+    --step: #554a7a;
+    --stars: #e9b86a;
+  }
+}
+
+/* ---------- the sheet and the type ---------- */
+
+[data-skin='soft'] body {
+  background: var(--sheet) fixed, var(--ground);
+  color: var(--body-ink);
+}
+
+[data-skin='soft'] h1 {
+  font-weight: 800;
+  font-size: clamp(34px, 7vw, 50px);
+  letter-spacing: -0.02em;
+  line-height: 1.02;
+  color: var(--ink);
+}
+
+[data-skin='soft'] .tagline { font-size: 16.5px; font-weight: 600; color: var(--ink-soft); }
+
+[data-skin='soft'] h2 {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--h2);
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+[data-skin='soft'] .note { color: var(--ink-soft); }
+[data-skin='soft'] .toggle input { accent-color: var(--primary); }
+[data-skin='soft'] .how { color: var(--body-ink); }
+[data-skin='soft'] .how b,
+[data-skin='soft'] .loaded b { color: var(--ink); font-weight: 800; }
+
+/* Numbered steps as raised lilac coins. */
+[data-skin='soft'] .how { gap: 12px; }
+[data-skin='soft'] .how li { padding-left: 42px; min-height: 28px; }
+[data-skin='soft'] .how li::before {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--step);
+  box-shadow: var(--lift);
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+/* ---------- buttons ---------- */
+
+[data-skin='soft'] button {
+  border: 0;
+  border-radius: 16px;
+  background: var(--surface);
+  color: var(--body-ink);
+  font-weight: 700;
+  letter-spacing: 0;
+  box-shadow: var(--lift);
+  transition: box-shadow 0.12s;
+}
+
+[data-skin='soft'] button:active:not(:disabled) { box-shadow: var(--press); }
+[data-skin='soft'] button:disabled { box-shadow: var(--press); opacity: 0.6; }
+[data-skin='soft'] button:focus-visible { outline-color: var(--primary); outline-offset: 3px; }
+
+[data-skin='soft'] button.ghost {
+  border: 0;
+  border-radius: 16px;
+  padding: 12px 18px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--body-ink);
+}
+
+[data-skin='soft'] button.ghost:hover { color: var(--ink); }
+
+/* The lookup is the one thing left to do on the board: lilac, and bigger. */
+[data-skin='soft'] .board .actions > button:first-child {
+  background-image: var(--lilac);
+  color: var(--lilac-ink);
+  font-size: 16px;
+  font-weight: 800;
+  padding: 14px 26px;
+  border-radius: 18px;
+}
+
+[data-skin='soft'] .board .actions > button:first-child:disabled {
+  background-image: none;
+  background: var(--surface);
+  color: var(--ink-soft);
+}
+
+[data-skin='soft'] .linklike { color: var(--primary); box-shadow: none; background: none; border-radius: 0; }
+
+/* ---------- the intake ---------- */
+
+[data-skin='soft'] .dropzone {
+  border: 0;
+  border-radius: 18px;
+  padding: 16px;
+  background: var(--surface);
+  box-shadow: var(--lift);
+}
+
+[data-skin='soft'] .file-button {
+  border: 0;
+  border-radius: 18px;
+  background-image: var(--peach);
+  color: var(--peach-ink);
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0;
+  padding: 14px 26px;
+  box-shadow: var(--lift);
+  transition: box-shadow 0.12s;
+}
+
+[data-skin='soft'] .file-button:active { box-shadow: var(--press); }
+[data-skin='soft'] .file-input:focus-visible + .file-button { outline-color: var(--primary); }
+[data-skin='soft'] .file-or { color: var(--ink-soft); font-weight: 700; }
+
+/* ---------- the counts ---------- */
+
+[data-skin='soft'] .tiles {
+  gap: 12px;
+  border: 0;
+  grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+}
+
+[data-skin='soft'] .tile,
+[data-skin='soft'] .tile:first-child {
+  border: 0;
+  border-radius: 18px;
+  padding: 16px;
+  box-shadow: var(--lift);
+  color: var(--state-ink);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+[data-skin='soft'] .tile-ready { background: var(--ready); }
+[data-skin='soft'] .tile-reading { background: var(--reading); }
+[data-skin='soft'] .tile-waiting { background: var(--waiting); }
+[data-skin='soft'] .tile-done { background: var(--done); color: var(--body-ink); }
+[data-skin='soft'] .tile-aside { background: var(--aside); }
+
+[data-skin='soft'] .tile dt {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: inherit;
+  opacity: 0.72;
+  margin-bottom: 6px;
+}
+
+[data-skin='soft'] .tile dd {
+  font-family: var(--display);
+  font-size: 34px;
+  font-weight: 800;
+  color: inherit;
+}
+
+[data-skin='soft'] .meter {
+  height: 8px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--track);
+  box-shadow: none;
+}
+
+[data-skin='soft'] .meter span { background-image: var(--peach); border-radius: 999px; }
+
+/* ---------- the series rows ---------- */
+
+[data-skin='soft'] .series-list { display: flex; flex-direction: column; gap: 12px; }
+
+[data-skin='soft'] .series-row,
+[data-skin='soft'] .series-row.is-open,
+[data-skin='soft'] .series-row:last-child {
+  border: 0;
+  border-radius: 20px;
+  padding: 16px;
+  gap: 10px;
+  background: var(--surface);
+  box-shadow: var(--lift);
+}
+
+[data-skin='soft'] .series-name { font-family: var(--display); font-size: 17px; font-weight: 700; color: var(--ink); }
+[data-skin='soft'] .byline { font-size: 13px; color: var(--ink-faint); }
+[data-skin='soft'] .progress-line { font-size: 13px; font-weight: 600; color: var(--ink-soft); }
+[data-skin='soft'] .progress-line b { font-weight: 800; }
+
+/* The title button is the hit area, not a surface: only its glyph is clay. */
+[data-skin='soft'] button.disclose,
+[data-skin='soft'] button.disclose:active:not(:disabled) {
+  background: none;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0;
+}
+
+/* The disclosure is a raised button that presses in while held. */
+[data-skin='soft'] .chevron {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: var(--lift);
+  color: var(--ink-soft);
+}
+
+[data-skin='soft'] .disclose:active .chevron { box-shadow: var(--press); }
+[data-skin='soft'] .disclose:hover .chevron { color: var(--ink); }
+
+[data-skin='soft'] .verdict { margin-left: 39px; }
+
+[data-skin='soft'] .badge {
+  border: 0;
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: var(--ready);
+  color: var(--state-ink);
+}
+
+[data-skin='soft'] .badge-soon { background: var(--reading); }
+[data-skin='soft'] .badge-wait { background: var(--waiting); }
+
+[data-skin='soft'] .cover { border-radius: 8px; box-shadow: var(--lift); }
+[data-skin='soft'] .series-row.is-standalone .cover-lg { border: 1.5px dashed var(--ink-faint); box-shadow: none; }
+
+/* ---------- the volume list: pressed into the row ---------- */
+
+[data-skin='soft'] .volumes { margin: 4px 0 0; }
+
+[data-skin='soft'] .volume-list {
+  border-left: 0;
+  border-radius: 16px;
+  padding: 6px 16px;
+  box-shadow: var(--press);
+}
+
+[data-skin='soft'] .volume { padding: 10px 0; }
+[data-skin='soft'] .volume + .volume { border-top: 1px solid var(--line); }
+[data-skin='soft'] .volume.is-next { background: none; box-shadow: none; }
+
+[data-skin='soft'] .vol-pos { font-family: var(--body); font-size: 13px; font-weight: 800; color: var(--ink-faint); }
+[data-skin='soft'] .vol-title { color: var(--ink-soft); }
+[data-skin='soft'] .volume-read .vol-title { color: var(--ink); font-weight: 700; }
+[data-skin='soft'] .volume.is-next .vol-title { color: var(--ink); font-weight: 800; }
+[data-skin='soft'] .vol-title a { border-bottom-color: var(--line); }
+[data-skin='soft'] .vol-date { color: var(--ink-faint); }
+
+[data-skin='soft'] .chip {
+  border: 0;
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  background: var(--done);
+  color: var(--ink-soft);
+  box-shadow: var(--press);
+}
+
+[data-skin='soft'] .chip-read { background: var(--ready); color: var(--state-ink); box-shadow: none; }
+[data-skin='soft'] .chip-reading,
+[data-skin='soft'] .chip-next { background: var(--reading); color: var(--state-ink); box-shadow: none; }
+[data-skin='soft'] .chip-dnf { background: var(--aside); color: var(--state-ink); box-shadow: none; }
+
+[data-skin='soft'] .rating { color: var(--stars); }
+
+/* ---------- before the lookup ----------
+   Rows wait with an empty cover slot in one of the five state fills, so
+   the list is already clay-coloured before a single cover has loaded. */
+
+[data-skin='soft'] .series-row.is-pending { opacity: 1; }
+[data-skin='soft'] .series-row.is-pending .series-name { color: var(--ink-soft); }
+[data-skin='soft'] .series-row.is-pending .cover { background: var(--tint); }
+[data-skin='soft'] .series-row.is-pending:nth-child(5n + 1) { --tint: var(--ready); }
+[data-skin='soft'] .series-row.is-pending:nth-child(5n + 2) { --tint: var(--reading); }
+[data-skin='soft'] .series-row.is-pending:nth-child(5n + 3) { --tint: var(--waiting); }
+[data-skin='soft'] .series-row.is-pending:nth-child(5n + 4) { --tint: var(--aside); }
+[data-skin='soft'] .series-row.is-pending:nth-child(5n + 5) { --tint: var(--step); }
+
+/* ---------- furniture ---------- */
+
+[data-skin='soft'] .colophon { border-top: 1px solid var(--line); color: var(--ink-faint); }
+[data-skin='soft'] .colophon a { color: var(--primary); }
+[data-skin='soft'] .error { color: var(--accent); font-weight: 700; }
+
+[data-skin='soft'] .skins { border: 0; background: var(--surface); box-shadow: var(--lift); }
+[data-skin='soft'] .skins button { box-shadow: none; background: none; color: var(--ink-soft); font-weight: 700; }
+[data-skin='soft'] .skins button[aria-pressed='true'] { background-image: var(--lilac); color: var(--lilac-ink); }
+
+@media (max-width: 460px) {
+  [data-skin='soft'] .verdict { margin-left: 0; }
+  [data-skin='soft'] .tiles { grid-template-columns: repeat(2, 1fr); }
+  [data-skin='soft'] .tile dd { font-size: 26px; }
+  [data-skin='soft'] .series-row { padding: 14px; }
+  [data-skin='soft'] .volume-list { padding: 4px 12px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-skin='soft'] button,
+  [data-skin='soft'] .file-button { transition: none; }
 }
