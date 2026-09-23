@@ -9,6 +9,8 @@ import type { SeriesResult } from './resolve'
 import { buildSeriesState, sortSeriesStates } from './state'
 import { SkinPicker } from './SkinPicker.tsx'
 import { LibraryShelf } from './LibraryShelf.tsx'
+import { LookupPanel } from './LookupPanel.tsx'
+import type { FailureKind, LookupPhase } from './LookupPanel.tsx'
 import type { SeriesState, VolumeRow } from './state'
 
 /**
@@ -254,6 +256,31 @@ function SeriesBoard({ summary }: { summary: SeriesSummary }) {
     failed: [...resolved.values()].filter((entry) => entry.status === 'error').length,
   }
 
+  const phase: LookupPhase = progress
+    ? 'during'
+    : resolved.size === 0
+      ? 'before'
+      : counts.failed > 0
+        ? 'failed'
+        : 'after'
+
+  // Map order is arrival order, so the tail is what came back last.
+  const answered = [...resolved.entries()].filter(([, result]) => result.status !== 'error')
+  const byKey = new Map(states.map((state) => [state.key, state]))
+  const heard = answered
+    .slice(-3)
+    .map(([key]) => byKey.get(key))
+    .filter((state): state is SeriesState => state !== undefined)
+  const pendingNames = started
+    .filter((group) => {
+      const result = resolved.get(group.key)
+      return !result || result.status === 'error'
+    })
+    .map((group) => group.name)
+  const failedNames = states
+    .filter((state) => resolved.get(state.key)?.status === 'error')
+    .map((state) => state.name)
+
   function toggle(key: string) {
     setDismissed((current) => {
       const next = new Set(current)
@@ -267,32 +294,25 @@ function SeriesBoard({ summary }: { summary: SeriesSummary }) {
     <section className="board">
       <h2>Series</h2>
 
-      <div className="actions">
-        <button type="button" onClick={lookUp} disabled={progress !== null}>
-          {progress
-            ? `Looking up… ${progress.done} of ${progress.total}`
-            : `Look up ${started.length} series`}
-        </button>
-        {progress && progress.total > 0 && (
-          <div
-            className="meter"
-            role="progressbar"
-            aria-valuenow={progress.done}
-            aria-valuemin={0}
-            aria-valuemax={progress.total}
-          >
-            <span style={{ width: `${(progress.done / progress.total) * 100}%` }} />
-          </div>
-        )}
-      </div>
-
-      {!progress && counts.failed > 0 && (
-        <p className="error" role="status">
-          {counts.failed === states.length
-            ? failureMessage(firstDetail(resolved))
-            : `${counts.failed} series couldn\u2019t be looked up. Try again \u2014 it is usually temporary.`}
-        </p>
-      )}
+      <LookupPanel
+        phase={phase}
+        total={started.length}
+        heardCount={answered.length}
+        heard={heard}
+        pendingNames={pendingNames}
+        summary={{
+          ready: counts.next_available,
+          reading: live.filter((s) => s.inProgress).map((s) => s.name),
+          waiting: live.filter((s) => !s.inProgress && s.status === 'waiting').map((s) => s.name),
+          complete: states.filter((s) => s.status === 'complete').map((s) => s.name),
+        }}
+        failedNames={failedNames}
+        failure={failureKind(firstDetail(resolved))}
+        onLookUp={lookUp}
+        onShowResults={() =>
+          document.getElementById('series-list')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }
+      />
 
       {resolved.size > 0 && (
         <dl className="tiles">
@@ -357,7 +377,7 @@ function SeriesBoard({ summary }: { summary: SeriesSummary }) {
         </div>
       )}
 
-      <ul className="series-list">
+      <ul className="series-list" id="series-list">
         {visible.map((state) => (
           <SeriesRow
             key={state.key}
@@ -733,13 +753,9 @@ function firstDetail(resolved: Map<string, SeriesResult>): string | null {
  * A reader needs to know whether to wait, retry, or give up — not which HTTP
  * status came back. The technical detail stays in the logs.
  */
-function failureMessage(detail: string | null): string {
+function failureKind(detail: string | null): FailureKind {
   const text = (detail ?? '').toLowerCase()
-  if (text.includes('too many') || text.includes('429')) {
-    return 'Too many lookups just now. Wait a minute and try again.'
-  }
-  if (text.includes('not configured')) {
-    return 'Series lookup is not set up on this server yet.'
-  }
-  return 'Could not reach the series database. Try again in a moment — nothing was lost.'
+  if (text.includes('too many') || text.includes('429')) return 'busy'
+  if (text.includes('not configured')) return 'unset'
+  return 'unreachable'
 }
