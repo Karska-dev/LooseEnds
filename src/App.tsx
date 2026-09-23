@@ -97,13 +97,12 @@ export default function App() {
 
   return (
     <main className="page">
-      <SkinPicker />
-
       <header className="masthead">
         <h1>Loose Ends</h1>
         <p className="tagline">
           You&rsquo;ve read four. There are seven. Here&rsquo;s book five.
         </p>
+        <SkinPicker />
       </header>
 
       <section className="intake">

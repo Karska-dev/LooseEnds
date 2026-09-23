@@ -103,13 +103,20 @@ export function LookupPanel({
   }, [phase])
 
   // Rate limits are per minute, so a busy failure counts down one minute.
+  // The reset happens during render, when the panel turns busy, rather than
+  // in the effect: setting state from an effect body costs an extra render.
+  const busy = phase === 'failed' && failure === 'busy'
   const [secs, setSecs] = useState(60)
+  const [wasBusy, setWasBusy] = useState(busy)
+  if (busy !== wasBusy) {
+    setWasBusy(busy)
+    if (busy) setSecs(60)
+  }
   useEffect(() => {
-    if (phase !== 'failed' || failure !== 'busy') return
-    setSecs(60)
+    if (!busy) return
     const timer = setInterval(() => setSecs((value) => (value > 0 ? value - 1 : 0)), 1000)
     return () => clearInterval(timer)
-  }, [phase, failure])
+  }, [busy])
 
   const current = pendingNames.length > 0 ? pendingNames[tick % pendingNames.length] : null
   const shown = heard.slice(-3)

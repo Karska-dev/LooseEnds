@@ -1030,9 +1030,119 @@ button.ghost:hover { border-bottom-color: var(--ink); }
   color: var(--surface);
 }
 
-@media (max-width: 460px) {
-  .skins { top: 8px; right: 8px; }
-  .skins button { padding: 4px 8px; font-size: 11px; }
+/* Below 900px the pill has no room and sits on the title, so it gives way
+   to the dial: one round button in the masthead that scrolls with the page
+   and drops three small circles, one per look. No panel, no words; each
+   circle shows "Aa" in its own look and the current one wears a ring. */
+
+.masthead { position: relative; }
+
+.skin-dial { display: none; }
+
+.skin-dial .skin-dial-button {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid var(--ink-muted);
+  background: transparent;
+  color: var(--ink);
+  letter-spacing: 0;
+}
+
+.skin-dial .skin-dial-button svg { display: block; }
+
+.skin-dial .skin-dial-button[aria-expanded='true'] {
+  background: var(--primary-soft);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.skin-dots {
+  position: absolute;
+  top: calc(100% + 12px);
+  left: 50%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transform: translateX(-50%);
+  transform-origin: top center;
+  animation: dial-in 0.16s ease-out;
+}
+
+@keyframes dial-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(-10px) scale(0.8); }
+  to { opacity: 1; transform: translateX(-50%); }
+}
+
+/* The faces preview the look they switch to, so they are the same in every
+   skin and in the dark. */
+.skin-dial .skin-dot {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  letter-spacing: 0;
+  line-height: 1;
+  transition: transform 0.12s;
+}
+
+.skin-dial .skin-dot.skin-dot-quiet {
+  border: 1px solid #aeb6c3;
+  background: #f7f8fb;
+  color: #0f141c;
+  font: 400 19px/1 "Instrument Serif", Georgia, serif;
+  box-shadow: 0 4px 10px rgba(15, 20, 28, 0.14);
+}
+
+.skin-dial .skin-dot.skin-dot-soft {
+  border: 0;
+  background: #fdf6f1;
+  color: #3b2f3a;
+  font: 800 13px/1 Nunito, system-ui, sans-serif;
+  box-shadow: 4px 5px 10px rgba(160, 120, 140, 0.35), -3px -3px 8px rgba(255, 255, 255, 0.9);
+}
+
+.skin-dial .skin-dot.skin-dot-brutal {
+  border: 3px solid #0a0a0a;
+  background: #f03b27;
+  color: #ffffff;
+  font: 400 17px/1 Anton, Impact, sans-serif;
+  box-shadow: 3px 3px 0 #0a0a0a;
+}
+
+.skin-dial .skin-dot[aria-checked='true']::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 2px solid var(--primary);
+  pointer-events: none;
+}
+
+.skin-dial .skin-dot:focus-visible { outline: 2px solid var(--ink); outline-offset: 9px; }
+
+@media (hover: hover) {
+  .skin-dial .skin-dot:hover { transform: scale(1.08); }
+  .skin-dial .skin-dial-button:hover { border-color: var(--ink); }
+}
+
+@media (max-width: 899px) {
+  .skins { display: none; }
+  .skin-dial { display: block; position: absolute; top: 0; right: 0; z-index: 20; }
+  .masthead h1,
+  .masthead .tagline { padding-right: 52px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skin-dots { animation: none; }
+  .skin-dial .skin-dot { transition: none; }
+  .skin-dial .skin-dot:hover { transform: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1735,10 +1845,29 @@ button.ghost:hover { border-bottom-color: var(--ink); }
 [data-skin='brutal'] .skins button { border: 0; border-radius: 0; font-weight: 700; color: var(--ink); }
 [data-skin='brutal'] .skins button[aria-pressed='true'] { background: var(--ink); color: var(--bg); }
 
+[data-skin='brutal'] .skin-dial .skin-dial-button {
+  border: 3px solid var(--rule);
+  border-radius: 0;
+  background: var(--bg);
+  color: var(--ink);
+}
+[data-skin='brutal'] .skin-dial .skin-dial-button[aria-expanded='true'] { background: var(--ink); color: var(--bg); }
+[data-skin='brutal'] .skin-dial .skin-dot[aria-checked='true']::after { border: 3px solid var(--ink); }
+[data-skin='brutal'] .skin-dial .skin-dot:focus-visible { outline: 3px solid var(--ink); }
+
+@media (max-width: 899px) {
+  /* No fixed pill to clear any more: the button lives in the band. */
+  [data-skin='brutal'] .page { margin-top: 16px; }
+  [data-skin='brutal'] .masthead { grid-template-columns: 1fr; }
+  [data-skin='brutal'] .tagline { text-align: left; }
+  [data-skin='brutal'] .skin-dial { top: 22px; right: 24px; }
+}
+
 /* ---------- phone ---------- */
 
 @media (max-width: 460px) {
-  [data-skin='brutal'] .page { width: calc(100% - 16px); margin-top: 52px; }
+  [data-skin='brutal'] .page { width: calc(100% - 16px); margin-top: 8px; }
+  [data-skin='brutal'] .skin-dial { top: 18px; right: 16px; }
   [data-skin='brutal'] .masthead { grid-template-columns: 1fr; padding: 18px 16px; }
   [data-skin='brutal'] .tagline { text-align: left; }
   [data-skin='brutal'] .intake,
@@ -2393,6 +2522,15 @@ button.ghost:hover { border-bottom-color: var(--ink); }
 [data-skin='soft'] .skins { border: 0; background: var(--surface); box-shadow: var(--lift); }
 [data-skin='soft'] .skins button { box-shadow: none; background: none; color: var(--ink-soft); font-weight: 700; }
 [data-skin='soft'] .skins button[aria-pressed='true'] { background-image: var(--lilac); color: var(--lilac-ink); }
+
+[data-skin='soft'] .skin-dial .skin-dial-button {
+  border: 0;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--lift);
+}
+[data-skin='soft'] .skin-dial .skin-dial-button[aria-expanded='true'] { box-shadow: var(--press); color: var(--primary); }
+[data-skin='soft'] .skin-dial .skin-dot:focus-visible { outline-color: var(--primary); }
 
 @media (max-width: 460px) {
   [data-skin='soft'] .verdict { margin-left: 0; }
