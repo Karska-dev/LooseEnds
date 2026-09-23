@@ -173,7 +173,7 @@ button.ghost {
   flex: none;
 }
 
-button.ghost:hover { border-bottom-color: var(--ink); }
+@media (hover: hover) { button.ghost:hover { border-bottom-color: var(--ink); } }
 
 .meter {
   flex: 1 1 160px;
@@ -396,7 +396,7 @@ button.ghost:hover { border-bottom-color: var(--ink); }
 }
 
 .series-row.is-open .chev { transform: rotate(45deg); margin: -3px 0 0; }
-.disclose:hover .chevron { color: var(--ink); }
+@media (hover: hover) { .disclose:hover .chevron { color: var(--ink); } }
 
 @media (prefers-reduced-motion: reduce) {
   .chev { transition: none; }
@@ -571,7 +571,7 @@ button.ghost:hover { border-bottom-color: var(--ink); }
 .disclose { align-items: center; }
 
 .vol-title a { color: inherit; text-decoration: none; border-bottom: 1px solid var(--line); }
-.vol-title a:hover { border-bottom-color: var(--ink-faint); }
+@media (hover: hover) { .vol-title a:hover { border-bottom-color: var(--ink-faint); } }
 
 .colophon a { color: var(--ink-soft); }
 
@@ -656,7 +656,7 @@ button.ghost:hover { border-bottom-color: var(--ink); }
 }
 
 .drawer-head:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
-.drawer-head:hover .chevron { color: var(--ink); }
+@media (hover: hover) { .drawer-head:hover .chevron { color: var(--ink); } }
 .drawer-id { display: flex; flex-direction: column; flex: 1 1 auto; min-width: 0; }
 
 .drawer-title {
@@ -730,7 +730,7 @@ button.ghost:hover { border-bottom-color: var(--ink); }
   cursor: pointer;
 }
 
-.linklike:hover { text-decoration: none; }
+@media (hover: hover) { .linklike:hover { text-decoration: none; } }
 
 /* ---------- the loaded library: a shelf ----------
    One spine per book, coloured by Goodreads shelf, standing on a rule; the
@@ -1449,7 +1449,7 @@ button.ghost:hover { border-bottom-color: var(--ink); }
   font-weight: 700;
 }
 
-[data-skin='brutal'] button.ghost:hover { background: var(--ink); color: var(--bg); }
+@media (hover: hover) { [data-skin='brutal'] button.ghost:hover { background: var(--ink); color: var(--bg); } }
 
 /* The lookup is the one call to action on the board. */
 [data-skin='brutal'] .lookup-go {
@@ -1497,7 +1497,7 @@ button.ghost:hover { border-bottom-color: var(--ink); }
   background: none;
 }
 
-[data-skin='brutal'] .dropzone button.ghost:hover { background: #0a0a0a; color: #ffd400; }
+@media (hover: hover) { [data-skin='brutal'] .dropzone button.ghost:hover { background: #0a0a0a; color: #ffd400; } }
 
 /* ---------- the counts ---------- */
 
@@ -1624,7 +1624,7 @@ button.ghost:hover { border-bottom-color: var(--ink); }
 }
 
 [data-skin='brutal'] .disclose:active .chevron { transform: translate(2px, 2px); }
-[data-skin='brutal'] .disclose:hover .chevron { background: var(--ink); color: var(--bg); }
+@media (hover: hover) { [data-skin='brutal'] .disclose:hover .chevron { background: var(--ink); color: var(--bg); } }
 
 [data-skin='brutal'] .cover { border: 3px solid var(--rule); }
 [data-skin='brutal'] .cover-lg { width: 40px; height: 60px; }
@@ -1660,8 +1660,8 @@ button.ghost:hover { border-bottom-color: var(--ink); }
 [data-skin='brutal'] .drawer-head { gap: 14px; padding: 14px 0; border: 0; background: none; box-shadow: none; }
 [data-skin='brutal'] .drawer-head:active:not(:disabled) { transform: none; }
 [data-skin='brutal'] .drawer-head:active .chevron { transform: translate(2px, 2px); }
-[data-skin='brutal'] .drawer-head:hover .chevron,
 [data-skin='brutal'] .drawer.is-open .chevron { background: var(--ink); color: var(--bg); }
+@media (hover: hover) { [data-skin='brutal'] .drawer-head:hover .chevron { background: var(--ink); color: var(--bg); } }
 [data-skin='brutal'] .drawer-head:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
 [data-skin='brutal'] .drawer-title { font-family: var(--display); font-size: 24px; line-height: 1; text-transform: uppercase; }
 [data-skin='brutal'] .drawer-meta { font-family: var(--mono); font-size: 12px; letter-spacing: 0; text-transform: uppercase; color: var(--byline); }
@@ -2101,7 +2101,7 @@ button.ghost:hover { border-bottom-color: var(--ink); }
   color: var(--body-ink);
 }
 
-[data-skin='soft'] button.ghost:hover { color: var(--ink); }
+@media (hover: hover) { [data-skin='soft'] button.ghost:hover { color: var(--ink); } }
 
 /* The lookup is the one thing left to do on the board: lilac, and bigger. */
 [data-skin='soft'] .lookup-go {
@@ -2288,7 +2288,7 @@ button.ghost:hover { border-bottom-color: var(--ink); }
 }
 
 [data-skin='soft'] .disclose:active .chevron { box-shadow: var(--press); }
-[data-skin='soft'] .disclose:hover .chevron { color: var(--ink); }
+@media (hover: hover) { [data-skin='soft'] .disclose:hover .chevron { color: var(--ink); } }
 
 [data-skin='soft'] .verdict { margin-left: 39px; }
 
@@ -2542,3 +2542,166 @@ button.ghost:hover { border-bottom-color: var(--ink); }
   [data-skin='soft'] button,
   [data-skin='soft'] .file-button { transition: none; }
 }
+
+/* ==================================================================
+   Interaction states — one rule per skin
+   ------------------------------------------------------------------
+   Quiet: hover draws a line, pressing inks it. Soft: hover rises,
+   pressing sinks. Bold: hover inks more, pressing moves or floods the
+   plate. Every hover sits in @media (hover: hover) so a phone never
+   keeps it after a tap; every change takes 120ms; with reduced motion
+   nothing moves, only colour changes. Tile focus rings sit inside the
+   tile so they never cut into the next one. Kept last so it wins over
+   each skin's resting rules.
+   ================================================================== */
+
+/* ---------- all skins ---------- */
+[data-skin] .tile, [data-skin] .drawer-head, [data-skin] .lookup-go, [data-skin] button.ghost,
+[data-skin] .chevron, [data-skin] .chev, [data-skin] .tile::after, [data-skin] .tile-n {
+  transition: transform 120ms ease, box-shadow 120ms ease, background-color 120ms ease, color 120ms ease,
+              height 120ms ease, translate 120ms ease, border-color 120ms ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-skin] * { transition-property: background-color, color, border-color !important; }
+  /* Only the hover lifts and nudges stop; a chevron still turns to show open. */
+  [data-skin] .tile, [data-skin] .lookup-go, [data-skin] button.ghost,
+  [data-skin] .disclose .chevron { transform: none !important; }
+  [data-skin] .chev { translate: none !important; }
+}
+
+/* ---------- Quiet: hairlines. Hover draws, pressing inks. ---------- */
+@media (hover: hover) {
+  [data-skin='quiet'] .tile:hover::after { height: 3px; }
+  [data-skin='quiet'] .tile:hover .tile-eye { color: var(--ink); }
+  [data-skin='quiet'] .tile[aria-pressed='false']:hover::after {
+    display: block; height: 0; background: none; border-bottom: 2px dashed var(--tile-color);
+  }
+  [data-skin='quiet'] .tile[aria-pressed='false']:hover .tile-n { color: var(--ink-soft); }
+  [data-skin='quiet'] .drawer-head:hover {
+    background: var(--line-soft);
+    box-shadow: -14px 0 0 var(--line-soft), 14px 0 0 var(--line-soft);
+  }
+  [data-skin='quiet'] .drawer-head:hover .chev,
+  [data-skin='quiet'] .disclose:hover .chev { translate: 2px 0; }
+  [data-skin='quiet'] .disclose:hover .series-name {
+    text-decoration: underline 1px var(--ink-faint); text-underline-offset: 5px;
+  }
+  [data-skin='quiet'] .lookup-go:hover { background: var(--ink); color: var(--ground); }
+}
+[data-skin='quiet'] .tile:active { background: var(--line-soft); }
+[data-skin='quiet'] .tile:active::after { display: block; height: 3px; border: 0; background: var(--tile-color); }
+[data-skin='quiet'] .drawer-head:active {
+  background: var(--line); box-shadow: -14px 0 0 var(--line), 14px 0 0 var(--line);
+}
+[data-skin='quiet'] .disclose:active .chevron { color: var(--primary); }
+[data-skin='quiet'] button.ghost:active { color: var(--primary); border-bottom-color: var(--primary); box-shadow: inset 0 -1px 0 var(--primary); }
+[data-skin='quiet'] .lookup-go:active { background: var(--primary); border-color: var(--primary); color: var(--ground); }
+[data-skin='quiet'] .vol-title a:active { color: var(--primary); border-bottom-color: var(--primary); }
+[data-skin='quiet'] .tile:focus-visible { outline-offset: -2px; }
+
+/* ---------- Soft: clay. Hover rises, pressing sinks. ---------- */
+[data-skin='soft'] { --lift-up: 9px 12px 22px rgba(160,120,140,0.34), -6px -7px 16px rgba(255,255,255,0.95), inset 2px 3px 6px rgba(255,255,255,0.55);
+                        --press-deep: inset 7px 8px 16px rgba(150,110,130,0.46), inset -3px -4px 10px rgba(255,255,255,0.7); }
+@media (prefers-color-scheme: dark) {
+  [data-skin='soft'] { --lift-up: 8px 11px 20px rgba(0,0,0,0.6), inset 1.5px 1.5px 0 rgba(255,255,255,0.14);
+                          --press-deep: inset 7px 8px 16px rgba(0,0,0,0.6), inset -1px -1px 0 rgba(255,255,255,0.08); }
+}
+@media (hover: hover) {
+  [data-skin='soft'] .tile[aria-pressed='true']:hover { transform: translateY(-2px); box-shadow: var(--lift-up); }
+  [data-skin='soft'] .tile:hover .tile-eye { opacity: 1; }
+  [data-skin='soft'] .tile[aria-pressed='false']:hover { background: color-mix(in srgb, var(--dot) 30%, transparent); }
+  [data-skin='soft'] .drawer:not(.is-open) .drawer-head:hover { background: color-mix(in srgb, var(--surface) 70%, transparent); }
+  [data-skin='soft'] .drawer-head:hover .chev { translate: 2px 0; }
+  [data-skin='soft'] .disclose:hover .chevron { transform: translateY(-1px); box-shadow: var(--lift-up); color: var(--ink); }
+  [data-skin='soft'] button.ghost:hover { transform: translateY(-1px); box-shadow: var(--lift-up); }
+  [data-skin='soft'] .lookup-go:hover { transform: translateY(-2px); box-shadow: var(--lift-up); }
+  [data-skin='soft'] .vol-title a:hover { color: var(--primary); border-bottom-color: currentColor; }
+}
+[data-skin='soft'] .tile[aria-pressed='true']:active { transform: none; box-shadow: var(--press); }
+[data-skin='soft'] .tile[aria-pressed='false']:active { box-shadow: var(--press-deep); background: color-mix(in srgb, var(--dot) 45%, transparent); }
+[data-skin='soft'] .drawer:not(.is-open) .drawer-head:active { box-shadow: var(--press-deep); }
+[data-skin='soft'] .vol-title a:active { color: var(--ink); border-bottom-color: var(--ink); }
+[data-skin='soft'] button.ghost:active:not(:disabled),
+[data-skin='soft'] .lookup-go:active:not(:disabled) { transform: none; box-shadow: var(--press); }
+
+/* ---------- Bold: print. Hover inks more, pressing moves the plate. ---------- */
+@media (hover: hover) {
+  [data-skin='brutal'] .tile:hover::after { height: 10px; }
+  [data-skin='brutal'] .tile[aria-pressed='false']:hover .tile-n {
+    color: color-mix(in srgb, var(--tile-color) 30%, transparent); -webkit-text-stroke-color: var(--tile-color);
+  }
+  [data-skin='brutal'] .tile[aria-pressed='false']:hover::after { display: block; height: 6px; background: repeating-linear-gradient(90deg, var(--tile-color) 0 8px, transparent 8px 14px); }
+  [data-skin='brutal'] .drawer-head:hover .drawer-title,
+  [data-skin='brutal'] .disclose:hover .series-name { width: fit-content; box-shadow: inset 0 -0.42em 0 var(--yellow); }
+  [data-skin='brutal'] .lookup-go:hover { background: var(--ink); color: var(--bg); }
+  [data-skin='brutal'] .vol-title a:hover { background: var(--yellow); color: #0a0a0a; box-shadow: 0 0 0 2px var(--yellow); }
+}
+[data-skin='brutal'] .tile:active:not(:disabled) { transform: none; background: var(--line-soft); }
+[data-skin='brutal'] .tile:active::after { display: block; height: 100%; opacity: 0.18; }
+[data-skin='brutal'] .vol-title a:active { background: var(--ink); color: var(--bg); box-shadow: 0 0 0 2px var(--ink); }
+[data-skin='brutal'] .tile:focus-visible { outline-offset: -7px; }
+[data-skin='brutal'] .lookup-go:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+[data-skin='brutal'] .disclose:focus-visible,
+[data-skin='brutal'] .vol-title a:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+[data-skin='soft'] .disclose:focus-visible { outline: 3px solid var(--primary); outline-offset: 4px; border-radius: 14px; }
+[data-skin='soft'] .vol-title a:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; border-radius: 4px; }
+[data-skin='quiet'] .vol-title a:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+/* ---------- the rest of the controls, same rules ----------
+   The file button, "Use a different file", "Try a sample library" and
+   both skin pickers follow the three rules above too. */
+[data-skin] .file-button, [data-skin] .change-file, [data-skin] .skins button,
+[data-skin] .skin-dial-button, [data-skin] .linklike {
+  transition: transform 120ms ease, box-shadow 120ms ease, background-color 120ms ease, color 120ms ease,
+              border-color 120ms ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-skin] .file-button, [data-skin] .change-file, [data-skin] .skin-dial-button { transform: none !important; }
+}
+
+/* Quiet: the ink button turns indigo on hover; an outlined one fills. */
+@media (hover: hover) {
+  [data-skin='quiet'] .file-button:hover { background: var(--primary); border-color: var(--primary); }
+  [data-skin='quiet'] .change-file:hover { background: var(--ink); color: var(--ground); }
+  [data-skin='quiet'] .skins button[aria-pressed='false']:hover { background: var(--line-soft); color: var(--ink); }
+  [data-skin='quiet'] .skin-dial .skin-dial-button[aria-expanded='false']:hover { background: var(--line-soft); }
+}
+[data-skin='quiet'] .file-button:active { background: var(--ink); border-color: var(--ink); box-shadow: inset 0 0 0 2px var(--primary); }
+[data-skin='quiet'] .change-file:active { background: var(--primary); border-color: var(--primary); color: var(--ground); }
+[data-skin='quiet'] .skins button:active { background: var(--primary-soft); color: var(--primary); }
+[data-skin='quiet'] .skin-dial .skin-dial-button:active { background: var(--primary-soft); border-color: var(--primary); color: var(--primary); }
+[data-skin='quiet'] .linklike:active { color: var(--ink); }
+
+/* Soft: everything raised rises; the flat pill segments tint. */
+@media (hover: hover) {
+  [data-skin='soft'] .file-button:hover,
+  [data-skin='soft'] .change-file:hover { transform: translateY(-2px); box-shadow: var(--lift-up); }
+  [data-skin='soft'] .skins button[aria-pressed='false']:hover { color: var(--ink); background: color-mix(in srgb, var(--primary-soft) 45%, transparent); }
+  [data-skin='soft'] .skin-dial .skin-dial-button[aria-expanded='false']:hover { transform: translateY(-1px); box-shadow: var(--lift-up); }
+}
+[data-skin='soft'] .file-button:active,
+[data-skin='soft'] .change-file:active:not(:disabled),
+[data-skin='soft'] .skin-dial .skin-dial-button:active:not(:disabled) { transform: none; box-shadow: var(--press); }
+[data-skin='soft'] .skins button:active:not(:disabled) { box-shadow: var(--press); }
+[data-skin='soft'] .linklike:active { color: var(--ink); }
+/* The triangle has to sink while held, even though the pointer is still on it. */
+[data-skin='soft'] .disclose:active .chevron { transform: none; box-shadow: var(--press); }
+
+/* Bold: the two calls to action swap colours on hover; the rest invert. */
+@media (hover: hover) {
+  [data-skin='brutal'] .file-button:hover { background: var(--blue); color: #ffffff; }
+  [data-skin='brutal'] .change-file:hover { background: var(--ink); color: var(--bg); }
+  [data-skin='brutal'] .skins button[aria-pressed='false']:hover { background: var(--yellow); color: #0a0a0a; }
+  [data-skin='brutal'] .skin-dial .skin-dial-button[aria-expanded='false']:hover { background: var(--yellow); color: #0a0a0a; }
+}
+[data-skin='brutal'] .linklike:active { background: var(--yellow); color: #0a0a0a; }
+
+/* The colophon's "Hardcover" link: the same treatment as a book link. */
+@media (hover: hover) {
+  [data-skin='quiet'] .colophon a:hover { color: var(--ink); }
+  [data-skin='soft'] .colophon a:hover { color: var(--ink); }
+  [data-skin='brutal'] .colophon a:hover { background: var(--yellow); color: #0a0a0a; box-shadow: 0 0 0 2px var(--yellow); }
+}
+[data-skin='quiet'] .colophon a:active { color: var(--primary); }
+[data-skin='soft'] .colophon a:active { color: var(--primary); text-decoration-thickness: 2px; }
+[data-skin='brutal'] .colophon a:active { background: var(--ink); color: var(--bg); box-shadow: 0 0 0 2px var(--ink); }
