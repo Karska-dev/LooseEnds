@@ -189,7 +189,7 @@ function SeriesBoard({ summary }: { summary: SeriesSummary }) {
   const [dismissed, setDismissed] = useState<Set<string>>(new Set())
   // Every visit starts with Finished and Set aside hidden; nothing is saved.
   const [visibleTiles, setVisibleTiles] = useState<Record<Tile, boolean>>({ ...DEFAULT_VISIBLE })
-  const [showStandalone, setShowStandalone] = useState(false)
+  const [standaloneOpen, setStandaloneOpen] = useState(false)
   const [openKey, setOpenKey] = useState<string | null>(null)
 
   /**
@@ -322,21 +322,6 @@ function SeriesBoard({ summary }: { summary: SeriesSummary }) {
         </>
       )}
 
-      {/* Until the drawer lands (plan step 4), this is the one checkbox left. */}
-      {standalone.length > 0 && (
-        <div className="toggles">
-          <label className="toggle">
-            <input
-              type="checkbox"
-              id="show-standalone"
-              checked={showStandalone}
-              onChange={(event) => setShowStandalone(event.target.checked)}
-            />
-            Show {standalone.length} not in a series
-          </label>
-        </div>
-      )}
-
       <ul className="series-list" id="series-list">
         {visible.map((state) => (
           <SeriesRow
@@ -348,16 +333,15 @@ function SeriesBoard({ summary }: { summary: SeriesSummary }) {
             onOpen={() => setOpenKey(openKey === state.key ? null : state.key)}
           />
         ))}
-        {showStandalone && standalone.length > 0 && (
-          <StandaloneRow
-            books={standalone}
-            open={openKey === STANDALONE_KEY}
-            onOpen={() =>
-              setOpenKey(openKey === STANDALONE_KEY ? null : STANDALONE_KEY)
-            }
-          />
-        )}
       </ul>
+
+      {standalone.length > 0 && (
+        <StandaloneDrawer
+          books={standalone}
+          open={standaloneOpen}
+          onToggle={() => setStandaloneOpen((value) => !value)}
+        />
+      )}
 
       {notStarted > 0 && (
         <p className="note">
@@ -369,64 +353,63 @@ function SeriesBoard({ summary }: { summary: SeriesSummary }) {
   )
 }
 
-const STANDALONE_KEY = '\u0000standalone'
-
 /** Read first, then in progress, then abandoned, then the wishlist. */
 const DISPLAY_RANK: Record<string, number> = { read: 0, reading: 1, dnf: 2, to_read: 3 }
 
+/* Three books stand in for the lot on the closed drawer, in shelf colours:
+   standalone books have no covers to show. */
+const PREVIEW = 3
+
 /**
- * One collapsed row rather than several hundred loose ones: these are not
- * series, and a series list is the wrong place to scatter them.
+ * A drawer at the end of the list rather than several hundred loose rows:
+ * these are not series, and the series list is the wrong place to scatter
+ * them. It is there before the lookup too — the books are known from the
+ * export alone — and opens to the whole list, no inner scroll.
  */
-function StandaloneRow({
+function StandaloneDrawer({
   books,
   open,
-  onOpen,
+  onToggle,
 }: {
   books: Book[]
   open: boolean
-  onOpen: () => void
+  onToggle: () => void
 }) {
-  const readCount = books.filter((book) => book.shelf === 'read').length
-
   return (
-    <li className={`series-row is-standalone${open ? ' is-open' : ''}`}>
-      <div className="series-head">
-        <button
-          type="button"
-          className="disclose"
-          aria-expanded={open}
-          aria-controls="standalone-books"
-          onClick={onOpen}
-        >
-          {/* Drawn, not typed: a "+" in one skin's display face is a
-              different size and weight from the next one's. */}
-          <span className="chevron" aria-hidden="true">
-            <i className="chev" />
-          </span>
-          <Cover url={null} alt="" size="lg" />
-          <span className="series-id">
-            <span className="series-name">Not in a series</span>
-            <span className="byline">
-              {books.length} book{books.length === 1 ? '' : 's'}
-            </span>
-          </span>
-        </button>
-
-        <span className="series-meta">
-          <span className="progress-line">
-            <b>{readCount}</b> read
+    <section className={`drawer${open ? ' is-open' : ''}`}>
+      <button
+        type="button"
+        className="drawer-head"
+        aria-expanded={open}
+        aria-controls="standalone-books"
+        onClick={onToggle}
+      >
+        {/* Drawn, not typed: a "+" in one skin's display face is a
+            different size and weight from the next one's. */}
+        <span className="chevron" aria-hidden="true">
+          <i className="chev" />
+        </span>
+        <span className="drawer-id">
+          <span className="drawer-title">Not in a series</span>
+          <span className="drawer-meta">
+            {books.length} book{books.length === 1 ? '' : 's'} &middot; standalone
           </span>
         </span>
-      </div>
-
-      <p className="verdict muted">
-        No series in the Goodreads title. A few may be series books Goodreads never
-        labelled &mdash; worth a look if one of yours is missing above.
-      </p>
+        {!open && (
+          <span className="drawer-spines" aria-hidden="true">
+            {books.slice(0, PREVIEW).map((book, index) => (
+              <span key={index} className={`spine spine-${book.shelf}`} />
+            ))}
+          </span>
+        )}
+      </button>
 
       {open && (
         <div className="volumes" id="standalone-books">
+          <p className="note drawer-note">
+            No series in the Goodreads title. A few may be series books Goodreads never
+            labelled &mdash; worth a look if one of yours is missing above.
+          </p>
           <ol className="volume-list">
             {books.map((book, index) => (
               <BookLine key={`${book.title}-${index}`} book={book} />
@@ -434,7 +417,7 @@ function StandaloneRow({
           </ol>
         </div>
       )}
-    </li>
+    </section>
   )
 }
 

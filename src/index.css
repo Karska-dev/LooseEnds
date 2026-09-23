@@ -602,14 +602,52 @@ button.ghost:hover { border-bottom-color: var(--ink); }
 /* No position column: these books have no place in an order. */
 .volume-book { grid-template-columns: 28px 1fr; }
 
-.series-row.is-standalone .series-name { color: var(--ink-soft); }
+/*
+ * The drawer at the end of the list. Closed it is one row: the skin's
+ * expander, the title, a count and three spines in shelf colours. Open it
+ * hangs the books off it the same way a series hangs its volumes, all of
+ * them, with no inner scroll.
+ */
+.drawer { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 
-.series-row.is-standalone .cover-lg {
-  border: 1px dashed var(--line);
-  background: transparent;
+.drawer-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  padding: 16px 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  letter-spacing: 0;
+  text-align: left;
+  cursor: pointer;
 }
 
-.series-row.is-standalone .volume-list { max-height: 420px; overflow-y: auto; }
+.drawer-head:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.drawer-head:hover .chevron { color: var(--ink); }
+.drawer-id { display: flex; flex-direction: column; flex: 1 1 auto; min-width: 0; }
+
+.drawer-title {
+  font-family: var(--display);
+  font-size: 21px;
+  line-height: 1.15;
+  color: var(--ink);
+}
+
+.drawer-meta { font-size: 12.5px; letter-spacing: 0.02em; color: var(--ink-faint); }
+.drawer-spines { display: flex; gap: 3px; flex: none; }
+.drawer-spines .spine { flex: none; width: 12px; height: 18px; min-width: 0; }
+.drawer.is-open .chev { transform: rotate(45deg); margin: -3px 0 0; }
+.drawer .volumes { margin-top: 0; margin-bottom: 16px; }
+.drawer-note { margin: 0 0 8px; font-size: 13px; }
+
+@media (max-width: 360px) {
+  .drawer-spines { display: none; }
+}
 
 
 /* ---------- cover placeholder ---------- */
@@ -1071,8 +1109,10 @@ button.ghost:hover { border-bottom-color: var(--ink); }
   transition: opacity 0.16s ease;
 }
 
-[data-skin='brutal'] .series-row.is-open .chev { transform: none; margin: 0; }
-[data-skin='brutal'] .series-row.is-open .chev::after { opacity: 0; }
+[data-skin='brutal'] .series-row.is-open .chev,
+[data-skin='brutal'] .drawer.is-open .chev { transform: none; margin: 0; }
+[data-skin='brutal'] .series-row.is-open .chev::after,
+[data-skin='brutal'] .drawer.is-open .chev::after { opacity: 0; }
 
 [data-skin='soft'] .chev {
   width: 0;
@@ -1086,7 +1126,8 @@ button.ghost:hover { border-bottom-color: var(--ink); }
   transition: transform 0.16s ease;
 }
 
-[data-skin='soft'] .series-row.is-open .chev {
+[data-skin='soft'] .series-row.is-open .chev,
+[data-skin='soft'] .drawer.is-open .chev {
   transform: rotate(90deg);
   margin: 2px 0 0 -1px;
 }
@@ -1459,7 +1500,19 @@ button.ghost:hover { border-bottom-color: var(--ink); }
 [data-skin='brutal'] .badge-soon { background: var(--red); color: var(--on-dark); }
 [data-skin='brutal'] .badge-wait { background: var(--blue); color: var(--on-dark); }
 
-[data-skin='brutal'] .series-row.is-standalone .cover-lg { border-style: dashed; }
+[data-skin='brutal'] .drawer { border-top: 4px solid var(--rule); border-bottom: 4px solid var(--rule); }
+[data-skin='brutal'] .drawer-head { gap: 14px; padding: 14px 0; border: 0; background: none; box-shadow: none; }
+[data-skin='brutal'] .drawer-head:active:not(:disabled) { transform: none; }
+[data-skin='brutal'] .drawer-head:active .chevron { transform: translate(2px, 2px); }
+[data-skin='brutal'] .drawer-head:hover .chevron,
+[data-skin='brutal'] .drawer.is-open .chevron { background: var(--ink); color: var(--bg); }
+[data-skin='brutal'] .drawer-head:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+[data-skin='brutal'] .drawer-title { font-family: var(--display); font-size: 24px; line-height: 1; text-transform: uppercase; }
+[data-skin='brutal'] .drawer-meta { font-family: var(--mono); font-size: 12px; letter-spacing: 0; text-transform: uppercase; color: var(--byline); }
+[data-skin='brutal'] .drawer-spines { gap: 4px; }
+[data-skin='brutal'] .drawer-spines .spine { width: 14px; height: 22px; }
+[data-skin='brutal'] .drawer .volumes { margin-left: 46px; }
+[data-skin='brutal'] .drawer-note { font-family: var(--mono); font-size: 12px; color: var(--byline); }
 
 /* ---------- the volume list: a ledger ---------- */
 
@@ -2060,7 +2113,35 @@ button.ghost:hover { border-bottom-color: var(--ink); }
 [data-skin='soft'] .badge-wait { background: var(--waiting); }
 
 [data-skin='soft'] .cover { border-radius: 8px; box-shadow: var(--lift); }
-[data-skin='soft'] .series-row.is-standalone .cover-lg { border: 1.5px dashed var(--ink-faint); box-shadow: none; }
+/* Closed, the drawer is pressed into the sheet; open, it rises into a panel
+   and the books sit pressed into that. */
+[data-skin='soft'] .drawer {
+  border: 0;
+  border-radius: 20px;
+  transition: box-shadow 0.12s, background-color 0.12s;
+}
+
+[data-skin='soft'] .drawer-head {
+  gap: 14px;
+  padding: 12px 18px 12px 14px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.35);
+  box-shadow: var(--press);
+  font-weight: 700;
+}
+
+[data-skin='soft'] .drawer-head:active:not(:disabled) { box-shadow: var(--press); }
+[data-skin='soft'] .drawer.is-open { padding: 4px 4px 16px; background: var(--surface); box-shadow: var(--lift); }
+[data-skin='soft'] .drawer.is-open .drawer-head,
+[data-skin='soft'] .drawer.is-open .drawer-head:active:not(:disabled) { background: transparent; box-shadow: none; }
+[data-skin='soft'] .drawer.is-open .chevron { box-shadow: var(--press); }
+[data-skin='soft'] .drawer-head:focus-visible { outline: 3px solid var(--primary); outline-offset: 3px; }
+[data-skin='soft'] .drawer-title { font-family: var(--body); font-size: 16px; font-weight: 800; line-height: 1.25; }
+[data-skin='soft'] .drawer-meta { font-size: 13px; font-weight: 600; letter-spacing: 0; }
+[data-skin='soft'] .drawer-spines { gap: 4px; }
+[data-skin='soft'] .drawer-spines .spine { width: 14px; height: 22px; border-radius: 3px 3px 2px 2px; }
+[data-skin='soft'] .drawer .volumes { margin: 0 12px; }
+[data-skin='soft'] .drawer-note { margin: 0 4px 10px; }
 
 /* ---------- the volume list: pressed into the row ---------- */
 
