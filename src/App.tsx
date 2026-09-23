@@ -8,6 +8,7 @@ import { resolveAllSeries } from './resolve'
 import type { SeriesResult } from './resolve'
 import { buildSeriesState, sortSeriesStates } from './state'
 import { SkinPicker } from './SkinPicker.tsx'
+import { LibraryShelf } from './LibraryShelf.tsx'
 import type { SeriesState, VolumeRow } from './state'
 
 /**
@@ -104,15 +105,13 @@ export default function App() {
 
       <section className="intake">
         {parsed ? (
-          <p className="loaded">
-            <b>{fileName ?? 'Your export'}</b>
-            <span className="muted">
-              {parsed.books.length} book{parsed.books.length === 1 ? '' : 's'}
-            </span>
-            <button type="button" className="ghost" onClick={reset}>
-              Use a different file
-            </button>
-          </p>
+          <LibraryShelf
+            name={fileName ?? 'Your export'}
+            books={parsed.books}
+            counts={parsed.counts}
+            standalone={summary?.unmatched.length ?? 0}
+            onReset={reset}
+          />
         ) : (
           <>
         <h2>Your Goodreads export</h2>
@@ -162,18 +161,6 @@ export default function App() {
           </>
         )}
         {error && <p className="error">{error}</p>}
-        {parsed && (
-          <p className="note">
-            {parsed.counts.read} read &middot; {parsed.counts.reading} reading &middot;{' '}
-            {parsed.counts.to_read} to read &middot; {parsed.counts.dnf} did not finish
-          </p>
-        )}
-        {summary && (
-          <p className="note">
-            {parsed!.books.length - summary.unmatched.length} in a series &middot;{' '}
-            {summary.unmatched.length} not in a series
-          </p>
-        )}
       </section>
 
       {summary && <SeriesBoard summary={summary} />}

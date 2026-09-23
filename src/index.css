@@ -589,19 +589,6 @@ button.ghost:hover { border-bottom-color: var(--ink); }
 .series-row.is-pending { opacity: 0.72; }
 .series-row.is-pending .cover { background: var(--line-soft, var(--line)); }
 
-/* ---------- a loaded file ---------- */
-
-.loaded {
-  margin: 0;
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
-  flex-wrap: wrap;
-  font-size: 15px;
-}
-
-.loaded .muted { font-size: 14px; }
-
 /* A button that reads as a link: same affordance, no form semantics lost. */
 .linklike {
   border: 0;
@@ -614,6 +601,112 @@ button.ghost:hover { border-bottom-color: var(--ink); }
 }
 
 .linklike:hover { text-decoration: none; }
+
+/* ---------- the loaded library: a shelf ----------
+   One spine per book, coloured by Goodreads shelf, standing on a rule; the
+   number the lookup is about to use sits apart on the right. Quiet draws it
+   in ink and hairlines; Soft and Bold restyle it below. */
+
+.library {
+  display: flex;
+  gap: 28px;
+  padding: 22px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.library-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.library-head { margin: 0; display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+
+.library-name {
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 26px;
+  line-height: 1.1;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.library-count { font-size: 12.5px; letter-spacing: 0.02em; color: var(--ink-faint); }
+
+.shelf {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 70px;
+  border-bottom: 1px solid var(--ink);
+  overflow: hidden;
+}
+
+/* Width comes in as a flex-basis so a narrow shelf squeezes the spines
+   rather than cutting the last ones off. */
+.spine { display: block; flex: 0 1 auto; min-width: 3px; background: var(--spine); }
+.swatch { flex: none; width: 10px; height: 10px; background: var(--spine); }
+
+.spine-read { --spine: var(--ink); }
+.spine-reading { --spine: var(--primary); }
+.spine-to_read { --spine: transparent; box-shadow: inset 0 0 0 1px var(--ink-soft); }
+.spine-dnf { --spine: var(--ink-faint); }
+
+.shelf-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.shelf-legend li { display: flex; align-items: center; gap: 8px; }
+.shelf-legend b { font-weight: 500; color: var(--ink); }
+
+.library-side {
+  flex: none;
+  width: 220px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 16px;
+  padding-left: 24px;
+  border-left: 1px solid var(--line);
+}
+
+.change-file { align-self: flex-end; padding: 10px 18px; font-size: 13px; }
+
+.series-count { margin: 0; display: flex; flex-direction: column; gap: 6px; }
+
+.series-count-n {
+  font-family: var(--display);
+  font-size: 60px;
+  line-height: 0.9;
+  color: var(--primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.series-count-label { font-size: 14px; color: var(--ink); }
+.series-count-rest { font-size: 12.5px; color: var(--ink-faint); }
+
+@media (max-width: 460px) {
+  .library { flex-direction: column; gap: 20px; }
+  .library-side {
+    width: auto;
+    padding: 18px 0 0;
+    border-left: 0;
+    border-top: 1px solid var(--line);
+    flex-direction: row-reverse;
+    align-items: flex-start;
+  }
+  .change-file { align-self: flex-start; }
+}
 
 /* ==================================================================
    Skins
@@ -722,7 +815,7 @@ button.ghost:hover { border-bottom-color: var(--ink); }
 
 @media (max-height: 820px) {
   .page { padding-block: 24px 32px; gap: 20px; }
-  .intake { gap: 8px; padding: 16px 20px; }
+  .intake { gap: 8px; }
   .dropzone { padding: 12px 14px; }
   .how { font-size: 14px; }
   [data-skin='brutal'] .how,
@@ -934,7 +1027,6 @@ button.ghost:hover { border-bottom-color: var(--ink); }
 
 [data-skin='brutal'] .colophon a { color: var(--ink); }
 [data-skin='brutal'] .error { color: var(--red); font-weight: 700; }
-[data-skin='brutal'] .loaded b { font-weight: 700; }
 [data-skin='brutal'] .toggle { color: var(--ink); }
 [data-skin='brutal'] .toggle input { accent-color: var(--red); }
 
@@ -1179,6 +1271,47 @@ button.ghost:hover { border-bottom-color: var(--ink); }
 
 [data-skin='brutal'] .series-row.is-pending { opacity: 0.6; }
 
+/* ---------- the loaded library ---------- */
+
+[data-skin='brutal'] .library { border: 0; padding: 0; gap: 24px; }
+[data-skin='brutal'] .library-head { flex-direction: column; align-items: flex-start; gap: 6px; }
+
+[data-skin='brutal'] .library-name {
+  font-family: var(--display);
+  font-size: 32px;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+[data-skin='brutal'] .library-count { font-family: var(--mono); font-size: 12px; letter-spacing: 0; color: var(--byline); }
+[data-skin='brutal'] .shelf { gap: 4px; height: 82px; padding: 0 4px; border-bottom: 4px solid var(--rule); }
+
+[data-skin='brutal'] .spine,
+[data-skin='brutal'] .swatch { box-sizing: border-box; border: 2px solid var(--rule); box-shadow: none; }
+[data-skin='brutal'] .swatch { width: 12px; height: 12px; }
+
+[data-skin='brutal'] .spine-read { --spine: var(--ink); }
+[data-skin='brutal'] .spine-reading { --spine: var(--red); }
+[data-skin='brutal'] .spine-to_read { --spine: var(--bg); }
+[data-skin='brutal'] .spine-dnf { --spine: var(--grey); }
+
+[data-skin='brutal'] .shelf-legend { font-family: var(--mono); font-size: 12px; text-transform: uppercase; color: var(--ink); }
+[data-skin='brutal'] .shelf-legend b { font-weight: 700; }
+
+[data-skin='brutal'] .library-side { width: 240px; padding-left: 0; border-left: 0; gap: 14px; }
+[data-skin='brutal'] .change-file { padding: 10px 16px; font-size: 14px; }
+
+/* The count feeds the one action on the board, so it takes the "act here"
+   yellow — and like the dropzone it stays black-on-yellow in the dark. */
+[data-skin='brutal'] .series-count { padding: 14px 16px; background: #ffd400; border: 4px solid var(--rule); }
+[data-skin='brutal'] .series-count-n { font-family: var(--display); font-size: 64px; color: #0a0a0a; }
+[data-skin='brutal'] .series-count-label { font-family: var(--mono); font-size: 12px; font-weight: 700; text-transform: uppercase; color: #0a0a0a; }
+[data-skin='brutal'] .series-count-rest { font-family: var(--mono); font-size: 11.5px; color: #3a3a3a; }
+
+@media (max-width: 460px) {
+  [data-skin='brutal'] .library-side { border-top: 0; padding-top: 0; }
+}
+
 /* ---------- the picker ---------- */
 
 [data-skin='brutal'] .skins { border: 3px solid var(--rule); border-radius: 0; background: var(--bg); }
@@ -1268,6 +1401,14 @@ button.ghost:hover { border-bottom-color: var(--ink); }
   --h2: #a1728f;
   --step: #cfc3f5;
   --stars: #e0a24e;
+
+  --shelf-read: linear-gradient(150deg, #b6a9ef, #9d8fe6);
+  --shelf-reading: #f5b9a0;
+  --shelf-to-read: #efe4ee;
+  --shelf-dnf: #c9b4c3;
+  --shelf-rim: inset 0 0 0 1.5px rgba(128, 100, 120, 0.3);
+  --spine-shadow: 2px 3px 5px rgba(160, 120, 140, 0.3), inset 1px 1px 0 rgba(255, 255, 255, 0.5);
+  --step-sub: #5a4a66;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -1311,6 +1452,14 @@ button.ghost:hover { border-bottom-color: var(--ink); }
     --h2: #cf9fbe;
     --step: #554a7a;
     --stars: #e9b86a;
+
+    --shelf-read: linear-gradient(150deg, #7d6dcb, #6a5ab8);
+    --shelf-reading: linear-gradient(150deg, #c98570, #b86f6c);
+    --shelf-to-read: #3d3345;
+    --shelf-dnf: #6a5566;
+    --shelf-rim: inset 0 0 0 1.5px rgba(255, 255, 255, 0.16);
+    --spine-shadow: 3px 4px 8px rgba(0, 0, 0, 0.5), inset 1px 1px 0 rgba(255, 255, 255, 0.18);
+    --step-sub: #cbbfe0;
   }
 }
 
@@ -1344,8 +1493,7 @@ button.ghost:hover { border-bottom-color: var(--ink); }
 [data-skin='soft'] .note { color: var(--ink-soft); }
 [data-skin='soft'] .toggle input { accent-color: var(--primary); }
 [data-skin='soft'] .how { color: var(--body-ink); }
-[data-skin='soft'] .how b,
-[data-skin='soft'] .loaded b { color: var(--ink); font-weight: 800; }
+[data-skin='soft'] .how b { color: var(--ink); font-weight: 800; }
 
 /* Numbered steps as raised lilac coins. */
 [data-skin='soft'] .how { gap: 12px; }
@@ -1605,6 +1753,69 @@ button.ghost:hover { border-bottom-color: var(--ink); }
 [data-skin='soft'] .series-row.is-pending:nth-child(5n + 3) { --tint: var(--waiting); }
 [data-skin='soft'] .series-row.is-pending:nth-child(5n + 4) { --tint: var(--aside); }
 [data-skin='soft'] .series-row.is-pending:nth-child(5n + 5) { --tint: var(--step); }
+
+/* ---------- the loaded library: a raised panel with a pressed shelf ---------- */
+
+[data-skin='soft'] .library {
+  border: 0;
+  padding: 22px 24px;
+  gap: 20px;
+  border-radius: 22px;
+  background: var(--surface);
+  box-shadow: var(--lift);
+}
+
+[data-skin='soft'] .library-name { font-family: var(--body); font-size: 19px; font-weight: 800; }
+[data-skin='soft'] .library-count { font-size: 14px; font-weight: 600; letter-spacing: 0; }
+
+[data-skin='soft'] .shelf {
+  gap: 4px;
+  height: 76px;
+  padding: 0 12px 8px;
+  border: 0;
+  border-radius: 14px;
+  box-shadow: var(--press);
+}
+
+[data-skin='soft'] .spine { border-radius: 4px 4px 2px 2px; box-shadow: var(--spine-shadow); }
+[data-skin='soft'] .swatch { width: 12px; height: 12px; border-radius: 4px; box-shadow: none; }
+
+[data-skin='soft'] .spine-read { --spine: var(--shelf-read); }
+[data-skin='soft'] .spine-reading { --spine: var(--shelf-reading); }
+[data-skin='soft'] .spine-to_read { --spine: var(--shelf-to-read); }
+[data-skin='soft'] .spine-dnf { --spine: var(--shelf-dnf); }
+[data-skin='soft'] .spine.spine-to_read { box-shadow: var(--spine-shadow), var(--shelf-rim); }
+[data-skin='soft'] .swatch.spine-to_read { box-shadow: var(--shelf-rim); }
+
+[data-skin='soft'] .shelf-legend { gap: 8px 18px; font-size: 13.5px; font-weight: 700; color: var(--body-ink); }
+[data-skin='soft'] .shelf-legend b { font-weight: 800; }
+
+[data-skin='soft'] .library-side { width: 230px; padding-left: 0; border-left: 0; gap: 14px; }
+
+[data-skin='soft'] .change-file {
+  border-radius: 14px;
+  padding: 10px 14px;
+  font-size: 13.5px;
+  font-weight: 800;
+  color: var(--primary);
+}
+
+[data-skin='soft'] .series-count {
+  gap: 4px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  background: var(--step);
+  box-shadow: var(--lift);
+}
+
+[data-skin='soft'] .series-count-n { font-family: var(--body); font-size: 38px; font-weight: 800; line-height: 1; color: var(--ink); }
+[data-skin='soft'] .series-count-label { font-weight: 700; }
+[data-skin='soft'] .series-count-rest { font-weight: 600; color: var(--step-sub); }
+
+@media (max-width: 460px) {
+  [data-skin='soft'] .library { padding: 18px; }
+  [data-skin='soft'] .library-side { border-top: 0; padding-top: 0; }
+}
 
 /* ---------- furniture ---------- */
 
