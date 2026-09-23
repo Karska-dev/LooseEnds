@@ -9,6 +9,10 @@
   --ink: #0f141c;
   --ink-soft: #525d6c;
   --ink-faint: #858e9c;
+  /* Readable greys for things that are switched off: 4.5:1 for small text,
+     3:1 for the big numbers. --ink-faint is decoration only. */
+  --ink-muted: #646d7b;
+  --ink-hidden-n: #7d8694;
   --line: #dae0e8;
   --line-soft: #e6eaf1;
   --primary: #3b4a9e;
@@ -36,6 +40,8 @@
     --ink: #e9edf4;
     --ink-soft: #8b95a4;
     --ink-faint: #6b7483;
+    --ink-muted: #768090;
+    --ink-hidden-n: #6b7483;
     --line: #232b36;
     --line-soft: #1a212a;
     --primary: #8f9cff;
@@ -279,15 +285,15 @@ button.ghost:hover { border-bottom-color: var(--ink); }
 .tile:first-child::after { left: 0; }
 
 .tile[aria-pressed='false']::after { display: none; }
-.tile[aria-pressed='false'] .tile-n { color: var(--ink-faint); opacity: 0.55; }
+.tile[aria-pressed='false'] .tile-n { color: var(--ink-hidden-n); }
 .tile[aria-pressed='false'] .tile-label,
-.tile[aria-pressed='false'] .tile-eye { color: var(--ink-faint); }
+.tile[aria-pressed='false'] .tile-eye { color: var(--ink-muted); }
 .tile:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 
 /* "Showing 6 series · Finished and Set aside hidden · Show all" */
 .list-head { display: flex; align-items: baseline; gap: 6px 14px; flex-wrap: wrap; }
 .list-count { font-size: 14px; color: var(--ink); }
-.list-hidden { font-size: 13px; color: var(--ink-faint); text-transform: lowercase; }
+.list-hidden { font-size: 13px; color: var(--ink-muted); text-transform: lowercase; }
 
 .toggle {
   display: flex;
@@ -471,7 +477,7 @@ button.ghost:hover { border-bottom-color: var(--ink); }
 .volume-read .vol-title { color: var(--ink); }
 .volume.is-next .vol-title { color: var(--accent); }
 .volume-read .vol-title { font-weight: 600; }
-.vol-alt { font-size: 12.5px; color: var(--ink-faint); }
+.vol-alt { font-size: 12.5px; color: var(--ink-muted); }
 
 .vol-facts {
   display: flex;
@@ -638,7 +644,7 @@ button.ghost:hover { border-bottom-color: var(--ink); }
   color: var(--ink);
 }
 
-.drawer-meta { font-size: 12.5px; letter-spacing: 0.02em; color: var(--ink-faint); }
+.drawer-meta { font-size: 12.5px; letter-spacing: 0.02em; color: var(--ink-muted); }
 .drawer-spines { display: flex; gap: 3px; flex: none; }
 .drawer-spines .spine { flex: none; width: 12px; height: 18px; min-width: 0; }
 .drawer.is-open .chev { transform: rotate(45deg); margin: -3px 0 0; }
@@ -1170,6 +1176,7 @@ button.ghost:hover { border-bottom-color: var(--ink); }
   --grey: #8a8780;
   --byline: #5c594f;
   --on-dark: #ffffff;
+  --ink-muted: #6f6c64;
 
   /* The shared names the base rules read. */
   --ground: var(--bg);
@@ -1198,6 +1205,7 @@ button.ghost:hover { border-bottom-color: var(--ink); }
     --grey: #9a968c;
     --byline: #a9a49a;
     --on-dark: #101010;
+    --ink-muted: #a9a49a;
     --ink: #f4f1e6;
     --line-soft: #2a2926;
   }
@@ -1414,7 +1422,7 @@ button.ghost:hover { border-bottom-color: var(--ink); }
 }
 
 [data-skin='brutal'] .tile[aria-pressed='false'] .tile-label,
-[data-skin='brutal'] .tile[aria-pressed='false'] .tile-eye { color: var(--grey); }
+[data-skin='brutal'] .tile[aria-pressed='false'] .tile-eye { color: var(--ink-muted); }
 [data-skin='brutal'] .tile:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
 
 [data-skin='brutal'] .list-count { font-family: var(--display); font-size: 20px; text-transform: uppercase; }
@@ -1783,6 +1791,10 @@ button.ghost:hover { border-bottom-color: var(--ink); }
   --spine-shadow: 2px 3px 5px rgba(160, 120, 140, 0.3), inset 1px 1px 0 rgba(255, 255, 255, 0.5);
   --step-sub: #5a4a66;
 
+  --ink-muted: #6f5e69;
+  --ink-hidden-n: #6f5e69;
+  --drawer-wash: rgba(255, 255, 255, 0.35);
+
   --meter-run: #9d8fe6;
   --meter-done: #a8dcc6;
   --meter-fail: #ef9f9c;
@@ -1816,7 +1828,8 @@ button.ghost:hover { border-bottom-color: var(--ink); }
       inset -4px -5px 12px rgba(255, 255, 255, 0.07);
 
     --ready: #3f6d5c;
-    --reading: #8a6a33;
+    /* A shade darker than the prototype so its 10px label clears 4.5:1. */
+    --reading: #84652f;
     --waiting: #4d5a8b;
     --done: #302836;
     --aside: #8c4f5e;
@@ -1838,6 +1851,11 @@ button.ghost:hover { border-bottom-color: var(--ink); }
     --shelf-rim: inset 0 0 0 1.5px rgba(255, 255, 255, 0.16);
     --spine-shadow: 3px 4px 8px rgba(0, 0, 0, 0.5), inset 1px 1px 0 rgba(255, 255, 255, 0.18);
     --step-sub: #cbbfe0;
+
+    --ink-muted: #a393a0;
+    --ink-hidden-n: #a393a0;
+    /* A white wash reads as a grey slab on the dark sheet; darken instead. */
+    --drawer-wash: rgba(0, 0, 0, 0.18);
 
     --meter-run: #7d6dcb;
     --meter-done: #3f6d5c;
@@ -2024,10 +2042,10 @@ button.ghost:hover { border-bottom-color: var(--ink); }
 [data-skin='soft'] .tile[aria-pressed='false'] {
   background: transparent;
   box-shadow: var(--press);
-  color: var(--ink-faint);
+  color: var(--ink-muted);
 }
 
-[data-skin='soft'] .tile[aria-pressed='false'] .tile-n { opacity: 1; color: var(--ink-faint); }
+[data-skin='soft'] .tile[aria-pressed='false'] .tile-n { color: var(--ink-hidden-n); }
 [data-skin='soft'] .tile[aria-pressed='false'] .tile-dot { box-shadow: none; }
 [data-skin='soft'] .tile:focus-visible { outline: 3px solid var(--primary); outline-offset: 3px; }
 
@@ -2125,7 +2143,7 @@ button.ghost:hover { border-bottom-color: var(--ink); }
   gap: 14px;
   padding: 12px 18px 12px 14px;
   border-radius: 18px;
-  background: rgba(255, 255, 255, 0.35);
+  background: var(--drawer-wash);
   box-shadow: var(--press);
   font-weight: 700;
 }
