@@ -54,6 +54,11 @@
 
 * { box-sizing: border-box; }
 
+/* The narrowest phone still in use is 320px wide. Below that the page stops
+   shrinking and scrolls sideways instead of crushing the layout. */
+html,
+body { min-width: 320px; }
+
 body {
   margin: 0;
   background: var(--ground);
@@ -294,6 +299,29 @@ button.ghost:hover { border-bottom-color: var(--ink); }
 .list-head { display: flex; align-items: baseline; gap: 6px 14px; flex-wrap: wrap; }
 .list-count { font-size: 14px; color: var(--ink); }
 .list-hidden { font-size: 13px; color: var(--ink-muted); text-transform: lowercase; }
+
+/* From 640 to 899px five tiles still fit in a row, but only if they give up
+   some padding and a little number size, or long titles run to three lines. */
+@media (min-width: 640px) and (max-width: 899px) {
+  .tile { gap: 8px; padding: 16px 22px 16px 12px; }
+  .tile:first-child { padding-left: 0; }
+  .tile::after { left: 12px; right: 22px; }
+  .tile:first-child::after { left: 0; }
+  .tile-n { font-size: 34px; }
+  .tile-label { letter-spacing: 0.1em; }
+  .tile-eye { right: 5px; }
+}
+
+/* Five tiles in a row need about 640px; below that, two columns with Set
+   aside across both, so no title is ever squeezed into a sliver. */
+@media (max-width: 639px) {
+  .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tile { border-bottom: 1px solid var(--line); }
+  .tile:nth-child(odd) { border-left: 0; padding-left: 0; }
+  .tile:nth-child(odd)::after { left: 0; }
+  .tile:last-child { grid-column: 1 / -1; border-bottom: 0; }
+  .tile-n { font-size: 34px; }
+}
 
 .toggle {
   display: flex;
@@ -591,12 +619,6 @@ button.ghost:hover { border-bottom-color: var(--ink); }
 
 @media (max-width: 460px) {
   .page { padding-block: 32px 56px; }
-  .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .tile { border-bottom: 1px solid var(--line); }
-  .tile:nth-child(odd) { border-left: 0; padding-left: 0; }
-  .tile:nth-child(odd)::after { left: 0; }
-  .tile:last-child { grid-column: 1 / -1; border-bottom: 0; }
-  .tile-n { font-size: 34px; }
   .actions { flex-direction: column; align-items: stretch; }
   .actions button { width: 100%; }
   .meter { width: 100%; }
@@ -1425,6 +1447,22 @@ button.ghost:hover { border-bottom-color: var(--ink); }
 [data-skin='brutal'] .tile[aria-pressed='false'] .tile-eye { color: var(--ink-muted); }
 [data-skin='brutal'] .tile:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
 
+@media (min-width: 640px) and (max-width: 899px) {
+  [data-skin='brutal'] .tile,
+  [data-skin='brutal'] .tile:first-child { gap: 8px; padding: 14px 24px 18px 10px; }
+  [data-skin='brutal'] .tile-n { font-size: 36px; }
+  [data-skin='brutal'] .tile-label { letter-spacing: 0.02em; }
+  [data-skin='brutal'] .tile-eye { right: 5px; }
+}
+
+@media (max-width: 639px) {
+  [data-skin='brutal'] .tile,
+  [data-skin='brutal'] .tile:first-child { border-right: 0; border-bottom: 4px solid var(--rule); padding: 14px 30px 18px 12px; }
+  [data-skin='brutal'] .tile:nth-child(odd) { border-right: 4px solid var(--rule); }
+  [data-skin='brutal'] .tile:last-child { border-right: 0; border-bottom: 0; }
+  [data-skin='brutal'] .tile-n { font-size: 40px; }
+}
+
 [data-skin='brutal'] .list-count { font-family: var(--display); font-size: 20px; text-transform: uppercase; }
 [data-skin='brutal'] .list-hidden { font-family: var(--mono); font-size: 12px; text-transform: uppercase; color: var(--byline); }
 [data-skin='brutal'] .list-show-all { padding: 6px 12px; font-size: 13px; }
@@ -1706,11 +1744,6 @@ button.ghost:hover { border-bottom-color: var(--ink); }
   [data-skin='brutal'] .intake,
   [data-skin='brutal'] .board { padding: 18px 16px; }
   [data-skin='brutal'] .colophon { padding: 14px 16px; }
-  [data-skin='brutal'] .tile,
-  [data-skin='brutal'] .tile:first-child { border-right: 0; border-bottom: 4px solid var(--rule); padding: 14px 30px 18px 12px; }
-  [data-skin='brutal'] .tile:nth-child(odd) { border-right: 4px solid var(--rule); }
-  [data-skin='brutal'] .tile:last-child { border-right: 0; border-bottom: 0; }
-  [data-skin='brutal'] .tile-n { font-size: 40px; }
   [data-skin='brutal'] .series-head::before { display: none; }
   [data-skin='brutal'] .series-head { align-items: stretch; }
   [data-skin='brutal'] .verdict,
@@ -1998,11 +2031,11 @@ button.ghost:hover { border-bottom-color: var(--ink); }
    sheet with no fill, the coloured dot the only colour left. */
 [data-skin='soft'] .tile,
 [data-skin='soft'] .tile:first-child {
-  gap: 12px;
+  gap: 10px;
   min-height: 76px;
   border: 0;
   border-radius: 18px;
-  padding: 16px 30px 16px 16px;
+  padding: 16px 26px 16px 14px;
   box-shadow: var(--lift);
   color: var(--state-ink);
   transition: box-shadow 0.12s, background-color 0.12s;
@@ -2029,8 +2062,8 @@ button.ghost:hover { border-bottom-color: var(--ink); }
 [data-skin='soft'] .tile-dot {
   display: block;
   flex: none;
-  width: 10px;
-  height: 10px;
+  width: 9px;
+  height: 9px;
   margin-top: 2px;
   border-radius: 50%;
   background: var(--dot);
@@ -2047,6 +2080,21 @@ button.ghost:hover { border-bottom-color: var(--ink); }
 
 [data-skin='soft'] .tile[aria-pressed='false'] .tile-n { color: var(--ink-hidden-n); }
 [data-skin='soft'] .tile[aria-pressed='false'] .tile-dot { box-shadow: none; }
+
+@media (min-width: 640px) and (max-width: 899px) {
+  [data-skin='soft'] .tiles { gap: 8px; }
+  [data-skin='soft'] .tile,
+  [data-skin='soft'] .tile:first-child { gap: 8px; padding: 14px 24px 14px 12px; }
+  [data-skin='soft'] .tile-n { font-size: 28px; }
+  [data-skin='soft'] .tile-label { gap: 5px; letter-spacing: 0.03em; }
+  [data-skin='soft'] .tile-eye { right: 6px; }
+}
+
+@media (max-width: 639px) {
+  [data-skin='soft'] .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  [data-skin='soft'] .tile { border: 0; }
+  [data-skin='soft'] .tile-n { font-size: 30px; }
+}
 [data-skin='soft'] .tile:focus-visible { outline: 3px solid var(--primary); outline-offset: 3px; }
 
 [data-skin='soft'] .list-count { font-size: 15px; font-weight: 800; }
@@ -2348,9 +2396,6 @@ button.ghost:hover { border-bottom-color: var(--ink); }
 
 @media (max-width: 460px) {
   [data-skin='soft'] .verdict { margin-left: 0; }
-  [data-skin='soft'] .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  [data-skin='soft'] .tile { border: 0; }
-  [data-skin='soft'] .tile-n { font-size: 30px; }
   [data-skin='soft'] .series-row { padding: 14px; }
   [data-skin='soft'] .volume-list { padding: 4px 12px; }
 }
