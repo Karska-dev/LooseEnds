@@ -6,12 +6,13 @@ import { groupIntoSeries } from './series'
 import type { SeriesSummary } from './series'
 import { resolveAllSeries } from './resolve'
 import type { SeriesResult } from './resolve'
-import { buildSeriesState, sortSeriesStates } from './state'
+import { DEFAULT_VISIBLE, buildSeriesState, countTiles, isListed, sortSeriesStates, tileOf } from './state'
 import { SkinPicker } from './SkinPicker.tsx'
 import { LibraryShelf } from './LibraryShelf.tsx'
 import { LookupPanel } from './LookupPanel.tsx'
 import type { FailureKind, LookupPhase } from './LookupPanel.tsx'
-import type { SeriesState, VolumeRow } from './state'
+import type { SeriesState, Tile, VolumeRow } from './state'
+import { BoardTiles, ListHead } from './BoardTiles.tsx'
 
 /**
  * A Goodreads export of 5,000 books is about 2 MB. Ten times that is not a
@@ -186,8 +187,8 @@ function SeriesBoard({ summary }: { summary: SeriesSummary }) {
   const [resolved, setResolved] = useState<Map<string, SeriesResult>>(new Map())
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
   const [dismissed, setDismissed] = useState<Set<string>>(new Set())
-  const [showDismissed, setShowDismissed] = useState(false)
-  const [showComplete, setShowComplete] = useState(false)
+  // Every visit starts with Finished and Set aside hidden; nothing is saved.
+  const [visibleTiles, setVisibleTiles] = useState<Record<Tile, boolean>>({ ...DEFAULT_VISIBLE })
   const [showStandalone, setShowStandalone] = useState(false)
   const [openKey, setOpenKey] = useState<string | null>(null)
 
@@ -239,28 +240,23 @@ function SeriesBoard({ summary }: { summary: SeriesSummary }) {
     [started, resolved],
   )
 
-  const visible = states.filter((state) => {
-    if (dismissed.has(state.key)) return showDismissed
-    if (state.status === 'complete') return showComplete
-    return true
-  })
-  // Each series belongs to exactly one tile, so the figures add up to the
-  // list. A series you are part-way through is "reading now", not also
-  // "ready to read" — it was being counted in both.
-  const live = states.filter((state) => !dismissed.has(state.key))
-  const counts = {
-    reading: live.filter((s) => s.inProgress).length,
-    next_available: live.filter((s) => !s.inProgress && s.status === 'next_available').length,
-    waiting: live.filter((s) => !s.inProgress && s.status === 'waiting').length,
-    complete: states.filter((s) => s.status === 'complete').length,
-    failed: [...resolved.values()].filter((entry) => entry.status === 'error').length,
+  // Each series sits on at most one tile, so the figures add up to the list;
+  // series with no tile (not looked up, failed, partial) are always listed.
+  const tileCounts = countTiles(states, dismissed)
+  const visible = states.filter((state) => isListed(state, dismissed, visibleTiles))
+  const failedCount = [...resolved.values()].filter((entry) => entry.status === 'error').length
+  const namesOn = (tile: Tile) =>
+    states.filter((state) => tileOf(state, dismissed.has(state.key)) === tile).map((state) => state.name)
+
+  function toggleTile(tile: Tile) {
+    setVisibleTiles((current) => ({ ...current, [tile]: !current[tile] }))
   }
 
   const phase: LookupPhase = progress
     ? 'during'
     : resolved.size === 0
       ? 'before'
-      : counts.failed > 0
+      : failedCount > 0
         ? 'failed'
         : 'after'
 
@@ -301,10 +297,10 @@ function SeriesBoard({ summary }: { summary: SeriesSummary }) {
         heard={heard}
         pendingNames={pendingNames}
         summary={{
-          ready: counts.next_available,
-          reading: live.filter((s) => s.inProgress).map((s) => s.name),
-          waiting: live.filter((s) => !s.inProgress && s.status === 'waiting').map((s) => s.name),
-          complete: states.filter((s) => s.status === 'complete').map((s) => s.name),
+          ready: tileCounts.ready,
+          reading: namesOn('reading'),
+          waiting: namesOn('waiting'),
+          complete: namesOn('finished'),
         }}
         failedNames={failedNames}
         failure={failureKind(firstDetail(resolved))}
@@ -315,65 +311,29 @@ function SeriesBoard({ summary }: { summary: SeriesSummary }) {
       />
 
       {resolved.size > 0 && (
-        <dl className="tiles">
-          <div className="tile tile-ready">
-            <dt>Ready to read</dt>
-            <dd>{counts.next_available}</dd>
-          </div>
-          <div className="tile tile-reading">
-            <dt>Reading now</dt>
-            <dd>{counts.reading}</dd>
-          </div>
-          <div className="tile tile-waiting">
-            <dt>Waiting on author</dt>
-            <dd>{counts.waiting}</dd>
-          </div>
-          <div className="tile tile-done">
-            <dt>Finished</dt>
-            <dd>{counts.complete}</dd>
-          </div>
-          <div className="tile tile-aside">
-            <dt>Set aside</dt>
-            <dd>{dismissed.size}</dd>
-          </div>
-        </dl>
+        <>
+          <BoardTiles counts={tileCounts} visible={visibleTiles} onToggle={toggleTile} />
+          <ListHead
+            shown={visible.length}
+            visible={visibleTiles}
+            counts={tileCounts}
+            onShowAll={() => setVisibleTiles({ ready: true, reading: true, waiting: true, finished: true, aside: true })}
+          />
+        </>
       )}
 
-      {(dismissed.size > 0 || counts.complete > 0 || standalone.length > 0) && (
+      {/* Until the drawer lands (plan step 4), this is the one checkbox left. */}
+      {standalone.length > 0 && (
         <div className="toggles">
-          {counts.complete > 0 && (
-            <label className="toggle">
-              <input
-                type="checkbox"
-                id="show-complete"
-                checked={showComplete}
-                onChange={(event) => setShowComplete(event.target.checked)}
-              />
-              Show {counts.complete} finished
-            </label>
-          )}
-          {dismissed.size > 0 && (
-            <label className="toggle">
-              <input
-                type="checkbox"
-                id="show-dismissed"
-                checked={showDismissed}
-                onChange={(event) => setShowDismissed(event.target.checked)}
-              />
-              Show {dismissed.size} set aside
-            </label>
-          )}
-          {standalone.length > 0 && (
-            <label className="toggle">
-              <input
-                type="checkbox"
-                id="show-standalone"
-                checked={showStandalone}
-                onChange={(event) => setShowStandalone(event.target.checked)}
-              />
-              Show {standalone.length} not in a series
-            </label>
-          )}
+          <label className="toggle">
+            <input
+              type="checkbox"
+              id="show-standalone"
+              checked={showStandalone}
+              onChange={(event) => setShowStandalone(event.target.checked)}
+            />
+            Show {standalone.length} not in a series
+          </label>
         </div>
       )}
 
