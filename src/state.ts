@@ -376,3 +376,75 @@ export function sortSeriesStates(states: SeriesState[]): SeriesState[] {
       a.name.localeCompare(b.name),
   )
 }
+
+/**
+ * The five tiles on the board. Each tile is also a switch that shows or
+ * hides its series in the list, so every series belongs to at most one.
+ */
+export type Tile = 'ready' | 'reading' | 'waiting' | 'finished' | 'aside'
+
+export const TILES: readonly Tile[] = ['ready', 'reading', 'waiting', 'finished', 'aside']
+
+/** What a fresh visit shows: everything you can act on, not what is done. */
+export const DEFAULT_VISIBLE: Readonly<Record<Tile, boolean>> = {
+  ready: true,
+  reading: true,
+  waiting: true,
+  finished: false,
+  aside: false,
+}
+
+/**
+ * Which tile a series counts under, or null when it has no tile and is
+ * always listed.
+ *
+ * Order matters. A series nobody could look up (not yet, or it failed) has
+ * no verdict to file it under, so it stays in view whatever else is true —
+ * including a DNF that would otherwise set it aside unseen. After that, the
+ * reader's own "set aside" beats anything the data says, and a book in your
+ * hands beats a next book being out. A "partial" series has nothing left to
+ * read but a list that looks incomplete; it is not finished, so it stays
+ * listed rather than hidden under Finished.
+ */
+export function tileOf(state: SeriesState, dismissed: boolean): Tile | null {
+  if (state.status === 'unknown') return null
+  if (dismissed) return 'aside'
+  if (state.inProgress) return 'reading'
+  switch (state.status) {
+    case 'next_available':
+      return 'ready'
+    case 'waiting':
+      return 'waiting'
+    case 'complete':
+      return 'finished'
+    case 'reading':
+      // Mid-way through the last book with nothing after it. inProgress is
+      // set from the same shelf, so this is a safety net, not a real path.
+      return 'reading'
+    case 'partial':
+      return null
+  }
+}
+
+/** Tile counts that always add up to the tiled part of the list. */
+export function countTiles(
+  states: SeriesState[],
+  dismissed: ReadonlySet<string>,
+): Record<Tile, number> {
+  const counts: Record<Tile, number> = { ready: 0, reading: 0, waiting: 0, finished: 0, aside: 0 }
+  for (const state of states) {
+    const tile = tileOf(state, dismissed.has(state.key))
+    if (tile) counts[tile] += 1
+  }
+  return counts
+}
+
+/** Listed when its tile is switched on, or when it has no tile at all. */
+export function isListed(
+  state: SeriesState,
+  dismissed: ReadonlySet<string>,
+  visible: Readonly<Record<Tile, boolean>>,
+): boolean {
+  const tile = tileOf(state, dismissed.has(state.key))
+  return tile === null || visible[tile]
+}
