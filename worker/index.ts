@@ -2,6 +2,7 @@ import { resolveSeriesNames } from '../src/shared/hardcover'
 import type { SeriesQuery, SeriesResult } from '../src/shared/hardcover'
 import { cacheKey, readCache, writeCache } from './cache'
 import type { D1Database } from './cache'
+import { claimedOrigin, isSameOrigin } from './origin'
 
 interface Env {
   HARDCOVER_TOKEN: string
@@ -30,6 +31,13 @@ export default {
     if (url.pathname === '/api/series') {
       if (request.method !== 'POST') {
         return json({ error: 'Use POST with a JSON body.' }, 405)
+      }
+
+      // Before the limiter, so a refused caller costs nothing and does not
+      // use up anyone's allowance.
+      if (!isSameOrigin(request)) {
+        log('series.forbidden_origin', { status: 403, origin: claimedOrigin(request) })
+        return json({ error: 'Lookups only work from the Loose Ends page itself.' }, 403)
       }
 
       // Keyed by caller IP, not by path: the point is to stop one client

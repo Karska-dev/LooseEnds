@@ -25,8 +25,8 @@ Excel first — it mangles ISBNs and dates.
 
 Then drop the file in. There is no account, no sign-up and nothing to install.
 Your library is read in the browser and never uploaded; close the tab and it's
-gone. The only thing that leaves your machine is a list of series *names*,
-sent to look up which books are in them.
+gone. The only thing that leaves your machine is a list of series *names* and
+their authors, sent to look up which books are in them.
 
 ## Why Hardcover
 

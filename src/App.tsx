@@ -197,7 +197,8 @@ export default function App() {
         <a href="https://hardcover.app" target="_blank" rel="noopener noreferrer">
           Hardcover
         </a>
-        . Your library never leaves this browser.
+        . Only series names and authors are sent, to look them up; your books and
+        ratings stay in this browser.
       </footer>
     </main>
   )
