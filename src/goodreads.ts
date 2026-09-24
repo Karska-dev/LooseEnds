@@ -10,6 +10,8 @@ export interface Book {
   shelf: Shelf
   dateRead: string | null
   rating: number | null
+  /** First publication, from the export; the lookup's date wins when there is one. */
+  year: number | null
   binding: string | null
   shelves: string[]
 }
@@ -72,6 +74,12 @@ function toShelf(exclusive: string | undefined, shelves: string[]): Shelf {
 
 type Row = Record<string, string | undefined>
 
+/** Goodreads leaves the year blank, or writes it with stray spaces. */
+function parseYear(value: string | undefined): number | null {
+  const year = Number(value?.trim())
+  return Number.isInteger(year) && year > 0 ? year : null
+}
+
 export function parseGoodreadsCsv(text: string): ParseResult {
   const parsed = Papa.parse<Row>(text, {
     header: true,
@@ -99,6 +107,7 @@ export function parseGoodreadsCsv(text: string): ParseResult {
       shelf: toShelf(row['Exclusive Shelf'], shelves),
       dateRead: parseDate(row['Date Read']),
       rating: ratingValue > 0 ? ratingValue : null,
+      year: parseYear(row['Original Publication Year']) ?? parseYear(row['Year Published']),
       binding: row['Binding']?.trim() || null,
       shelves,
     })

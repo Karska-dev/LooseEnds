@@ -461,89 +461,7 @@ button.ghost {
 .badge-soon { color: var(--primary); }
 .badge-wait { color: var(--ink-faint); }
 
-/* ---------- expanded volumes ---------- */
-
-.volumes { margin: 8px 0 4px 23px; }
-
-.volume-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  /* A hairline column hung off the title: the rule does the indenting that a
-     panel would otherwise have to do. */
-  border-left: 1px solid var(--line);
-}
-
-.volume {
-  display: grid;
-  grid-template-columns: 38px 28px 1fr auto;
-  gap: 10px;
-  padding: 9px 0 9px 14px;
-  align-items: baseline;
-  font-size: 14px;
-}
-
-.volume + .volume { border-top: 1px solid var(--line-soft, var(--line)); }
-.volume-none { opacity: 0.62; }
-/* The next book is marked at the rule, not by a filled band — a fill would
-   be the only block of colour in the whole skin. */
-.volume.is-next {
-  background: none;
-  box-shadow: -1px 0 0 var(--accent);
-}
-
-.vol-pos {
-  font-family: var(--display);
-  font-variant-numeric: tabular-nums;
-  color: var(--ink-faint);
-  font-size: 15px;
-}
-
-.vol-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-/* Read and unread differ by weight of ink, not by decoration. */
-.vol-title { color: var(--ink-soft); }
-.volume-read .vol-title { color: var(--ink); }
-.volume.is-next .vol-title { color: var(--accent); }
-.volume-read .vol-title { font-weight: 600; }
-.vol-alt { font-size: 12.5px; color: var(--ink-muted); }
-
-.vol-facts {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  flex-wrap: wrap;
-  font-size: 12.5px;
-}
-
-.vol-date { font-size: 12.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
-
-.chip {
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 0.16em;
-  text-transform: lowercase;
-  padding: 0;
-  border-radius: 0;
-  border: 0;
-  background: none;
-  color: var(--ink-faint);
-  white-space: nowrap;
-}
-
-.chip-read { color: var(--ok); }
-.chip-reading { color: var(--primary); }
-.chip-dnf { color: var(--accent); }
-.chip-next { color: var(--primary); font-weight: 700; }
-
-.rating { letter-spacing: 1px; color: var(--ok); font-size: 12px; }
-
-@media (max-width: 460px) {
-  .series-head { flex-direction: column; align-items: stretch; gap: 8px; }
-  .series-meta { justify-content: space-between; }
-  .verdict, .volumes { margin-left: 0; }
-  .volume { grid-template-columns: 30px 28px 1fr; }
-  .vol-date { grid-column: 3; }
-}
+/* ---------- expanded volumes: see "Series list — Band" at the end ---------- */
 
 
 /* ---------- covers ---------- */
@@ -628,7 +546,6 @@ button.ghost {
 /* ---------- books with no series ---------- */
 
 /* No position column: these books have no place in an order. */
-.volume-book { grid-template-columns: 28px 1fr; }
 
 /*
  * The drawer at the end of the list. Closed it is one row: the skin's
@@ -1670,60 +1587,6 @@ button.ghost {
 [data-skin='brutal'] .drawer .volumes { margin-left: 46px; }
 [data-skin='brutal'] .drawer-note { font-family: var(--mono); font-size: 12px; color: var(--byline); }
 
-/* ---------- the volume list: a ledger ---------- */
-
-[data-skin='brutal'] .volumes { margin: 6px 0 0 66px; }
-[data-skin='brutal'] .volume-list { border-left: 6px solid var(--rule); }
-
-[data-skin='brutal'] .volume { padding: 11px 10px 11px 16px; }
-[data-skin='brutal'] .volume + .volume { border-top: 2px solid var(--rule); }
-
-[data-skin='brutal'] .vol-pos { font-family: var(--display); font-size: 20px; color: var(--grey); }
-[data-skin='brutal'] .vol-title { color: var(--byline); }
-[data-skin='brutal'] .volume-read .vol-title { color: var(--ink); font-weight: 700; }
-[data-skin='brutal'] .vol-title a { border-bottom-color: currentColor; }
-[data-skin='brutal'] .vol-alt,
-[data-skin='brutal'] .vol-date,
-[data-skin='brutal'] .vol-facts .muted { font-family: var(--mono); font-size: 12px; color: var(--byline); }
-
-/* The next book is the one line you cannot scroll past. */
-[data-skin='brutal'] .volume.is-next { background: #ffd400; box-shadow: none; opacity: 1; }
-
-[data-skin='brutal'] .volume.is-next .vol-pos,
-[data-skin='brutal'] .volume.is-next .vol-title,
-[data-skin='brutal'] .volume.is-next .vol-alt,
-[data-skin='brutal'] .volume.is-next .vol-date,
-[data-skin='brutal'] .volume.is-next .vol-facts .muted { color: #0a0a0a; }
-
-[data-skin='brutal'] .volume.is-next .vol-title {
-  font-family: var(--display);
-  font-weight: 400;
-  font-size: 18px;
-  text-transform: uppercase;
-}
-
-[data-skin='brutal'] .chip {
-  padding: 3px 8px;
-  font-family: var(--mono);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  background: var(--ink);
-  color: var(--bg);
-}
-
-[data-skin='brutal'] .chip-reading { background: var(--red); color: var(--on-dark); }
-[data-skin='brutal'] .chip-dnf { background: var(--grey); color: var(--bg); }
-[data-skin='brutal'] .chip-to_read { background: none; color: var(--byline); box-shadow: inset 0 0 0 2px var(--rule); }
-[data-skin='brutal'] .chip-next { background: #0a0a0a; color: #ffd400; }
-[data-skin='brutal'] .volume.is-next .chip-to_read { color: #0a0a0a; box-shadow: inset 0 0 0 2px #0a0a0a; }
-
-[data-skin='brutal'] .rating { color: var(--red); }
-[data-skin='brutal'] .volume.is-next .rating { color: #0a0a0a; }
-
-/* ---------- before the lookup ---------- */
-
 [data-skin='brutal'] .series-row.is-pending { opacity: 0.6; }
 
 /* ---------- the loaded library ---------- */
@@ -2338,47 +2201,6 @@ button.ghost {
 [data-skin='soft'] .drawer .volumes { margin: 0 12px; }
 [data-skin='soft'] .drawer-note { margin: 0 4px 10px; }
 
-/* ---------- the volume list: pressed into the row ---------- */
-
-[data-skin='soft'] .volumes { margin: 4px 0 0; }
-
-[data-skin='soft'] .volume-list {
-  border-left: 0;
-  border-radius: 16px;
-  padding: 6px 16px;
-  box-shadow: var(--press);
-}
-
-[data-skin='soft'] .volume { padding: 10px 0; }
-[data-skin='soft'] .volume + .volume { border-top: 1px solid var(--line); }
-[data-skin='soft'] .volume.is-next { background: none; box-shadow: none; }
-
-[data-skin='soft'] .vol-pos { font-family: var(--body); font-size: 13px; font-weight: 800; color: var(--ink-faint); }
-[data-skin='soft'] .vol-title { color: var(--ink-soft); }
-[data-skin='soft'] .volume-read .vol-title { color: var(--ink); font-weight: 700; }
-[data-skin='soft'] .volume.is-next .vol-title { color: var(--ink); font-weight: 800; }
-[data-skin='soft'] .vol-title a { border-bottom-color: var(--line); }
-[data-skin='soft'] .vol-date { color: var(--ink-faint); }
-
-[data-skin='soft'] .chip {
-  border: 0;
-  border-radius: 999px;
-  padding: 3px 10px;
-  font-size: 10.5px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  background: var(--done);
-  color: var(--ink-soft);
-  box-shadow: var(--press);
-}
-
-[data-skin='soft'] .chip-read { background: var(--ready); color: var(--state-ink); box-shadow: none; }
-[data-skin='soft'] .chip-reading,
-[data-skin='soft'] .chip-next { background: var(--reading); color: var(--state-ink); box-shadow: none; }
-[data-skin='soft'] .chip-dnf { background: var(--aside); color: var(--state-ink); box-shadow: none; }
-
-[data-skin='soft'] .rating { color: var(--stars); }
-
 /* ---------- before the lookup ----------
    Rows wait with an empty cover slot in one of the five state fills, so
    the list is already clay-coloured before a single cover has loaded. */
@@ -2535,7 +2357,6 @@ button.ghost {
 @media (max-width: 460px) {
   [data-skin='soft'] .verdict { margin-left: 0; }
   [data-skin='soft'] .series-row { padding: 14px; }
-  [data-skin='soft'] .volume-list { padding: 4px 12px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -2705,3 +2526,217 @@ button.ghost {
 [data-skin='quiet'] .colophon a:active { color: var(--primary); }
 [data-skin='soft'] .colophon a:active { color: var(--primary); text-decoration-thickness: 2px; }
 [data-skin='brutal'] .colophon a:active { background: var(--ink); color: var(--bg); box-shadow: 0 0 0 2px var(--ink); }
+
+/* ==================================================================
+   Series list — Band
+   ------------------------------------------------------------------
+   One row per book: number, cover (once looked up), the title with its
+   year under it, then what your shelf says and your stars on the right
+   edge so both line up down the list. No "#". Side stories (6.5 and the
+   like) are set smaller and say so. The next book is named once under the
+   series, open or closed, and banded in the open list. Before the lookup
+   there are no covers, so the rows keep no room for one, and the closed
+   row holds a single spine in place of a cover.
+   ================================================================== */
+
+.volumes { margin: 10px 0 4px 31px; }
+
+.volume-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 14px;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.volume {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto 76px;
+  grid-template-areas: 'pos main status stars';
+  column-gap: 14px;
+  align-items: center;
+  padding: 11px 0;
+  font-size: 15px;
+}
+
+.has-covers .volume {
+  grid-template-columns: 34px 28px minmax(0, 1fr) auto 76px;
+  grid-template-areas: 'pos cover main status stars';
+}
+
+.volume + .volume { border-top: 1px solid var(--line-soft); }
+.volume .cover { grid-area: cover; }
+.volume-none .cover { opacity: 0.6; }
+
+.vol-pos {
+  grid-area: pos;
+  text-align: right;
+  font-family: var(--display);
+  font-size: 20px;
+  line-height: 1;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.vol-main { grid-area: main; display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.vol-title { color: var(--ink); line-height: 1.3; }
+.volume-none .vol-title { color: var(--ink-muted); }
+.vol-sub { font-size: 12.5px; line-height: 1.35; color: var(--ink-muted); }
+.vol-author { color: var(--ink-soft); }
+
+.volume.is-side { padding: 8px 0; }
+.volume.is-side .vol-pos { font-size: 15px; }
+.volume.is-side .vol-title { font-size: 13.5px; }
+
+.vol-status { grid-area: status; font-size: 12.5px; font-weight: 500; white-space: nowrap; text-align: right; }
+.status-read { color: var(--ok); }
+.status-reading { color: var(--primary); }
+.status-to_read { color: var(--warn); }
+.status-dnf { color: var(--ink-muted); }
+
+.vol-stars { grid-area: stars; text-align: right; white-space: nowrap; }
+.rating { letter-spacing: 1px; font-size: 12px; color: var(--warn); }
+.rating .muted { color: var(--line); }
+
+/* Quiet marks the next book with its one accent: a rule and a pale wash. */
+.volume.is-next {
+  margin: 0 -14px;
+  padding-left: 14px;
+  padding-right: 14px;
+  background: var(--primary-soft);
+  box-shadow: inset 3px 0 0 var(--primary);
+}
+
+.volume.is-next .vol-title { font-weight: 500; }
+.volume.is-next,
+.volume.is-next + .volume { border-top-color: transparent; }
+
+/* Standalone books: no number, no cover — title · author, status, stars. */
+.volume-book {
+  grid-template-columns: minmax(0, 1fr) auto 76px;
+  grid-template-areas: 'main status stars';
+  padding: 9px 0;
+}
+
+.drawer .volumes { margin: 0 0 16px 31px; }
+
+/* The NEXT line, under the series name, open or closed. */
+.verdict { margin: 0 0 0 76px; align-items: baseline; }
+.badge-go { color: var(--primary); }
+.next-title { font-family: var(--display); font-size: 19px; line-height: 1.2; }
+.next-why { font-size: 13px; color: var(--ink-soft); }
+
+/* Before the lookup: full-strength rows, one spine where the cover will go. */
+.series-row.is-pending,
+[data-skin] .series-row.is-pending { opacity: 1; }
+.series-row.is-pending .cover-lg { width: 14px; }
+.series-row.is-pending:nth-child(5n + 1) { --tint: var(--warn); }
+.series-row.is-pending:nth-child(5n + 2) { --tint: var(--primary); }
+.series-row.is-pending:nth-child(5n + 3) { --tint: var(--ok); }
+.series-row.is-pending:nth-child(5n + 4) { --tint: var(--accent); }
+.series-row.is-pending:nth-child(5n + 5) { --tint: var(--ink-soft); }
+.series-row.is-pending .cover { background: var(--tint); }
+
+/* Phones: status and stars drop under the title rather than squeeze it. */
+@media (max-width: 520px) {
+  .volume,
+  .has-covers .volume {
+    grid-template-columns: 26px minmax(0, 1fr) auto;
+    grid-template-areas: 'pos main main' 'pos status stars';
+    column-gap: 12px;
+    row-gap: 4px;
+  }
+  .has-covers .volume {
+    grid-template-columns: 26px 26px minmax(0, 1fr) auto;
+    grid-template-areas: 'pos cover main main' 'pos cover status stars';
+  }
+  .volume .cover-sm { width: 26px; height: 39px; }
+  .vol-status { text-align: left; white-space: normal; }
+  .volume-book { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'main main' 'status stars'; }
+  .verdict { margin-left: 0; }
+}
+
+/* ---------- Soft: pressed into the card, the next book on a peach band ---------- */
+
+[data-skin='soft'] { --next-band: linear-gradient(90deg, rgba(246, 207, 154, 0.55), rgba(246, 207, 154, 0.12)); }
+@media (prefers-color-scheme: dark) {
+  [data-skin='soft'] { --next-band: linear-gradient(90deg, rgba(132, 101, 47, 0.6), rgba(132, 101, 47, 0.14)); }
+}
+
+[data-skin='soft'] .volumes { margin: 6px 0 0; }
+[data-skin='soft'] .volume-list { border: 0; border-radius: 20px; padding: 6px 20px; box-shadow: var(--press); }
+[data-skin='soft'] .volume + .volume { border-top: 1px solid var(--line); }
+[data-skin='soft'] .vol-pos { font-family: var(--body); font-size: 15px; font-weight: 800; }
+[data-skin='soft'] .volume.is-side .vol-pos { font-size: 12.5px; }
+[data-skin='soft'] .vol-title { font-weight: 700; }
+[data-skin='soft'] .vol-sub,
+[data-skin='soft'] .vol-status { font-weight: 700; }
+[data-skin='soft'] .volume .cover-sm { border-radius: 5px; box-shadow: 3px 4px 8px rgba(160, 120, 140, 0.26), -3px -3px 7px rgba(255, 255, 255, 0.85); }
+[data-skin='soft'] .volume-none .cover-sm { box-shadow: none; }
+[data-skin='soft'] .rating { color: var(--stars); }
+[data-skin='soft'] .rating .muted { color: var(--track); }
+[data-skin='soft'] .volume.is-next {
+  margin: 0 -20px;
+  padding-left: 20px;
+  padding-right: 20px;
+  border-radius: 14px;
+  background: var(--next-band);
+  box-shadow: none;
+}
+[data-skin='soft'] .volume.is-next .vol-title { font-weight: 800; }
+[data-skin='soft'] .drawer .volumes { margin: 0 12px; }
+[data-skin='soft'] .next-title { font-family: var(--body); font-size: 14.5px; font-weight: 800; }
+[data-skin='soft'] .next-why { font-weight: 700; }
+[data-skin='soft'] .series-row.is-pending .cover { border-radius: 3px; }
+
+@media (prefers-color-scheme: dark) {
+  [data-skin='soft'] .volume .cover-sm { box-shadow: 5px 6px 12px rgba(0, 0, 0, 0.5), inset 1px 1px 0 rgba(255, 255, 255, 0.14); }
+}
+
+/* ---------- Bold: a ruled plate, the next book on the yellow ---------- */
+
+[data-skin='brutal'] .volume-list { border: 3px solid var(--rule); padding: 0 16px; }
+[data-skin='brutal'] .volume + .volume { border-top: 2px solid var(--line-soft); }
+[data-skin='brutal'] .vol-pos { font-family: var(--mono); font-size: 14px; font-weight: 700; }
+[data-skin='brutal'] .volume.is-side .vol-pos { font-size: 11.5px; }
+[data-skin='brutal'] .vol-title { font-weight: 700; }
+[data-skin='brutal'] .vol-sub { font-family: var(--mono); font-size: 12px; color: var(--byline); }
+[data-skin='brutal'] .vol-status { font-family: var(--mono); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.02em; }
+[data-skin='brutal'] .status-to_read { color: var(--ink); }
+[data-skin='brutal'] .status-reading { color: var(--red); }
+[data-skin='brutal'] .status-dnf { color: var(--grey); }
+[data-skin='brutal'] .volume .cover-sm { border-width: 2px; }
+[data-skin='brutal'] .rating { color: var(--ink); }
+[data-skin='brutal'] .rating .muted { color: var(--line-soft); }
+[data-skin='brutal'] .volume.is-next {
+  margin: 0 -16px;
+  padding-left: 16px;
+  padding-right: 16px;
+  background: #ffd400;
+  box-shadow: none;
+}
+/* The yellow never flips in the dark, so what sits on it never does either. */
+[data-skin='brutal'] .volume.is-next .vol-pos,
+[data-skin='brutal'] .volume.is-next .vol-title,
+[data-skin='brutal'] .volume.is-next .vol-sub,
+[data-skin='brutal'] .volume.is-next .vol-status,
+[data-skin='brutal'] .volume.is-next .rating { color: #0a0a0a; }
+[data-skin='brutal'] .volume.is-next .vol-title a { color: #0a0a0a; border-bottom-color: #0a0a0a; }
+[data-skin='brutal'] .drawer .volume-list { border: 0; border-top: 3px solid var(--rule); padding: 0; }
+[data-skin='brutal'] .badge-go { background: #ffd400; color: #0a0a0a; }
+[data-skin='brutal'] .next-title { font-family: var(--body); font-size: 15px; font-weight: 700; }
+[data-skin='brutal'] .next-why { font-family: var(--mono); font-size: 12px; color: var(--byline); }
+[data-skin='brutal'] .series-row.is-pending:nth-child(5n + 1) { --tint: var(--yellow); }
+[data-skin='brutal'] .series-row.is-pending:nth-child(5n + 2) { --tint: var(--blue); }
+[data-skin='brutal'] .series-row.is-pending:nth-child(5n + 3) { --tint: var(--green); }
+[data-skin='brutal'] .series-row.is-pending:nth-child(5n + 4) { --tint: var(--red); }
+[data-skin='brutal'] .series-row.is-pending:nth-child(5n + 5) { --tint: var(--grey); }
+[data-skin='brutal'] .volume.is-next .vol-title { font-weight: 700; }
+/* Line the NEXT tag up under the series name, past the triangle and the cover. */
+[data-skin='soft'] .verdict { margin-left: 79px; }
+
+/* Phones: the count and Set aside go under the series name, not beside it. */
+@media (max-width: 460px) {
+  .series-head { flex-direction: column; align-items: stretch; gap: 8px; }
+  .series-meta { justify-content: space-between; }
+}

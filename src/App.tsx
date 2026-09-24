@@ -423,16 +423,14 @@ function StandaloneDrawer({
 function BookLine({ book }: { book: Book }) {
   return (
     <li className={`volume volume-book volume-${book.shelf}`}>
-      <Cover url={null} alt="" size="sm" />
       <span className="vol-main">
-        <span className="vol-title">{book.title}</span>
-        <span className="vol-alt">{book.author}</span>
-        <span className="vol-facts">
-          <span className={`chip chip-${book.shelf}`}>{SHELF_LABEL[book.shelf]}</span>
-          {book.dateRead && <span className="muted">{book.dateRead}</span>}
-          {book.rating !== null && <Stars rating={book.rating} />}
+        <span className="vol-title">
+          {book.title}
+          {book.author && <span className="vol-author"> &middot; {book.author}</span>}
         </span>
       </span>
+      <span className={`vol-status status-${book.shelf}`}>{shelfWords(book.shelf, book.dateRead)}</span>
+      <span className="vol-stars">{book.rating ? <Stars rating={book.rating} /> : null}</span>
     </li>
   )
 }
@@ -451,6 +449,8 @@ function SeriesRow({
   onOpen: () => void
 }) {
   const panelId = `volumes-${state.key.replace(/[^a-z0-9]+/g, '-')}`
+  // Before the lookup there are no covers to show, so the rows don't reserve room for one.
+  const lookedUp = state.status !== 'unknown'
 
   return (
     <li
@@ -479,8 +479,13 @@ function SeriesRow({
 
         <span className="series-meta">
           <span className="progress-line">
-            <b>{state.readCount}</b>
-            {state.totalBooks !== null ? ` of ${state.totalBooks}` : ' read'}
+            {state.totalBooks !== null ? (
+              <>
+                <b>{state.readCount}</b> of {state.totalBooks}
+              </>
+            ) : (
+              shelfSummary(state.rows)
+            )}
           </span>
           {state.status !== 'unknown' && (
             <button type="button" className="ghost" onClick={onToggle}>
@@ -497,9 +502,9 @@ function SeriesRow({
           {state.rows.length === 0 ? (
             <p className="note">No volume list yet. Run the lookup first.</p>
           ) : (
-            <ol className="volume-list">
+            <ol className={`volume-list${lookedUp ? ' has-covers' : ''}`}>
               {state.rows.map((row) => (
-                <VolumeLine key={`${row.position}-${row.title}`} row={row} />
+                <VolumeLine key={`${row.position}-${row.title}`} row={row} withCover={lookedUp} />
               ))}
             </ol>
           )}
@@ -557,21 +562,69 @@ function Cover({
   )
 }
 
-const SHELF_LABEL: Record<string, string> = {
-  read: 'Read',
-  reading: 'Reading',
-  to_read: 'On your list',
-  dnf: 'Did not finish',
+/** What the reader's own shelf says, in the words the list uses on the right. */
+function shelfWords(shelf: Book['shelf'], dateRead: string | null): string {
+  switch (shelf) {
+    case 'read':
+      return dateRead ? `read ${monthYear(dateRead)}` : 'read'
+    case 'reading':
+      return 'reading now'
+    case 'dnf':
+      return 'did not finish'
+    case 'to_read':
+      return 'on your list'
+  }
 }
 
-function VolumeLine({ row }: { row: VolumeRow }) {
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+/** "2022-02-19" → "Feb 2022": the day is noise at this distance. */
+function monthYear(date: string): string {
+  const [year, month] = date.split('-')
+  const name = MONTHS[Number(month) - 1]
+  return name ? `${name} ${year}` : year
+}
+
+/** "1 read · 2 on your list" — the closed row before any lookup has run. */
+function shelfSummary(rows: VolumeRow[]): string {
+  const count = { read: 0, reading: 0, to_read: 0, dnf: 0 }
+  for (const row of rows) if (row.mine) count[row.mine.shelf] += 1
+  const parts = [
+    count.read > 0 && `${count.read} read`,
+    count.reading > 0 && `${count.reading} reading now`,
+    count.to_read > 0 && `${count.to_read} on your list`,
+    count.dnf > 0 && `${count.dnf} did not finish`,
+  ].filter(Boolean)
+  return parts.length > 0 ? parts.join(' \u00b7 ') : 'none read'
+}
+
+/** Whole numbers are the series; 0.5, 6.5 and the like are side stories. */
+function isSideStory(position: number): boolean {
+  return !Number.isInteger(position)
+}
+
+/**
+ * One book: number, cover (once looked up), title with its year under it,
+ * then what your shelf says and your stars on the right edge, so both line
+ * up down the list.
+ */
+function VolumeLine({ row, withCover }: { row: VolumeRow; withCover: boolean }) {
   const mine = row.mine
   const shelf = mine?.shelf ?? 'none'
+  const side = isSideStory(row.position)
+
+  const year =
+    row.releaseDate && row.publication === 'announced'
+      ? `due ${monthYear(row.releaseDate)}`
+      : (row.releaseDate?.slice(0, 4) ?? (mine?.year ? String(mine.year) : null))
+  const sub = [year, side ? 'side story' : null, mine && mine.title !== row.title ? `your copy: ${mine.title}` : null]
+    .filter(Boolean)
+    .join(' \u00b7 ')
 
   return (
-    <li className={`volume volume-${shelf}${row.isNext ? ' is-next' : ''}`}>
-      <span className="vol-pos">#{row.position}</span>
-      <Cover url={row.coverUrl} color={row.coverColor} alt="" size="sm" />
+    <li className={`volume volume-${shelf}${row.isNext ? ' is-next' : ''}${side ? ' is-side' : ''}`}>
+      <span className="vol-pos">{row.position}</span>
+      {withCover && <Cover url={row.coverUrl} color={row.coverColor} alt="" size="sm" />}
 
       <span className="vol-main">
         <span className="vol-title">
@@ -587,30 +640,11 @@ function VolumeLine({ row }: { row: VolumeRow }) {
             row.title
           )}
         </span>
-        {mine && mine.title !== row.title && (
-          <span className="vol-alt">your copy: {mine.title}</span>
-        )}
-        <span className="vol-facts">
-          {mine ? (
-            <>
-              <span className={`chip chip-${shelf}`}>{SHELF_LABEL[shelf]}</span>
-              {mine.dateRead && <span className="muted">{mine.dateRead}</span>}
-              {mine.rating !== null && <Stars rating={mine.rating} />}
-            </>
-          ) : (
-            <span className="muted">Not in your library</span>
-          )}
-          {row.isNext && <span className="chip chip-next">Next up</span>}
-        </span>
+        {sub && <span className="vol-sub">{sub}</span>}
       </span>
 
-      <span className="vol-date muted">
-        {row.releaseDate
-          ? row.publication === 'announced'
-            ? `due ${row.releaseDate}`
-            : row.releaseDate.slice(0, 4)
-          : ''}
-      </span>
+      <span className={`vol-status status-${shelf}`}>{mine ? shelfWords(mine.shelf, mine.dateRead) : ''}</span>
+      <span className="vol-stars">{mine?.rating ? <Stars rating={mine.rating} /> : null}</span>
     </li>
   )
 }
@@ -645,9 +679,13 @@ function Verdict({ state }: { state: SeriesState }) {
   const next = state.next
   if (!next) return null
 
+  const year = next.releaseDate?.slice(0, 4)
+  const where = next.onYourList ? 'already on your list' : 'not in your library yet'
+  const onNow =
+    state.inProgressPosition !== null ? `you\u2019re on ${state.inProgressPosition}` : null
   const title = (
     <span className="next-title">
-      #{next.position} {next.title}
+      {next.position} &middot; {next.title}
     </span>
   )
 
@@ -656,22 +694,17 @@ function Verdict({ state }: { state: SeriesState }) {
       <p className="verdict">
         <span className="badge badge-go">Next</span>
         {title}
-        {state.inProgressPosition !== null && (
-          <span className="muted">&middot; you&rsquo;re on #{state.inProgressPosition}</span>
-        )}
-        {next.onYourList && <span className="muted">&middot; already on your list</span>}
+        <span className="next-why">{[year, onNow ?? where].filter(Boolean).join(' \u00b7 ')}</span>
       </p>
     )
   }
 
-  if (next.publication === 'announced') {
+  if (next.publication === 'announced' && next.releaseDate) {
     return (
       <p className="verdict">
-        <span className="badge badge-soon">Due {next.releaseDate}</span>
+        <span className="badge badge-soon">Due {monthYear(next.releaseDate)}</span>
         {title}
-        {state.inProgressPosition !== null && (
-          <span className="muted">&middot; you&rsquo;re on #{state.inProgressPosition}</span>
-        )}
+        {onNow && <span className="next-why">{onNow}</span>}
       </p>
     )
   }

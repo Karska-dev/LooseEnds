@@ -43,6 +43,7 @@ export interface VolumeRow {
     title: string
     dateRead: string | null
     rating: number | null
+    year: number | null
   } | null
 }
 
@@ -281,6 +282,7 @@ function myBooksByPosition(group: SeriesGroup): Map<number, VolumeRow['mine']> {
       title: entry.cleanTitle,
       dateRead: entry.book.dateRead,
       rating: entry.book.rating,
+      year: entry.book.year,
     }
     const current = map.get(entry.position)
     if (!current || SHELF_RANK[candidate.shelf] < SHELF_RANK[current.shelf]) {
