@@ -2740,3 +2740,53 @@ button.ghost {
   .series-head { flex-direction: column; align-items: stretch; gap: 8px; }
   .series-meta { justify-content: space-between; }
 }
+
+/* ==================================================================
+   Set aside — a quiet link under the count
+   ------------------------------------------------------------------
+   The action you take least should not outweigh the next book, so it
+   is a small dotted-underlined word, not a button. Hover darkens it and
+   makes the rule solid; pressing inks it in the skin's accent.
+   ================================================================== */
+
+.series-meta { flex-direction: column; align-items: flex-end; gap: 7px; }
+
+[data-skin] .aside-link {
+  padding: 1px 0;
+  border: 0;
+  border-bottom: 1.5px dotted currentColor;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--ink-muted);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: color 120ms ease, border-color 120ms ease;
+}
+
+@media (hover: hover) {
+  [data-skin] .aside-link:hover { color: var(--ink); border-bottom-style: solid; }
+}
+[data-skin] .aside-link:active:not(:disabled) { color: var(--primary); border-bottom-style: solid; transform: none; box-shadow: none; }
+
+[data-skin='soft'] .aside-link { font-weight: 700; }
+[data-skin='soft'] .aside-link:focus-visible { outline: 3px solid var(--primary); outline-offset: 3px; }
+
+[data-skin='brutal'] .aside-link {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  border-bottom-width: 2px;
+}
+[data-skin='brutal'] .aside-link:active:not(:disabled) { color: #0a0a0a; background: #ffd400; }
+[data-skin='brutal'] .aside-link:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+
+/* Phones: the count and the link share one line under the series name. */
+@media (max-width: 460px) {
+  .series-meta { flex-direction: row; align-items: baseline; }
+}

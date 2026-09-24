@@ -488,8 +488,15 @@ function SeriesRow({
             )}
           </span>
           {state.status !== 'unknown' && (
-            <button type="button" className="ghost" onClick={onToggle}>
-              {dismissed ? 'Bring back' : 'Set aside'}
+            // A quiet word, not a button: it's the thing you do least, so it
+            // shouldn't outweigh the next book.
+            <button
+              type="button"
+              className="aside-link"
+              aria-label={`${dismissed ? 'Bring back' : 'Set aside'} ${state.name}`}
+              onClick={onToggle}
+            >
+              {dismissed ? 'bring back' : 'set aside'}
             </button>
           )}
         </span>
