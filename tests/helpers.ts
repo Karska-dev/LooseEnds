@@ -18,6 +18,7 @@ export function booksOf(
     shelf,
     dateRead: shelf === 'read' ? '2026-01-01' : null,
     rating: null,
+    year: null,
     binding: null,
     shelves: [],
     ...extra,

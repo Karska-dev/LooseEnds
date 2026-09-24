@@ -6,8 +6,16 @@ import { groupIntoSeries } from './series'
 import type { SeriesSummary } from './series'
 import { resolveAllSeries } from './resolve'
 import type { SeriesResult } from './resolve'
-import { buildSeriesState, sortSeriesStates } from './state'
-import type { SeriesState, VolumeRow } from './state'
+import { DEFAULT_VISIBLE, buildSeriesState, countTiles, isListed, sortSeriesStates, tileOf } from './state'
+import { SkinPicker } from './SkinPicker.tsx'
+import { LibraryShelf } from './LibraryShelf.tsx'
+import { LookupPanel } from './LookupPanel.tsx'
+import type { FailureKind, LookupPhase } from './LookupPanel.tsx'
+import type { SeriesState, Tile, VolumeRow } from './state'
+import { BoardTiles, ListHead } from './BoardTiles.tsx'
+import { SNIFF_BYTES, checkParsed, leftOutNote, sniffExport, sniffText } from './checkExport'
+import { FileError } from './FileError.tsx'
+import type { IntakeProblem } from './FileError.tsx'
 
 /**
  * A Goodreads export of 5,000 books is about 2 MB. Ten times that is not a
@@ -25,43 +33,87 @@ function describeSize(bytes: number): string {
 export default function App() {
   const [parsed, setParsed] = useState<ParseResult | null>(null)
   const [summary, setSummary] = useState<SeriesSummary | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [problem, setProblem] = useState<IntakeProblem | null>(null)
+  const [fileName, setFileName] = useState<string | null>(null)
+  const [leftOut, setLeftOut] = useState<string | null>(null)
 
-  async function handleFile(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0]
-    if (!file) return
-    setError(null)
+  /** Back to the intake. Leaves any error in place: it explains why we're here. */
+  function clearLibrary() {
+    setParsed(null)
+    setSummary(null)
+    setLeftOut(null)
+  }
 
-    if (file.size > MAX_FILE_BYTES) {
-      setError(
-        `That file is ${describeSize(file.size)}, which is far larger than any ` +
-          `Goodreads export. Is it the library export rather than something else?`,
-      )
-      setParsed(null)
-      setSummary(null)
+  function reset() {
+    clearLibrary()
+    setProblem(null)
+    setFileName(null)
+  }
+
+  function refuse(why: IntakeProblem, name: string | null) {
+    clearLibrary()
+    setFileName(name)
+    setProblem(why)
+  }
+
+  /** Reads a CSV from anywhere: a chosen file, or the bundled sample. */
+  function accept(text: string, name: string) {
+    const result = parseGoodreadsCsv(text)
+    const wrong = checkParsed(result)
+    if (wrong) {
+      refuse(wrong, name)
       return
     }
-    if (file.size === 0) {
-      setError('That file is empty. Try exporting it again from Goodreads.')
-      setParsed(null)
-      setSummary(null)
+    setProblem(null)
+    setParsed(result)
+    setSummary(groupIntoSeries(result.books))
+    setFileName(name)
+    setLeftOut(leftOutNote(result))
+  }
+
+  /**
+   * Seeing the board should not require owning a Goodreads account and doing a
+   * five-minute export first.
+   */
+  async function loadSample() {
+    setProblem(null)
+    try {
+      const response = await fetch('/sample-library.csv')
+      if (!response.ok) throw new Error(String(response.status))
+      const text = await response.text()
+      const wrong = sniffText(text)
+      if (wrong) throw new Error(wrong.kind)
+      accept(text, 'a sample library')
+    } catch {
+      refuse({ kind: 'sample' }, null)
+    }
+  }
+
+  async function handleFile(event: ChangeEvent<HTMLInputElement>) {
+    const input = event.target
+    const file = input.files?.[0]
+    // Choosing the same file again after fixing it must still fire a change.
+    input.value = ''
+    if (!file) return
+    setProblem(null)
+
+    if (file.size > MAX_FILE_BYTES) {
+      refuse({ kind: 'too-big', size: describeSize(file.size) }, file.name)
       return
     }
 
     try {
-      const result = parseGoodreadsCsv(await file.text())
-      if (result.books.length === 0) {
-        setError('That file has no book rows. Is it the Goodreads library export?')
-        setParsed(null)
-        setSummary(null)
+      // Check the start before reading the rest: a wrong file is refused at
+      // once, whatever its size.
+      const head = new Uint8Array(await file.slice(0, SNIFF_BYTES).arrayBuffer())
+      const wrong = sniffExport(head)
+      if (wrong) {
+        refuse(wrong, file.name)
         return
       }
-      setParsed(result)
-      setSummary(groupIntoSeries(result.books))
+      accept(await file.text(), file.name)
     } catch {
-      setError('That file could not be read. Try exporting it again from Goodreads.')
-      setParsed(null)
-      setSummary(null)
+      refuse({ kind: 'unreadable' }, file.name)
     }
   }
 
@@ -70,11 +122,24 @@ export default function App() {
       <header className="masthead">
         <h1>Loose Ends</h1>
         <p className="tagline">
-          You&rsquo;ve read four. There are seven. Here&rsquo;s book five.
+          <span>You&rsquo;ve read four.</span> <span>There are seven.</span>{' '}
+          <span>Here&rsquo;s book five.</span>
         </p>
+        <SkinPicker />
       </header>
 
       <section className="intake">
+        {parsed ? (
+          <LibraryShelf
+            name={fileName ?? 'Your export'}
+            books={parsed.books}
+            counts={parsed.counts}
+            standalone={summary?.unmatched.length ?? 0}
+            leftOut={leftOut}
+            onReset={reset}
+          />
+        ) : (
+          <>
         <h2>Your Goodreads export</h2>
 
         <ol className="how">
@@ -93,25 +158,35 @@ export default function App() {
           the file in Excel first; it quietly changes ISBNs and dates.
         </p>
 
-        <label className="file-field" htmlFor="export-file">
-          <span>Your export file</span>
-          <input type="file" id="export-file" accept=".csv" onChange={handleFile} />
-        </label>
+        {problem && <FileError problem={problem} fileName={fileName} />}
+
+        <div className="dropzone">
+          {/* The input stays focusable for the keyboard; the label is what
+              anyone sees, so it can carry the same weight as every other
+              action on the page. */}
+          <input
+            type="file"
+            id="export-file"
+            className="file-input"
+            accept=".csv"
+            onChange={handleFile}
+          />
+          <label className="file-button" htmlFor="export-file">
+            {problem ? 'Choose a different file' : 'Choose your export file'}
+          </label>
+
+          <span className="file-or">or</span>
+
+          <button type="button" className="ghost" onClick={loadSample}>
+            Try a sample library
+          </button>
+        </div>
+
         <p className="note">
-          Read here in your browser. Nothing is uploaded and nothing is stored.
+          Your library is read here in your browser. It is never uploaded and
+          never stored.
         </p>
-        {error && <p className="error">{error}</p>}
-        {parsed && (
-          <p className="note">
-            {parsed.counts.read} read &middot; {parsed.counts.reading} reading &middot;{' '}
-            {parsed.counts.to_read} to read &middot; {parsed.counts.dnf} did not finish
-          </p>
-        )}
-        {summary && (
-          <p className="note">
-            {parsed!.books.length - summary.unmatched.length} in a series &middot;{' '}
-            {summary.unmatched.length} not in a series
-          </p>
+          </>
         )}
       </section>
 
@@ -136,9 +211,9 @@ function SeriesBoard({ summary }: { summary: SeriesSummary }) {
   const [resolved, setResolved] = useState<Map<string, SeriesResult>>(new Map())
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
   const [dismissed, setDismissed] = useState<Set<string>>(new Set())
-  const [showDismissed, setShowDismissed] = useState(false)
-  const [showComplete, setShowComplete] = useState(false)
-  const [showStandalone, setShowStandalone] = useState(false)
+  // Every visit starts with Finished and Set aside hidden; nothing is saved.
+  const [visibleTiles, setVisibleTiles] = useState<Record<Tile, boolean>>({ ...DEFAULT_VISIBLE })
+  const [standaloneOpen, setStandaloneOpen] = useState(false)
   const [openKey, setOpenKey] = useState<string | null>(null)
 
   /**
@@ -189,22 +264,42 @@ function SeriesBoard({ summary }: { summary: SeriesSummary }) {
     [started, resolved],
   )
 
-  const visible = states.filter((state) => {
-    if (dismissed.has(state.key)) return showDismissed
-    if (state.status === 'complete') return showComplete
-    return true
-  })
-  // Each series belongs to exactly one tile, so the figures add up to the
-  // list. A series you are part-way through is "reading now", not also
-  // "ready to read" — it was being counted in both.
-  const live = states.filter((state) => !dismissed.has(state.key))
-  const counts = {
-    reading: live.filter((s) => s.inProgress).length,
-    next_available: live.filter((s) => !s.inProgress && s.status === 'next_available').length,
-    waiting: live.filter((s) => !s.inProgress && s.status === 'waiting').length,
-    complete: states.filter((s) => s.status === 'complete').length,
-    failed: [...resolved.values()].filter((entry) => entry.status === 'error').length,
+  // Each series sits on at most one tile, so the figures add up to the list;
+  // series with no tile (not looked up, failed, partial) are always listed.
+  const tileCounts = countTiles(states, dismissed)
+  const visible = states.filter((state) => isListed(state, dismissed, visibleTiles))
+  const failedCount = [...resolved.values()].filter((entry) => entry.status === 'error').length
+  const namesOn = (tile: Tile) =>
+    states.filter((state) => tileOf(state, dismissed.has(state.key)) === tile).map((state) => state.name)
+
+  function toggleTile(tile: Tile) {
+    setVisibleTiles((current) => ({ ...current, [tile]: !current[tile] }))
   }
+
+  const phase: LookupPhase = progress
+    ? 'during'
+    : resolved.size === 0
+      ? 'before'
+      : failedCount > 0
+        ? 'failed'
+        : 'after'
+
+  // Map order is arrival order, so the tail is what came back last.
+  const answered = [...resolved.entries()].filter(([, result]) => result.status !== 'error')
+  const byKey = new Map(states.map((state) => [state.key, state]))
+  const heard = answered
+    .slice(-3)
+    .map(([key]) => byKey.get(key))
+    .filter((state): state is SeriesState => state !== undefined)
+  const pendingNames = started
+    .filter((group) => {
+      const result = resolved.get(group.key)
+      return !result || result.status === 'error'
+    })
+    .map((group) => group.name)
+  const failedNames = states
+    .filter((state) => resolved.get(state.key)?.status === 'error')
+    .map((state) => state.name)
 
   function toggle(key: string) {
     setDismissed((current) => {
@@ -219,97 +314,39 @@ function SeriesBoard({ summary }: { summary: SeriesSummary }) {
     <section className="board">
       <h2>Series</h2>
 
-      <div className="actions">
-        <button type="button" onClick={lookUp} disabled={progress !== null}>
-          {progress
-            ? `Looking up… ${progress.done} of ${progress.total}`
-            : `Look up ${started.length} series`}
-        </button>
-        {progress && progress.total > 0 && (
-          <div
-            className="meter"
-            role="progressbar"
-            aria-valuenow={progress.done}
-            aria-valuemin={0}
-            aria-valuemax={progress.total}
-          >
-            <span style={{ width: `${(progress.done / progress.total) * 100}%` }} />
-          </div>
-        )}
-      </div>
-
-      {!progress && counts.failed > 0 && (
-        <p className="error" role="status">
-          {counts.failed === states.length
-            ? failureMessage(firstDetail(resolved))
-            : `${counts.failed} series couldn\u2019t be looked up. Try again \u2014 it is usually temporary.`}
-        </p>
-      )}
+      <LookupPanel
+        phase={phase}
+        total={started.length}
+        heardCount={answered.length}
+        heard={heard}
+        pendingNames={pendingNames}
+        summary={{
+          ready: tileCounts.ready,
+          reading: namesOn('reading'),
+          waiting: namesOn('waiting'),
+          complete: namesOn('finished'),
+        }}
+        failedNames={failedNames}
+        failure={failureKind(firstDetail(resolved))}
+        onLookUp={lookUp}
+        onShowResults={() =>
+          document.getElementById('series-list')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }
+      />
 
       {resolved.size > 0 && (
-        <dl className="tiles">
-          <div className="tile">
-            <dt>Ready to read</dt>
-            <dd>{counts.next_available}</dd>
-          </div>
-          <div className="tile">
-            <dt>Reading now</dt>
-            <dd>{counts.reading}</dd>
-          </div>
-          <div className="tile">
-            <dt>Waiting on author</dt>
-            <dd>{counts.waiting}</dd>
-          </div>
-          <div className="tile">
-            <dt>Finished</dt>
-            <dd>{counts.complete}</dd>
-          </div>
-          <div className="tile">
-            <dt>Set aside</dt>
-            <dd>{dismissed.size}</dd>
-          </div>
-        </dl>
+        <>
+          <BoardTiles counts={tileCounts} visible={visibleTiles} onToggle={toggleTile} />
+          <ListHead
+            shown={visible.length}
+            visible={visibleTiles}
+            counts={tileCounts}
+            onShowAll={() => setVisibleTiles({ ready: true, reading: true, waiting: true, finished: true, aside: true })}
+          />
+        </>
       )}
 
-      {(dismissed.size > 0 || counts.complete > 0 || standalone.length > 0) && (
-        <div className="toggles">
-          {counts.complete > 0 && (
-            <label className="toggle">
-              <input
-                type="checkbox"
-                id="show-complete"
-                checked={showComplete}
-                onChange={(event) => setShowComplete(event.target.checked)}
-              />
-              Show {counts.complete} finished
-            </label>
-          )}
-          {dismissed.size > 0 && (
-            <label className="toggle">
-              <input
-                type="checkbox"
-                id="show-dismissed"
-                checked={showDismissed}
-                onChange={(event) => setShowDismissed(event.target.checked)}
-              />
-              Show {dismissed.size} set aside
-            </label>
-          )}
-          {standalone.length > 0 && (
-            <label className="toggle">
-              <input
-                type="checkbox"
-                id="show-standalone"
-                checked={showStandalone}
-                onChange={(event) => setShowStandalone(event.target.checked)}
-              />
-              Show {standalone.length} not in a series
-            </label>
-          )}
-        </div>
-      )}
-
-      <ul className="series-list">
+      <ul className="series-list" id="series-list">
         {visible.map((state) => (
           <SeriesRow
             key={state.key}
@@ -320,16 +357,15 @@ function SeriesBoard({ summary }: { summary: SeriesSummary }) {
             onOpen={() => setOpenKey(openKey === state.key ? null : state.key)}
           />
         ))}
-        {showStandalone && standalone.length > 0 && (
-          <StandaloneRow
-            books={standalone}
-            open={openKey === STANDALONE_KEY}
-            onOpen={() =>
-              setOpenKey(openKey === STANDALONE_KEY ? null : STANDALONE_KEY)
-            }
-          />
-        )}
       </ul>
+
+      {standalone.length > 0 && (
+        <StandaloneDrawer
+          books={standalone}
+          open={standaloneOpen}
+          onToggle={() => setStandaloneOpen((value) => !value)}
+        />
+      )}
 
       {notStarted > 0 && (
         <p className="note">
@@ -341,62 +377,63 @@ function SeriesBoard({ summary }: { summary: SeriesSummary }) {
   )
 }
 
-const STANDALONE_KEY = '\u0000standalone'
-
 /** Read first, then in progress, then abandoned, then the wishlist. */
 const DISPLAY_RANK: Record<string, number> = { read: 0, reading: 1, dnf: 2, to_read: 3 }
 
+/* Three books stand in for the lot on the closed drawer, in shelf colours:
+   standalone books have no covers to show. */
+const PREVIEW = 3
+
 /**
- * One collapsed row rather than several hundred loose ones: these are not
- * series, and a series list is the wrong place to scatter them.
+ * A drawer at the end of the list rather than several hundred loose rows:
+ * these are not series, and the series list is the wrong place to scatter
+ * them. It is there before the lookup too — the books are known from the
+ * export alone — and opens to the whole list, no inner scroll.
  */
-function StandaloneRow({
+function StandaloneDrawer({
   books,
   open,
-  onOpen,
+  onToggle,
 }: {
   books: Book[]
   open: boolean
-  onOpen: () => void
+  onToggle: () => void
 }) {
-  const readCount = books.filter((book) => book.shelf === 'read').length
-
   return (
-    <li className={`series-row is-standalone${open ? ' is-open' : ''}`}>
-      <div className="series-head">
-        <button
-          type="button"
-          className="disclose"
-          aria-expanded={open}
-          aria-controls="standalone-books"
-          onClick={onOpen}
-        >
-          <span className="chevron" aria-hidden="true">
-            {open ? '\u2212' : '+'}
-          </span>
-          <Cover url={null} alt="" size="lg" />
-          <span className="series-id">
-            <span className="series-name">Not in a series</span>
-            <span className="byline">
-              {books.length} book{books.length === 1 ? '' : 's'}
-            </span>
-          </span>
-        </button>
-
-        <span className="series-meta">
-          <span className="progress-line">
-            <b>{readCount}</b> read
+    <section className={`drawer${open ? ' is-open' : ''}`}>
+      <button
+        type="button"
+        className="drawer-head"
+        aria-expanded={open}
+        aria-controls="standalone-books"
+        onClick={onToggle}
+      >
+        {/* Drawn, not typed: a "+" in one skin's display face is a
+            different size and weight from the next one's. */}
+        <span className="chevron" aria-hidden="true">
+          <i className="chev" />
+        </span>
+        <span className="drawer-id">
+          <span className="drawer-title">Not in a series</span>
+          <span className="drawer-meta">
+            {books.length} book{books.length === 1 ? '' : 's'} &middot; standalone
           </span>
         </span>
-      </div>
-
-      <p className="verdict muted">
-        No series in the Goodreads title. A few may be series books Goodreads never
-        labelled &mdash; worth a look if one of yours is missing above.
-      </p>
+        {!open && (
+          <span className="drawer-spines" aria-hidden="true">
+            {books.slice(0, PREVIEW).map((book, index) => (
+              <span key={index} className={`spine spine-${book.shelf}`} />
+            ))}
+          </span>
+        )}
+      </button>
 
       {open && (
         <div className="volumes" id="standalone-books">
+          <p className="note drawer-note">
+            No series in the Goodreads title. A few may be series books Goodreads never
+            labelled &mdash; worth a look if one of yours is missing above.
+          </p>
           <ol className="volume-list">
             {books.map((book, index) => (
               <BookLine key={`${book.title}-${index}`} book={book} />
@@ -404,23 +441,21 @@ function StandaloneRow({
           </ol>
         </div>
       )}
-    </li>
+    </section>
   )
 }
 
 function BookLine({ book }: { book: Book }) {
   return (
     <li className={`volume volume-book volume-${book.shelf}`}>
-      <Cover url={null} alt="" size="sm" />
       <span className="vol-main">
-        <span className="vol-title">{book.title}</span>
-        <span className="vol-alt">{book.author}</span>
-        <span className="vol-facts">
-          <span className={`chip chip-${book.shelf}`}>{SHELF_LABEL[book.shelf]}</span>
-          {book.dateRead && <span className="muted">{book.dateRead}</span>}
-          {book.rating !== null && <Stars rating={book.rating} />}
+        <span className="vol-title">
+          {book.title}
+          {book.author && <span className="vol-author"> &middot; {book.author}</span>}
         </span>
       </span>
+      <span className={`vol-status status-${book.shelf}`}>{shelfWords(book.shelf, book.dateRead)}</span>
+      <span className="vol-stars">{book.rating ? <Stars rating={book.rating} /> : null}</span>
     </li>
   )
 }
@@ -439,9 +474,16 @@ function SeriesRow({
   onOpen: () => void
 }) {
   const panelId = `volumes-${state.key.replace(/[^a-z0-9]+/g, '-')}`
+  // Before the lookup there are no covers to show, so the rows don't reserve room for one.
+  const lookedUp = state.status !== 'unknown'
 
   return (
-    <li className={`series-row${dismissed ? ' is-dismissed' : ''}${open ? ' is-open' : ''}`}>
+    <li
+      className={
+        `series-row${dismissed ? ' is-dismissed' : ''}${open ? ' is-open' : ''}` +
+        (state.status === 'unknown' ? ' is-pending' : '')
+      }
+    >
       <div className="series-head">
         <button
           type="button"
@@ -451,7 +493,7 @@ function SeriesRow({
           onClick={onOpen}
         >
           <span className="chevron" aria-hidden="true">
-            {open ? '\u2212' : '+'}
+            <i className="chev" />
           </span>
           <Cover url={state.coverUrl} color={state.coverColor} alt="" size="lg" />
           <span className="series-id">
@@ -462,12 +504,26 @@ function SeriesRow({
 
         <span className="series-meta">
           <span className="progress-line">
-            <b>{state.readCount}</b>
-            {state.totalBooks !== null ? ` of ${state.totalBooks}` : ''}
+            {state.totalBooks !== null ? (
+              <>
+                <b>{state.readCount}</b> of {state.totalBooks}
+              </>
+            ) : (
+              shelfSummary(state.rows)
+            )}
           </span>
-          <button type="button" className="ghost" onClick={onToggle}>
-            {dismissed ? 'Bring back' : 'Set aside'}
-          </button>
+          {state.status !== 'unknown' && (
+            // A quiet word, not a button: it's the thing you do least, so it
+            // shouldn't outweigh the next book.
+            <button
+              type="button"
+              className="aside-link"
+              aria-label={`${dismissed ? 'Bring back' : 'Set aside'} ${state.name}`}
+              onClick={onToggle}
+            >
+              {dismissed ? 'bring back' : 'set aside'}
+            </button>
+          )}
         </span>
       </div>
 
@@ -478,9 +534,9 @@ function SeriesRow({
           {state.rows.length === 0 ? (
             <p className="note">No volume list yet. Run the lookup first.</p>
           ) : (
-            <ol className="volume-list">
+            <ol className={`volume-list${lookedUp ? ' has-covers' : ''}`}>
               {state.rows.map((row) => (
-                <VolumeLine key={`${row.position}-${row.title}`} row={row} />
+                <VolumeLine key={`${row.position}-${row.title}`} row={row} withCover={lookedUp} />
               ))}
             </ol>
           )}
@@ -538,21 +594,69 @@ function Cover({
   )
 }
 
-const SHELF_LABEL: Record<string, string> = {
-  read: 'Read',
-  reading: 'Reading',
-  to_read: 'On your list',
-  dnf: 'Did not finish',
+/** What the reader's own shelf says, in the words the list uses on the right. */
+function shelfWords(shelf: Book['shelf'], dateRead: string | null): string {
+  switch (shelf) {
+    case 'read':
+      return dateRead ? `read ${monthYear(dateRead)}` : 'read'
+    case 'reading':
+      return 'reading now'
+    case 'dnf':
+      return 'did not finish'
+    case 'to_read':
+      return 'on your list'
+  }
 }
 
-function VolumeLine({ row }: { row: VolumeRow }) {
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+/** "2022-02-19" → "Feb 2022": the day is noise at this distance. */
+function monthYear(date: string): string {
+  const [year, month] = date.split('-')
+  const name = MONTHS[Number(month) - 1]
+  return name ? `${name} ${year}` : year
+}
+
+/** "1 read · 2 on your list" — the closed row before any lookup has run. */
+function shelfSummary(rows: VolumeRow[]): string {
+  const count = { read: 0, reading: 0, to_read: 0, dnf: 0 }
+  for (const row of rows) if (row.mine) count[row.mine.shelf] += 1
+  const parts = [
+    count.read > 0 && `${count.read} read`,
+    count.reading > 0 && `${count.reading} reading now`,
+    count.to_read > 0 && `${count.to_read} on your list`,
+    count.dnf > 0 && `${count.dnf} did not finish`,
+  ].filter(Boolean)
+  return parts.length > 0 ? parts.join(' \u00b7 ') : 'none read'
+}
+
+/** Whole numbers are the series; 0.5, 6.5 and the like are side stories. */
+function isSideStory(position: number): boolean {
+  return !Number.isInteger(position)
+}
+
+/**
+ * One book: number, cover (once looked up), title with its year under it,
+ * then what your shelf says and your stars on the right edge, so both line
+ * up down the list.
+ */
+function VolumeLine({ row, withCover }: { row: VolumeRow; withCover: boolean }) {
   const mine = row.mine
   const shelf = mine?.shelf ?? 'none'
+  const side = isSideStory(row.position)
+
+  const year =
+    row.releaseDate && row.publication === 'announced'
+      ? `due ${monthYear(row.releaseDate)}`
+      : (row.releaseDate?.slice(0, 4) ?? (mine?.year ? String(mine.year) : null))
+  const sub = [year, side ? 'side story' : null, mine && mine.title !== row.title ? `your copy: ${mine.title}` : null]
+    .filter(Boolean)
+    .join(' \u00b7 ')
 
   return (
-    <li className={`volume volume-${shelf}${row.isNext ? ' is-next' : ''}`}>
-      <span className="vol-pos">#{row.position}</span>
-      <Cover url={row.coverUrl} color={row.coverColor} alt="" size="sm" />
+    <li className={`volume volume-${shelf}${row.isNext ? ' is-next' : ''}${side ? ' is-side' : ''}`}>
+      <span className="vol-pos">{row.position}</span>
+      {withCover && <Cover url={row.coverUrl} color={row.coverColor} alt="" size="sm" />}
 
       <span className="vol-main">
         <span className="vol-title">
@@ -568,30 +672,11 @@ function VolumeLine({ row }: { row: VolumeRow }) {
             row.title
           )}
         </span>
-        {mine && mine.title !== row.title && (
-          <span className="vol-alt">your copy: {mine.title}</span>
-        )}
-        <span className="vol-facts">
-          {mine ? (
-            <>
-              <span className={`chip chip-${shelf}`}>{SHELF_LABEL[shelf]}</span>
-              {mine.dateRead && <span className="muted">{mine.dateRead}</span>}
-              {mine.rating !== null && <Stars rating={mine.rating} />}
-            </>
-          ) : (
-            <span className="muted">Not in your library</span>
-          )}
-          {row.isNext && <span className="chip chip-next">Next up</span>}
-        </span>
+        {sub && <span className="vol-sub">{sub}</span>}
       </span>
 
-      <span className="vol-date muted">
-        {row.releaseDate
-          ? row.publication === 'announced'
-            ? `due ${row.releaseDate}`
-            : row.releaseDate.slice(0, 4)
-          : ''}
-      </span>
+      <span className={`vol-status status-${shelf}`}>{mine ? shelfWords(mine.shelf, mine.dateRead) : ''}</span>
+      <span className="vol-stars">{mine?.rating ? <Stars rating={mine.rating} /> : null}</span>
     </li>
   )
 }
@@ -606,9 +691,9 @@ function Stars({ rating }: { rating: number }) {
 }
 
 function Verdict({ state }: { state: SeriesState }) {
-  if (state.status === 'unknown') {
-    return <p className="verdict muted">Not looked up yet</p>
-  }
+  // Before the lookup the button already says what has not happened; five rows
+  // repeating it just makes a working page look broken.
+  if (state.status === 'unknown') return null
   if (state.status === 'reading') {
     return <p className="verdict muted">You&rsquo;re reading it now</p>
   }
@@ -626,9 +711,13 @@ function Verdict({ state }: { state: SeriesState }) {
   const next = state.next
   if (!next) return null
 
+  const year = next.releaseDate?.slice(0, 4)
+  const where = next.onYourList ? 'already on your list' : 'not in your library yet'
+  const onNow =
+    state.inProgressPosition !== null ? `you\u2019re on ${state.inProgressPosition}` : null
   const title = (
     <span className="next-title">
-      #{next.position} {next.title}
+      {next.position} &middot; {next.title}
     </span>
   )
 
@@ -637,22 +726,17 @@ function Verdict({ state }: { state: SeriesState }) {
       <p className="verdict">
         <span className="badge badge-go">Next</span>
         {title}
-        {state.inProgressPosition !== null && (
-          <span className="muted">&middot; you&rsquo;re on #{state.inProgressPosition}</span>
-        )}
-        {next.onYourList && <span className="muted">&middot; already on your list</span>}
+        <span className="next-why">{[year, onNow ?? where].filter(Boolean).join(' \u00b7 ')}</span>
       </p>
     )
   }
 
-  if (next.publication === 'announced') {
+  if (next.publication === 'announced' && next.releaseDate) {
     return (
       <p className="verdict">
-        <span className="badge badge-soon">Due {next.releaseDate}</span>
+        <span className="badge badge-soon">Due {monthYear(next.releaseDate)}</span>
         {title}
-        {state.inProgressPosition !== null && (
-          <span className="muted">&middot; you&rsquo;re on #{state.inProgressPosition}</span>
-        )}
+        {onNow && <span className="next-why">{onNow}</span>}
       </p>
     )
   }
@@ -676,13 +760,9 @@ function firstDetail(resolved: Map<string, SeriesResult>): string | null {
  * A reader needs to know whether to wait, retry, or give up — not which HTTP
  * status came back. The technical detail stays in the logs.
  */
-function failureMessage(detail: string | null): string {
+function failureKind(detail: string | null): FailureKind {
   const text = (detail ?? '').toLowerCase()
-  if (text.includes('too many') || text.includes('429')) {
-    return 'Too many lookups just now. Wait a minute and try again.'
-  }
-  if (text.includes('not configured')) {
-    return 'Series lookup is not set up on this server yet.'
-  }
-  return 'Could not reach the series database. Try again in a moment — nothing was lost.'
+  if (text.includes('too many') || text.includes('429')) return 'busy'
+  if (text.includes('not configured')) return 'unset'
+  return 'unreachable'
 }

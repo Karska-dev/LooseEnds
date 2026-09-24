@@ -1,78 +1,116 @@
 :root {
-  --ground: #f6f8f7;
-  --surface: #ffffff;
-  --ink: #14201f;
-  --ink-soft: #4a5957;
-  --ink-faint: #7e8c8a;
-  --line: #dce3e1;
-  --primary: #0e5c5f;
-  --ok: #2f6b3c;
-  --warn: #8a6410;
-  --accent: #b4472f;
+  /*
+   * Quiet, in the "Ink" palette: a near-white with a blue bias, a very dark
+   * ink, and one indigo accent. Quiet has no fills and no shadows, so the
+   * ground and the accent are the only things carrying temperature.
+   */
+  --ground: #f1f3f7;
+  --surface: #f1f3f7;       /* Quiet has no cards; surface == ground */
+  --ink: #0f141c;
+  --ink-soft: #525d6c;
+  --ink-faint: #858e9c;
+  /* Readable greys for things that are switched off: 4.5:1 for small text,
+     3:1 for the big numbers. --ink-faint is decoration only. */
+  --ink-muted: #646d7b;
+  --ink-hidden-n: #7d8694;
+  --line: #dae0e8;
+  --line-soft: #e6eaf1;
+  --primary: #3b4a9e;
+  --primary-soft: #e6e9f6;
+  --ok: #2f6b5f;
+  --warn: #8a5a1f;
+  --accent: #a34a33;
+
+  --display: "Instrument Serif", Georgia, "Times New Roman", serif;
+  --body: "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
 
   color-scheme: light dark;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --ground: #101615;
-    --surface: #18211f;
-    --ink: #e8eeec;
-    --ink-soft: #a6b4b1;
-    --ink-faint: #74827f;
-    --line: #27332f;
-    --primary: #58c4c4;
-    --ok: #7bc08b;
-    --warn: #d9ac5a;
-    --accent: #e58468;
+    /*
+     * Dark is not an inversion. The hairlines sit one step off the GROUND
+     * rather than one step off white — a line computed by inverting #dae0e8
+     * would glow — and the indigo lifts, because #3b4a9e on black is a smudge.
+     */
+    --ground: #0f131a;
+    --surface: #0f131a;
+    --ink: #e9edf4;
+    --ink-soft: #8b95a4;
+    --ink-faint: #6b7483;
+    --ink-muted: #768090;
+    --ink-hidden-n: #6b7483;
+    --line: #232b36;
+    --line-soft: #1a212a;
+    --primary: #8f9cff;
+    --primary-soft: #1b2233;
+    --ok: #57b394;
+    --warn: #d2a05e;
+    --accent: #e08a6f;
   }
 }
 
 * { box-sizing: border-box; }
 
+/* The narrowest phone still in use is 320px wide. Below that the page stops
+   shrinking and scrolls sideways instead of crushing the layout. */
+html,
+body { min-width: 320px; }
+
 body {
   margin: 0;
   background: var(--ground);
   color: var(--ink);
-  font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif;
+  font: 16px/1.6 var(--body);
 }
 
 .page {
-  max-width: 720px;
+  /* Quiet draws its structure with rules that run the full width, so the
+     column needs more room than a text-only layout would. */
+  max-width: 880px;
   margin: 0 auto;
   padding-inline: 20px;
-  padding-block: 56px 72px;
+  padding-block: 36px 48px;
   display: flex;
   flex-direction: column;
-  gap: 40px;
+  gap: 28px;
 }
 
 .masthead { display: flex; flex-direction: column; gap: 8px; }
 
 h1 {
   margin: 0;
-  font-size: clamp(30px, 6vw, 40px);
-  letter-spacing: -0.02em;
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: clamp(34px, 6vw, 52px);
+  line-height: 1;
+  letter-spacing: -0.015em;
 }
 
-.tagline { margin: 0; color: var(--ink-soft); font-size: 18px; }
+.tagline { margin: 0; color: var(--ink-soft); font-size: 15.5px; letter-spacing: 0.01em; }
 
+/* Structure comes from hairlines and alignment, never from a container. */
 .intake {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  padding: 24px;
+  gap: 14px;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
 }
 
 h2 {
   margin: 0;
-  font-size: 13px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.24em;
+  text-transform: lowercase;
   color: var(--ink-faint);
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 12px;
 }
 
 input[type="file"] { max-width: 100%; }
@@ -103,36 +141,45 @@ input[type="file"] { max-width: 100%; }
   flex-wrap: wrap;
 }
 
+/* Outlined, not filled: in a skin with no fills anywhere, a solid block of
+   colour would be the loudest thing on the page. */
 button {
   font: inherit;
-  font-size: 15px;
-  padding: 9px 16px;
-  border-radius: 4px;
-  border: 1px solid var(--primary);
-  background: var(--primary);
-  color: var(--surface);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  padding: 13px 24px;
+  border-radius: 0;
+  border: 1px solid var(--ink);
+  background: none;
+  color: var(--ink);
   cursor: pointer;
 }
 
 button:disabled { opacity: 0.6; cursor: default; }
 button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 
+/* A ghost is a rule under a word, the way a footnote link is set. */
 button.ghost {
   background: none;
-  color: var(--ink-faint);
-  border-color: var(--line);
-  font-size: 13px;
-  padding: 5px 11px;
+  color: var(--ink);
+  border: 0;
+  border-bottom: 1px solid var(--ink-faint);
+  border-radius: 0;
+  font-size: 14px;
+  font-weight: 400;
+  letter-spacing: 0;
+  padding: 4px 1px;
   flex: none;
 }
 
-button.ghost:hover { color: var(--ink); border-color: var(--ink-faint); }
+@media (hover: hover) { button.ghost:hover { border-bottom-color: var(--ink); } }
 
 .meter {
   flex: 1 1 160px;
   min-width: 140px;
-  height: 6px;
-  border-radius: 3px;
+  height: 2px;
+  border-radius: 0;
   background: var(--line);
   overflow: hidden;
 }
@@ -144,32 +191,136 @@ button.ghost:hover { color: var(--ink); border-color: var(--ink-faint); }
   transition: width 320ms ease;
 }
 
+/*
+ * Five readings of ONE library, so they sit on one ruled line rather than in
+ * five boxes — a card grid always implies the tiles are separate things.
+ * Each tile is also the switch for its own series in the list: shown tiles
+ * carry a short rule in their colour on the bottom edge, hidden ones fade to
+ * grey and lose it. The eye in the corner says the same thing again.
+ */
 .tiles {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
-  gap: 1px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0;
   margin: 0;
-  background: var(--line);
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  overflow: hidden;
+  background: none;
+  border: 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
 }
 
-.tile { background: var(--surface); padding: 14px 16px; }
-
-.tile dt {
-  font-size: 11px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--ink-faint);
-  margin-bottom: 4px;
+.tile {
+  --tile-color: var(--ink-soft);
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 84px;
+  padding: 18px 26px 18px 18px;
+  border: 0;
+  border-left: 1px solid var(--line);
+  border-radius: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  letter-spacing: 0;
+  text-align: left;
+  cursor: pointer;
 }
 
-.tile dd {
-  margin: 0;
-  font-size: 26px;
-  font-weight: 600;
+.tile:first-child { border-left: 0; padding-left: 0; }
+
+.tile-ready { --tile-color: var(--ok); }
+.tile-reading { --tile-color: var(--primary); }
+.tile-waiting { --tile-color: var(--warn); }
+.tile-done { --tile-color: var(--ink-soft); }
+.tile-aside { --tile-color: var(--accent); }
+
+.tile-n {
+  flex: none;
+  font-family: var(--display);
+  font-size: 42px;
+  font-weight: 400;
+  line-height: 1;
   font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+/* A two-line title must never move the number, so the number is centred
+   and the title wraps beside it. */
+.tile-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  line-height: 1.45;
+  text-transform: lowercase;
+  color: var(--ink-soft);
+}
+
+.tile-dot { display: none; }
+
+.tile-eye {
+  position: absolute;
+  top: 10px;
+  right: 8px;
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  color: var(--ink-soft);
+}
+
+.tile::after {
+  content: '';
+  position: absolute;
+  left: 18px;
+  right: 26px;
+  bottom: -1px;
+  height: 2px;
+  background: var(--tile-color);
+}
+
+.tile:first-child::after { left: 0; }
+
+.tile[aria-pressed='false']::after { display: none; }
+.tile[aria-pressed='false'] .tile-n { color: var(--ink-hidden-n); }
+.tile[aria-pressed='false'] .tile-label,
+.tile[aria-pressed='false'] .tile-eye { color: var(--ink-muted); }
+.tile:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+/* "Showing 6 series · Finished and Set aside hidden · Show all" */
+.list-head { display: flex; align-items: baseline; gap: 6px 14px; flex-wrap: wrap; }
+.list-count { font-size: 14px; color: var(--ink); }
+.list-hidden { font-size: 13px; color: var(--ink-muted); text-transform: lowercase; }
+
+/* From 640 to 899px five tiles still fit in a row, but only if they give up
+   some padding and a little number size, or long titles run to three lines. */
+@media (min-width: 640px) and (max-width: 899px) {
+  .tile { gap: 8px; padding: 16px 22px 16px 12px; }
+  .tile:first-child { padding-left: 0; }
+  .tile::after { left: 12px; right: 22px; }
+  .tile:first-child::after { left: 0; }
+  .tile-n { font-size: 34px; }
+  .tile-label { letter-spacing: 0.1em; }
+  .tile-eye { right: 5px; }
+}
+
+/* Five tiles in a row need about 640px; below that, two columns with Set
+   aside across both, so no title is ever squeezed into a sliver. */
+@media (max-width: 639px) {
+  .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tile { border-bottom: 1px solid var(--line); }
+  .tile:nth-child(odd) { border-left: 0; padding-left: 0; }
+  .tile:nth-child(odd)::after { left: 0; }
+  .tile:last-child { grid-column: 1 / -1; border-bottom: 0; }
+  .tile-n { font-size: 34px; }
 }
 
 .toggle {
@@ -187,14 +338,14 @@ button.ghost:hover { color: var(--ink); border-color: var(--ink-faint); }
 .series-row {
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  padding: 13px 0;
+  gap: 9px;
+  padding: 20px 0;
   border-top: 1px solid var(--line);
 }
 
 .series-row:last-child { border-bottom: 1px solid var(--line); }
 .series-row.is-dismissed { opacity: 0.55; }
-.series-row.is-open { background: var(--surface); }
+.series-row.is-open { background: none; }
 
 .series-head {
   display: flex;
@@ -218,24 +369,51 @@ button.ghost:hover { color: var(--ink); border-color: var(--ink-faint); }
   flex: 1 1 auto;
 }
 
+/*
+ * The glyph is drawn with borders rather than typed: a character would take
+ * the size and weight of whichever display face the skin sets, and this
+ * control has to stay the same size everywhere. It also rotates rather than
+ * swapping shapes, so the open state is the same object turned.
+ */
 .chevron {
-  font-family: var(--mono, monospace);
-  font-size: 15px;
-  width: 14px;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
   flex: none;
   color: var(--ink-faint);
+}
+
+.chev {
+  display: block;
+  width: 8px;
+  height: 8px;
+  margin-left: -2px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform 0.16s ease;
+}
+
+.series-row.is-open .chev { transform: rotate(45deg); margin: -3px 0 0; }
+@media (hover: hover) { .disclose:hover .chevron { color: var(--ink); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .chev { transition: none; }
 }
 
 .series-id { display: flex; flex-direction: column; min-width: 0; }
 
 .series-name {
-  font-size: 17px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  font-family: var(--display);
+  font-size: 21px;
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 1.15;
   color: var(--ink);
 }
 
-.byline { font-size: 13px; color: var(--ink-faint); }
+.byline { font-size: 12.5px; letter-spacing: 0.02em; color: var(--ink-faint); }
 
 .series-meta {
   display: flex;
@@ -266,88 +444,24 @@ button.ghost:hover { color: var(--ink); border-color: var(--ink-faint); }
 .verdict.muted, .verdict .muted, .muted { color: var(--ink-faint); }
 .next-title { color: var(--ink); }
 
+/* A label, not a pill: outlines and fills would be the only boxes here. */
 .badge {
-  font-size: 11px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  padding: 3px 8px;
-  border-radius: 3px;
-  white-space: nowrap;
-  border: 1px solid;
-}
-
-.badge-go { color: var(--surface); background: var(--ok); border-color: var(--ok); }
-.badge-soon { color: var(--warn); border-color: var(--warn); }
-.badge-wait { color: var(--ink-faint); border-color: var(--line); }
-
-/* ---------- expanded volumes ---------- */
-
-.volumes { margin: 8px 0 4px 23px; }
-
-.volume-list {
-  list-style: none;
-  margin: 0;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  text-transform: lowercase;
   padding: 0;
-  border-left: 2px solid var(--line);
-}
-
-.volume {
-  display: grid;
-  grid-template-columns: 38px 28px 1fr auto;
-  gap: 10px;
-  padding: 9px 0 9px 14px;
-  align-items: baseline;
-  font-size: 14px;
-}
-
-.volume + .volume { border-top: 1px solid var(--line-soft, var(--line)); }
-.volume-none { opacity: 0.62; }
-.volume.is-next { background: var(--primary-soft, transparent); }
-
-.vol-pos {
-  font-variant-numeric: tabular-nums;
-  color: var(--ink-faint);
-  font-size: 13px;
-}
-
-.vol-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.vol-title { color: var(--ink); }
-.volume-read .vol-title { font-weight: 600; }
-.vol-alt { font-size: 12.5px; color: var(--ink-faint); }
-
-.vol-facts {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  flex-wrap: wrap;
-  font-size: 12.5px;
-}
-
-.vol-date { font-size: 12.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
-
-.chip {
-  font-size: 11px;
-  padding: 2px 7px;
-  border-radius: 9px;
-  border: 1px solid var(--line);
-  color: var(--ink-faint);
+  border-radius: 0;
   white-space: nowrap;
+  border: 0;
+  background: none;
 }
 
-.chip-read { color: var(--ok); border-color: var(--ok); }
-.chip-reading { color: var(--primary); border-color: var(--primary); }
-.chip-dnf { color: var(--accent, #b4472f); border-color: var(--accent, #b4472f); }
-.chip-next { color: var(--surface); background: var(--primary); border-color: var(--primary); }
+.badge-go { color: var(--ok); }
+.badge-soon { color: var(--primary); }
+.badge-wait { color: var(--ink-faint); }
 
-.rating { letter-spacing: 1px; color: var(--warn); font-size: 12px; }
-
-@media (max-width: 460px) {
-  .series-head { flex-direction: column; align-items: stretch; gap: 8px; }
-  .series-meta { justify-content: space-between; }
-  .verdict, .volumes { margin-left: 0; }
-  .volume { grid-template-columns: 30px 28px 1fr; }
-  .vol-date { grid-column: 3; }
-}
+/* ---------- expanded volumes: see "Series list — Band" at the end ---------- */
 
 
 /* ---------- covers ---------- */
@@ -356,7 +470,7 @@ button.ghost:hover { color: var(--ink); border-color: var(--ink-faint); }
   display: block;
   flex: none;
   background: var(--line-soft, var(--line));
-  border-radius: 2px;
+  border-radius: 0;
   overflow: hidden;
   align-self: center;
 }
@@ -375,7 +489,7 @@ button.ghost:hover { color: var(--ink); border-color: var(--ink-faint); }
 .disclose { align-items: center; }
 
 .vol-title a { color: inherit; text-decoration: none; border-bottom: 1px solid var(--line); }
-.vol-title a:hover { border-bottom-color: var(--ink-faint); }
+@media (hover: hover) { .vol-title a:hover { border-bottom-color: var(--ink-faint); } }
 
 .colophon a { color: var(--ink-soft); }
 
@@ -383,15 +497,34 @@ button.ghost:hover { color: var(--ink); border-color: var(--ink-faint); }
 
 .how {
   margin: 0;
-  padding-left: 22px;
-  font-size: 14.5px;
+  padding-left: 0;
+  list-style: none;
+  counter-reset: step;
+  font-size: 15px;
   color: var(--ink-soft);
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 14px;
 }
 
-.how li::marker { color: var(--ink-faint); }
+.how li {
+  counter-increment: step;
+  position: relative;
+  padding-left: 32px;
+  min-height: 22px;
+}
+
+/* Positioned, not laid out: a flex or grid list item promotes every inline
+   <b> inside it to a box of its own and breaks the sentence apart. */
+.how li::before {
+  content: counter(step);
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-family: var(--display);
+  font-size: 15px;
+  color: var(--primary);
+}
 .how b { color: var(--ink); font-weight: 600; }
 
 .error {
@@ -404,8 +537,6 @@ button.ghost:hover { color: var(--ink); border-color: var(--ink-faint); }
 
 @media (max-width: 460px) {
   .page { padding-block: 32px 56px; }
-  .tiles { grid-template-columns: repeat(2, 1fr); }
-  .tile dd { font-size: 22px; }
   .actions { flex-direction: column; align-items: stretch; }
   .actions button { width: 100%; }
   .meter { width: 100%; }
@@ -415,16 +546,53 @@ button.ghost:hover { color: var(--ink); border-color: var(--ink-faint); }
 /* ---------- books with no series ---------- */
 
 /* No position column: these books have no place in an order. */
-.volume-book { grid-template-columns: 28px 1fr; }
 
-.series-row.is-standalone .series-name { color: var(--ink-soft); }
+/*
+ * The drawer at the end of the list. Closed it is one row: the skin's
+ * expander, the title, a count and three spines in shelf colours. Open it
+ * hangs the books off it the same way a series hangs its volumes, all of
+ * them, with no inner scroll.
+ */
+.drawer { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 
-.series-row.is-standalone .cover-lg {
-  border: 1px dashed var(--line);
-  background: transparent;
+.drawer-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  padding: 16px 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  letter-spacing: 0;
+  text-align: left;
+  cursor: pointer;
 }
 
-.series-row.is-standalone .volume-list { max-height: 420px; overflow-y: auto; }
+.drawer-head:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+@media (hover: hover) { .drawer-head:hover .chevron { color: var(--ink); } }
+.drawer-id { display: flex; flex-direction: column; flex: 1 1 auto; min-width: 0; }
+
+.drawer-title {
+  font-family: var(--display);
+  font-size: 21px;
+  line-height: 1.15;
+  color: var(--ink);
+}
+
+.drawer-meta { font-size: 12.5px; letter-spacing: 0.02em; color: var(--ink-muted); }
+.drawer-spines { display: flex; gap: 3px; flex: none; }
+.drawer-spines .spine { flex: none; width: 12px; height: 18px; min-width: 0; }
+.drawer.is-open .chev { transform: rotate(45deg); margin: -3px 0 0; }
+.drawer .volumes { margin-top: 0; margin-bottom: 16px; }
+.drawer-note { margin: 0 0 8px; font-size: 13px; }
+
+@media (max-width: 360px) {
+  .drawer-spines { display: none; }
+}
 
 
 /* ---------- cover placeholder ---------- */
@@ -457,3 +625,2300 @@ button.ghost:hover { color: var(--ink); border-color: var(--ink-faint); }
 }
 
 .file-field > span { font-weight: 600; color: var(--ink); }
+
+/* ---------- before the lookup ---------- */
+
+/*
+ * Rows exist but hold no verdict yet. Dimming them says "pending" without five
+ * lines of text saying so, and an empty cover slot reads as waiting rather
+ * than broken.
+ */
+.series-row.is-pending { opacity: 0.72; }
+.series-row.is-pending .cover { background: var(--line-soft, var(--line)); }
+
+/* A button that reads as a link: same affordance, no form semantics lost. */
+.linklike {
+  border: 0;
+  padding: 0;
+  background: none;
+  font: inherit;
+  color: var(--primary);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+@media (hover: hover) { .linklike:hover { text-decoration: none; } }
+
+/* ---------- the loaded library: a shelf ----------
+   One spine per book, coloured by Goodreads shelf, standing on a rule; the
+   number the lookup is about to use sits apart on the right. Quiet draws it
+   in ink and hairlines; Soft and Bold restyle it below. */
+
+.library {
+  display: flex;
+  gap: 28px;
+  padding: 22px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.library-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.library-head { margin: 0; display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+
+.library-name {
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 26px;
+  line-height: 1.1;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.library-count { font-size: 12.5px; letter-spacing: 0.02em; color: var(--ink-faint); }
+
+.shelf {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 70px;
+  border-bottom: 1px solid var(--ink);
+  overflow: hidden;
+}
+
+/* Width comes in as a flex-basis so a narrow shelf squeezes the spines
+   rather than cutting the last ones off. */
+.spine { display: block; flex: 0 1 auto; min-width: 3px; background: var(--spine); }
+.swatch { flex: none; width: 10px; height: 10px; background: var(--spine); }
+
+.spine-read { --spine: var(--ink); }
+.spine-reading { --spine: var(--primary); }
+.spine-to_read { --spine: transparent; box-shadow: inset 0 0 0 1px var(--ink-soft); }
+.spine-dnf { --spine: var(--ink-faint); }
+
+.shelf-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.shelf-legend li { display: flex; align-items: center; gap: 8px; }
+.shelf-legend b { font-weight: 500; color: var(--ink); }
+
+.library-side {
+  flex: none;
+  width: 220px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 16px;
+  padding-left: 24px;
+  border-left: 1px solid var(--line);
+}
+
+.change-file { align-self: flex-end; padding: 10px 18px; font-size: 13px; }
+
+.series-count { margin: 0; display: flex; flex-direction: column; gap: 6px; }
+
+.series-count-n {
+  font-family: var(--display);
+  font-size: 60px;
+  line-height: 0.9;
+  color: var(--primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.series-count-label { font-size: 14px; color: var(--ink); }
+.series-count-rest { font-size: 12.5px; color: var(--ink-faint); }
+
+@media (max-width: 460px) {
+  .library { flex-direction: column; gap: 20px; }
+  .library-side {
+    width: auto;
+    padding: 18px 0 0;
+    border-left: 0;
+    border-top: 1px solid var(--line);
+    flex-direction: row-reverse;
+    align-items: flex-start;
+  }
+  .change-file { align-self: flex-start; }
+}
+
+/* ---------- the lookup, told as a sentence ----------
+   Before, during and failed share one minimum height so the board under it
+   never jumps between them; the finished panel may be shorter. Quiet draws a
+   hairline ring round the count; Soft and Bold restyle it below. */
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.lookup {
+  --meter: var(--primary);
+  display: flex;
+  gap: 28px;
+  align-items: flex-start;
+  min-height: 250px;
+  box-sizing: border-box;
+  padding: 28px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.lookup[data-phase='after'] { --meter: var(--ok); min-height: 0; }
+.lookup[data-phase='failed'] { --meter: var(--accent); }
+
+.lookup-meter {
+  position: relative;
+  flex: none;
+  width: 84px;
+  height: 84px;
+  display: grid;
+  place-items: center;
+}
+
+.lookup-meter::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(var(--meter) calc(var(--p) * 1turn), var(--line) 0);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 2px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 2px));
+}
+
+.lookup-meter-n {
+  position: relative;
+  z-index: 2;
+  font-family: var(--display);
+  font-size: 24px;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.lookup-orbit { display: none; }
+
+.lookup[data-phase='during'] .lookup-orbit {
+  display: block;
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  animation: lookup-spin 1.2s linear infinite;
+}
+
+.lookup-orbit::before {
+  content: '';
+  position: absolute;
+  top: -2.5px;
+  left: 50%;
+  width: 7px;
+  height: 7px;
+  margin-left: -3.5px;
+  border-radius: 50%;
+  background: var(--meter);
+}
+
+.lookup-text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+
+.lookup-title {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 32px;
+  line-height: 1.1;
+  color: var(--ink);
+}
+
+/* The name changes every second and a half; it must never re-wrap the panel. */
+.lookup[data-phase='during'] .lookup-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.lookup-body { margin: 0; max-width: 60ch; font-size: 15px; line-height: 1.6; color: var(--ink-soft); }
+.lookup-actions { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; margin-top: 4px; }
+
+.lookup-heard { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+
+.lookup-heard li {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  min-width: 0;
+  font-size: 14px;
+  color: var(--ink-soft);
+  animation: lookup-in 0.5s ease-out both;
+}
+
+.lookup-heard li > span:last-child { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lookup-heard b { font-weight: 500; color: var(--ink); }
+
+.lookup-dots { color: var(--primary); }
+.lookup-dots i {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  margin-left: 4px;
+  border-radius: 50%;
+  background: currentColor;
+  vertical-align: middle;
+  animation: lookup-dot 1.2s ease-in-out infinite;
+}
+.lookup-dots i:nth-child(2) { animation-delay: 0.15s; }
+.lookup-dots i:nth-child(3) { animation-delay: 0.3s; }
+.lookup-cursor { display: none; }
+
+.badge-done { color: var(--ink-faint); }
+
+@keyframes lookup-spin { to { transform: rotate(360deg); } }
+@keyframes lookup-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@keyframes lookup-dot { 0%, 80%, 100% { opacity: 0.25; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-3px); } }
+@keyframes lookup-blink { 50% { opacity: 0; } }
+@keyframes lookup-stripes { to { background-position: 28px 0; } }
+
+@media (max-width: 460px) {
+  .lookup { flex-direction: column; gap: 18px; min-height: 380px; }
+  .lookup[data-phase='after'] { min-height: 0; }
+  .lookup-meter { width: 64px; height: 64px; }
+  .lookup-title { font-size: 26px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lookup-orbit,
+  .lookup-heard li,
+  .lookup-dots i,
+  .lookup-cursor,
+  .lookup-meter::before { animation: none !important; }
+}
+
+/* ==================================================================
+   Skins
+   ------------------------------------------------------------------
+   Three complete looks, switched by data-skin on <html>. Everything
+   is tokens and flat CSS — no images, and the web fonts are loaded
+   once in index.html, so switching costs a repaint.
+   The default (no attribute) is Quiet.
+   ================================================================== */
+
+/* ---------- the picker itself ---------- */
+
+.skins {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 10;
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+.skins button {
+  border: 0;
+  background: none;
+  box-shadow: none;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+
+.skins button[aria-pressed='true'] {
+  background: var(--primary);
+  color: var(--surface);
+}
+
+/* Below 900px the pill has no room and sits on the title, so it gives way
+   to the dial: one round button in the masthead that scrolls with the page
+   and drops three small circles, one per look. No panel, no words; each
+   circle shows "Aa" in its own look and the current one wears a ring. */
+
+.masthead { position: relative; }
+
+.skin-dial { display: none; }
+
+.skin-dial .skin-dial-button {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid var(--ink-muted);
+  background: transparent;
+  color: var(--ink);
+  letter-spacing: 0;
+}
+
+.skin-dial .skin-dial-button svg { display: block; }
+
+.skin-dial .skin-dial-button[aria-expanded='true'] {
+  background: var(--primary-soft);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.skin-dots {
+  position: absolute;
+  top: calc(100% + 12px);
+  left: 50%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transform: translateX(-50%);
+  transform-origin: top center;
+  animation: dial-in 0.16s ease-out;
+}
+
+@keyframes dial-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(-10px) scale(0.8); }
+  to { opacity: 1; transform: translateX(-50%); }
+}
+
+/* The faces preview the look they switch to, so they are the same in every
+   skin and in the dark. */
+.skin-dial .skin-dot {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  letter-spacing: 0;
+  line-height: 1;
+  transition: transform 0.12s;
+}
+
+.skin-dial .skin-dot.skin-dot-quiet {
+  border: 1px solid #aeb6c3;
+  background: #f7f8fb;
+  color: #0f141c;
+  font: 400 19px/1 "Instrument Serif", Georgia, serif;
+  box-shadow: 0 4px 10px rgba(15, 20, 28, 0.14);
+}
+
+.skin-dial .skin-dot.skin-dot-soft {
+  border: 0;
+  background: #fdf6f1;
+  color: #3b2f3a;
+  font: 800 13px/1 Nunito, system-ui, sans-serif;
+  box-shadow: 4px 5px 10px rgba(160, 120, 140, 0.35), -3px -3px 8px rgba(255, 255, 255, 0.9);
+}
+
+.skin-dial .skin-dot.skin-dot-brutal {
+  border: 3px solid #0a0a0a;
+  background: #f03b27;
+  color: #ffffff;
+  font: 400 17px/1 Anton, Impact, sans-serif;
+  box-shadow: 3px 3px 0 #0a0a0a;
+}
+
+.skin-dial .skin-dot[aria-checked='true']::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 2px solid var(--primary);
+  pointer-events: none;
+}
+
+.skin-dial .skin-dot:focus-visible { outline: 2px solid var(--ink); outline-offset: 9px; }
+
+@media (hover: hover) {
+  .skin-dial .skin-dot:hover { transform: scale(1.08); }
+  .skin-dial .skin-dial-button:hover { border-color: var(--ink); }
+}
+
+@media (max-width: 899px) {
+  .skins { display: none; }
+  .skin-dial { display: block; position: absolute; top: 0; right: 0; z-index: 20; }
+  .masthead h1,
+  .masthead .tagline { padding-right: 52px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skin-dots { animation: none; }
+  .skin-dial .skin-dot { transition: none; }
+  .skin-dial .skin-dot:hover { transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-skin] .cover,
+  [data-skin] button { transition: none; transform: none; }
+}
+
+/* ---------- the file picker ---------- */
+
+/* Off-screen but still focusable, so the keyboard path is unchanged. */
+.file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+  opacity: 0;
+}
+
+.dropzone {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 20px 22px;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  background: none;
+}
+
+/* The one filled element in the skin, because it is the one thing to do. */
+.file-button {
+  padding: 14px 26px;
+  border: 1px solid var(--ink);
+  border-radius: 0;
+  background: var(--ink);
+  color: var(--ground);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.file-or { color: var(--ink-faint); font-size: 14px; }
+
+.file-input:focus-visible + .file-button {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}
+
+@media (max-width: 460px) {
+  .dropzone { flex-direction: column; align-items: stretch; text-align: center; }
+}
+
+/* ---------- short viewports ----------
+   The empty state is one screen of instructions; on a laptop it should not
+   need a scroll to reach the button it is instructing you to press. */
+
+@media (max-height: 820px) {
+  .page { padding-block: 24px 32px; gap: 20px; }
+  .intake { gap: 8px; }
+  .dropzone { padding: 12px 14px; }
+  .how { font-size: 14px; }
+  [data-skin='brutal'] .how,
+  [data-skin='soft'] .how { gap: 9px; }
+  [data-skin='brutal'] .intake { padding: 16px 24px; }
+}
+
+/* ---------- the disclosure, per skin ----------
+   Same button, same box, same hit area; only the glyph changes. Quiet turns
+   a hairline corner. Soft presses a triangle into the surface that turns to
+   point down when the list opens. Bold draws a plus whose vertical bar goes
+   away on open, leaving a minus — heavy, square-ended bars to match its
+   rules. All are drawn rather than typed, so the glyph stays the same size
+   whatever display face the skin sets. */
+
+[data-skin='brutal'] .chev {
+  position: relative;
+  width: 12px;
+  height: 12px;
+  margin: 0;
+  border: 0;
+  transform: none;
+}
+
+[data-skin='brutal'] .chev::before,
+[data-skin='brutal'] .chev::after {
+  content: '';
+  position: absolute;
+  inset: 50% 0 auto 0;
+  height: 3px;
+  background: currentColor;
+  transform: translateY(-50%);
+}
+
+[data-skin='brutal'] .chev::after {
+  transform: translateY(-50%) rotate(90deg);
+  transition: opacity 0.16s ease;
+}
+
+[data-skin='brutal'] .series-row.is-open .chev,
+[data-skin='brutal'] .drawer.is-open .chev { transform: none; margin: 0; }
+[data-skin='brutal'] .series-row.is-open .chev::after,
+[data-skin='brutal'] .drawer.is-open .chev::after { opacity: 0; }
+
+[data-skin='soft'] .chev {
+  width: 0;
+  height: 0;
+  margin-left: 2px;
+  border: 0;
+  border-left: 8px solid currentColor;
+  border-top: 5.5px solid transparent;
+  border-bottom: 5.5px solid transparent;
+  transform: none;
+  transition: transform 0.16s ease;
+}
+
+[data-skin='soft'] .series-row.is-open .chev,
+[data-skin='soft'] .drawer.is-open .chev {
+  transform: rotate(90deg);
+  margin: 2px 0 0 -1px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-skin='brutal'] .chev::after,
+  [data-skin='soft'] .chev { transition: none; }
+}
+
+/* ==================================================================
+   Bold — Panel press
+   ------------------------------------------------------------------
+   A printed poster: the page is one framed sheet, split by 4px rules,
+   with a red masthead band, Anton for anything that counts and Space
+   Mono for anything that is a fact. Colour is flat and means one thing
+   each — green ready, red now, blue waiting, yellow "act here".
+
+   Dark inverts the rules (black on cream, cream on black) and lifts the
+   blue to a periwinkle, because #1b2fe8 on black is unreadable. The red
+   band stays. The yellow dropzone never changes, so everything sitting
+   on it is styled for yellow, not for the mode — tokenising those by
+   mode is what produced yellow-on-cream in the dark prototype.
+
+   The skin id stays 'brutal' so a stored preference keeps working.
+   ================================================================== */
+
+[data-skin='brutal'] {
+  --display: Anton, Impact, "Arial Narrow", sans-serif;
+  --body: "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "Space Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --bg: #f6f5f1;
+  --rule: #0a0a0a;
+  --band: #f03b27;
+  --band-ink: #ffffff;
+  --yellow: #ffd400;
+  --blue: #1b2fe8;
+  --green: #14a06b;
+  --red: #f03b27;
+  --grey: #8a8780;
+  --byline: #5c594f;
+  --on-dark: #ffffff;
+  --ink-muted: #6f6c64;
+
+  /* The shared names the base rules read. */
+  --ground: var(--bg);
+  --surface: var(--bg);
+  --ink: #0a0a0a;
+  --ink-soft: var(--byline);
+  --ink-faint: var(--grey);
+  --line: var(--rule);
+  --line-soft: #dcd9d0;
+  --primary: var(--blue);
+  --primary-soft: var(--yellow);
+  --ok: var(--green);
+  --warn: var(--red);
+  --accent: var(--red);
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-skin='brutal'] {
+    --bg: #101010;
+    --rule: #f4f1e6;
+    --band: #d8341f;
+    --band-ink: #fff6f2;
+    --blue: #7183ff;
+    --green: #3fcf92;
+    --red: #ff6a52;
+    --grey: #9a968c;
+    --byline: #a9a49a;
+    --on-dark: #101010;
+    --ink-muted: #a9a49a;
+    --ink: #f4f1e6;
+    --line-soft: #2a2926;
+  }
+}
+
+/* ---------- the sheet ---------- */
+
+[data-skin='brutal'] body { background: var(--bg); color: var(--ink); }
+
+[data-skin='brutal'] .page {
+  width: calc(100% - 32px);
+  /* Clear of the fixed skin picker, which would otherwise sit on the band. */
+  margin: 64px auto 48px;
+  padding: 0;
+  gap: 0;
+  border: 4px solid var(--rule);
+  background: var(--bg);
+}
+
+[data-skin='brutal'] .masthead {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  gap: 14px;
+  padding: 22px 24px;
+  background: var(--band);
+  color: var(--band-ink);
+  border-bottom: 4px solid var(--rule);
+}
+
+[data-skin='brutal'] h1 {
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: clamp(44px, 11vw, 92px);
+  line-height: 0.84;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+}
+
+[data-skin='brutal'] .tagline {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.5;
+  letter-spacing: 0.04em;
+  color: inherit;
+  text-align: right;
+  padding-bottom: 6px;
+}
+/* One sentence to a line: the three beats of the pitch. */
+[data-skin='brutal'] .tagline span { display: block; white-space: nowrap; }
+
+[data-skin='brutal'] .intake,
+[data-skin='brutal'] .board { padding: 24px; gap: 18px; }
+[data-skin='brutal'] .board { border-top: 4px solid var(--rule); }
+
+[data-skin='brutal'] h2 {
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 24px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--ink);
+  border-bottom: 4px solid var(--rule);
+  padding-bottom: 8px;
+}
+
+[data-skin='brutal'] .note { color: var(--byline); }
+[data-skin='brutal'] .how { color: var(--ink); gap: 12px; }
+[data-skin='brutal'] .how b { font-weight: 700; }
+[data-skin='brutal'] .how li { padding-left: 52px; min-height: 30px; }
+[data-skin='brutal'] .how li::before {
+  font-family: var(--display);
+  font-size: 26px;
+  line-height: 1;
+  color: var(--red);
+}
+
+[data-skin='brutal'] .colophon {
+  border-top: 4px solid var(--rule);
+  padding: 14px 24px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--byline);
+}
+
+[data-skin='brutal'] .colophon a { color: var(--ink); }
+[data-skin='brutal'] .error { color: var(--red); font-weight: 700; }
+[data-skin='brutal'] .toggle { color: var(--ink); }
+[data-skin='brutal'] .toggle input { accent-color: var(--red); }
+
+/* ---------- buttons: stamped, and they move when pressed ---------- */
+
+[data-skin='brutal'] button {
+  border: 3px solid var(--rule);
+  border-radius: 0;
+  background: none;
+  color: var(--ink);
+  font-weight: 700;
+  letter-spacing: 0;
+  box-shadow: none;
+}
+
+[data-skin='brutal'] button:active:not(:disabled) { transform: translate(2px, 2px); }
+[data-skin='brutal'] button:disabled { opacity: 0.5; }
+
+[data-skin='brutal'] button.ghost {
+  border: 3px solid var(--rule);
+  padding: 9px 14px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+@media (hover: hover) { [data-skin='brutal'] button.ghost:hover { background: var(--ink); color: var(--bg); } }
+
+/* The lookup is the one call to action on the board. */
+[data-skin='brutal'] .lookup-go {
+  background: var(--blue);
+  border: 0;
+  color: var(--on-dark);
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 21px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 14px 26px;
+}
+
+[data-skin='brutal'] .linklike { border: 0; padding: 0; color: var(--ink); font-weight: 700; }
+
+/* ---------- the yellow panel: identical in both modes ---------- */
+
+[data-skin='brutal'] .dropzone {
+  padding: 16px;
+  background: #ffd400;
+  border: 4px solid var(--rule);
+}
+
+[data-skin='brutal'] .dropzone .file-or { color: #0a0a0a; font-weight: 700; }
+
+[data-skin='brutal'] .file-button {
+  background: #0a0a0a;
+  border: 0;
+  color: #ffd400;
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 19px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 14px 24px;
+}
+
+[data-skin='brutal'] .file-button:active { transform: translate(2px, 2px); }
+[data-skin='brutal'] .file-input:focus-visible + .file-button { outline-color: #0a0a0a; }
+
+[data-skin='brutal'] .dropzone button.ghost {
+  border-color: #0a0a0a;
+  color: #0a0a0a;
+  background: none;
+}
+
+@media (hover: hover) { [data-skin='brutal'] .dropzone button.ghost:hover { background: #0a0a0a; color: #ffd400; } }
+
+/* ---------- the counts ---------- */
+
+[data-skin='brutal'] .tiles {
+  gap: 0;
+  border-top: 4px solid var(--rule);
+  border-bottom: 4px solid var(--rule);
+}
+
+/* Shown: the number in its colour and a 6px bar along the bottom. Hidden:
+   a hollow outlined number, like an unprinted plate. */
+[data-skin='brutal'] .tile,
+[data-skin='brutal'] .tile:first-child {
+  border: 0;
+  border-right: 4px solid var(--rule);
+  padding: 16px 30px 20px 14px;
+  gap: 10px;
+  background: none;
+  box-shadow: none;
+}
+
+[data-skin='brutal'] .tile:last-child { border-right: 0; }
+[data-skin='brutal'] .tile-ready { --tile-color: var(--green); }
+[data-skin='brutal'] .tile-reading { --tile-color: var(--red); }
+[data-skin='brutal'] .tile-waiting { --tile-color: var(--blue); }
+[data-skin='brutal'] .tile-done { --tile-color: var(--ink); }
+[data-skin='brutal'] .tile-aside { --tile-color: var(--grey); }
+
+[data-skin='brutal'] .tile::after,
+[data-skin='brutal'] .tile:first-child::after { left: 0; right: 0; bottom: 0; height: 6px; }
+
+[data-skin='brutal'] .tile-n { font-family: var(--display); font-size: 46px; color: var(--tile-color); }
+
+[data-skin='brutal'] .tile-label {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1.35;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+[data-skin='brutal'] .tile-eye { width: 16px; height: 16px; stroke-width: 2.5; stroke-linecap: square; stroke-linejoin: miter; color: var(--ink); }
+
+[data-skin='brutal'] .tile[aria-pressed='false'] .tile-n {
+  opacity: 1;
+  color: transparent;
+  -webkit-text-stroke: 1.5px var(--grey);
+}
+
+@supports not (-webkit-text-stroke: 1px black) {
+  [data-skin='brutal'] .tile[aria-pressed='false'] .tile-n { color: var(--grey); }
+}
+
+[data-skin='brutal'] .tile[aria-pressed='false'] .tile-label,
+[data-skin='brutal'] .tile[aria-pressed='false'] .tile-eye { color: var(--ink-muted); }
+[data-skin='brutal'] .tile:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+
+@media (min-width: 640px) and (max-width: 899px) {
+  [data-skin='brutal'] .tile,
+  [data-skin='brutal'] .tile:first-child { gap: 8px; padding: 14px 24px 18px 10px; }
+  [data-skin='brutal'] .tile-n { font-size: 36px; }
+  [data-skin='brutal'] .tile-label { letter-spacing: 0.02em; }
+  [data-skin='brutal'] .tile-eye { right: 5px; }
+}
+
+@media (max-width: 639px) {
+  [data-skin='brutal'] .tile,
+  [data-skin='brutal'] .tile:first-child { border-right: 0; border-bottom: 4px solid var(--rule); padding: 14px 30px 18px 12px; }
+  [data-skin='brutal'] .tile:nth-child(odd) { border-right: 4px solid var(--rule); }
+  [data-skin='brutal'] .tile:last-child { border-right: 0; border-bottom: 0; }
+  [data-skin='brutal'] .tile-n { font-size: 40px; }
+}
+
+[data-skin='brutal'] .list-count { font-family: var(--display); font-size: 20px; text-transform: uppercase; }
+[data-skin='brutal'] .list-hidden { font-family: var(--mono); font-size: 12px; text-transform: uppercase; color: var(--byline); }
+[data-skin='brutal'] .list-show-all { padding: 6px 12px; font-size: 13px; }
+
+[data-skin='brutal'] .meter { height: 14px; border: 3px solid var(--rule); background: none; }
+[data-skin='brutal'] .meter span { background: var(--red); }
+
+/* ---------- the series rows: a ranked chart ---------- */
+
+[data-skin='brutal'] .series-list { counter-reset: rank; }
+
+[data-skin='brutal'] .series-row {
+  counter-increment: rank;
+  padding: 16px 0;
+  border-top: 0;
+  border-bottom: 3px solid var(--rule);
+}
+
+[data-skin='brutal'] .series-row:last-child { border-bottom: 0; }
+
+[data-skin='brutal'] .series-head { align-items: center; }
+
+[data-skin='brutal'] .series-head::before {
+  content: counter(rank, decimal-leading-zero);
+  flex: none;
+  width: 54px;
+  font-family: var(--display);
+  font-size: 40px;
+  line-height: 0.8;
+  color: var(--ink);
+  opacity: 0.22;
+}
+
+[data-skin='brutal'] button.disclose {
+  border: 0;
+  padding: 0;
+  background: none;
+  font-weight: 400;
+}
+
+[data-skin='brutal'] button.disclose:active:not(:disabled) { transform: none; }
+
+[data-skin='brutal'] .chevron {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--rule);
+  color: var(--ink);
+  align-self: center;
+}
+
+[data-skin='brutal'] .disclose:active .chevron { transform: translate(2px, 2px); }
+@media (hover: hover) { [data-skin='brutal'] .disclose:hover .chevron { background: var(--ink); color: var(--bg); } }
+
+[data-skin='brutal'] .cover { border: 3px solid var(--rule); }
+[data-skin='brutal'] .cover-lg { width: 40px; height: 60px; }
+
+[data-skin='brutal'] .series-name {
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 22px;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+}
+
+[data-skin='brutal'] .byline { font-family: var(--mono); font-size: 12px; color: var(--byline); }
+[data-skin='brutal'] .progress-line { font-family: var(--mono); font-size: 13px; color: var(--byline); }
+[data-skin='brutal'] .progress-line b { color: var(--ink); }
+
+[data-skin='brutal'] .verdict { margin-left: 107px; }
+
+[data-skin='brutal'] .badge {
+  padding: 5px 12px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: var(--ink);
+  color: var(--bg);
+}
+
+[data-skin='brutal'] .badge-soon { background: var(--red); color: var(--on-dark); }
+[data-skin='brutal'] .badge-wait { background: var(--blue); color: var(--on-dark); }
+
+[data-skin='brutal'] .drawer { border-top: 4px solid var(--rule); border-bottom: 4px solid var(--rule); }
+[data-skin='brutal'] .drawer-head { gap: 14px; padding: 14px 0; border: 0; background: none; box-shadow: none; }
+[data-skin='brutal'] .drawer-head:active:not(:disabled) { transform: none; }
+[data-skin='brutal'] .drawer-head:active .chevron { transform: translate(2px, 2px); }
+[data-skin='brutal'] .drawer.is-open .chevron { background: var(--ink); color: var(--bg); }
+@media (hover: hover) { [data-skin='brutal'] .drawer-head:hover .chevron { background: var(--ink); color: var(--bg); } }
+[data-skin='brutal'] .drawer-head:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+[data-skin='brutal'] .drawer-title { font-family: var(--display); font-size: 24px; line-height: 1; text-transform: uppercase; }
+[data-skin='brutal'] .drawer-meta { font-family: var(--mono); font-size: 12px; letter-spacing: 0; text-transform: uppercase; color: var(--byline); }
+[data-skin='brutal'] .drawer-spines { gap: 4px; }
+[data-skin='brutal'] .drawer-spines .spine { width: 14px; height: 22px; }
+[data-skin='brutal'] .drawer .volumes { margin-left: 46px; }
+[data-skin='brutal'] .drawer-note { font-family: var(--mono); font-size: 12px; color: var(--byline); }
+
+[data-skin='brutal'] .series-row.is-pending { opacity: 0.6; }
+
+/* ---------- the loaded library ---------- */
+
+[data-skin='brutal'] .library { border: 0; padding: 0; gap: 24px; }
+[data-skin='brutal'] .library-head { flex-direction: column; align-items: flex-start; gap: 6px; }
+
+[data-skin='brutal'] .library-name {
+  font-family: var(--display);
+  font-size: 32px;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+[data-skin='brutal'] .library-count { font-family: var(--mono); font-size: 12px; letter-spacing: 0; color: var(--byline); }
+[data-skin='brutal'] .shelf { gap: 4px; height: 82px; padding: 0 4px; border-bottom: 4px solid var(--rule); }
+
+[data-skin='brutal'] .spine,
+[data-skin='brutal'] .swatch { box-sizing: border-box; border: 2px solid var(--rule); box-shadow: none; }
+[data-skin='brutal'] .swatch { width: 12px; height: 12px; }
+
+[data-skin='brutal'] .spine-read { --spine: var(--ink); }
+[data-skin='brutal'] .spine-reading { --spine: var(--red); }
+[data-skin='brutal'] .spine-to_read { --spine: var(--bg); }
+[data-skin='brutal'] .spine-dnf { --spine: var(--grey); }
+
+[data-skin='brutal'] .shelf-legend { font-family: var(--mono); font-size: 12px; text-transform: uppercase; color: var(--ink); }
+[data-skin='brutal'] .shelf-legend b { font-weight: 700; }
+
+[data-skin='brutal'] .library-side { width: 240px; padding-left: 0; border-left: 0; gap: 14px; }
+[data-skin='brutal'] .change-file { padding: 10px 16px; font-size: 14px; }
+
+/* The count feeds the one action on the board, so it takes the "act here"
+   yellow — and like the dropzone it stays black-on-yellow in the dark. */
+[data-skin='brutal'] .series-count { padding: 14px 16px; background: #ffd400; border: 4px solid var(--rule); }
+[data-skin='brutal'] .series-count-n { font-family: var(--display); font-size: 64px; color: #0a0a0a; }
+[data-skin='brutal'] .series-count-label { font-family: var(--mono); font-size: 12px; font-weight: 700; text-transform: uppercase; color: #0a0a0a; }
+[data-skin='brutal'] .series-count-rest { font-family: var(--mono); font-size: 11.5px; color: #3a3a3a; }
+
+@media (max-width: 460px) {
+  [data-skin='brutal'] .library-side { border-top: 0; padding-top: 0; }
+}
+
+/* ---------- the lookup: a square that fills ---------- */
+
+[data-skin='brutal'] .lookup { --meter: var(--yellow); border: 4px solid var(--rule); padding: 22px; gap: 24px; }
+[data-skin='brutal'] .lookup[data-phase='after'] { --meter: var(--green); }
+[data-skin='brutal'] .lookup[data-phase='failed'] { --meter: var(--red); }
+
+[data-skin='brutal'] .lookup-meter {
+  width: 128px;
+  height: 128px;
+  box-sizing: border-box;
+  border: 4px solid var(--rule);
+  overflow: hidden;
+}
+
+[data-skin='brutal'] .lookup-meter::before {
+  inset: auto 0 0 0;
+  height: calc(var(--p) * 100%);
+  border-radius: 0;
+  background: var(--meter);
+  -webkit-mask: none;
+  mask: none;
+}
+
+[data-skin='brutal'] .lookup[data-phase='during'] .lookup-meter::before,
+[data-skin='brutal'] .lookup[data-phase='failed'] .lookup-meter::before { box-shadow: 0 -3px 0 var(--rule); }
+
+/* While it works, the fill is moving hazard tape — yellow in both modes. */
+[data-skin='brutal'] .lookup[data-phase='during'] .lookup-meter::before {
+  background: repeating-linear-gradient(135deg, #ffd400 0 7px, #ffe766 7px 14px);
+  background-size: 28px 28px;
+  animation: lookup-stripes 0.8s linear infinite;
+}
+
+/* The count sits on its own ground so it reads over any fill, in any mode. */
+[data-skin='brutal'] .lookup-meter-n {
+  font-family: var(--display);
+  font-size: 42px;
+  line-height: 1;
+  padding: 2px 6px;
+  background: var(--bg);
+  color: var(--ink);
+}
+
+[data-skin='brutal'] .lookup[data-phase='during'] .lookup-orbit { display: none; }
+
+[data-skin='brutal'] .lookup-title { font-family: var(--display); font-size: 34px; line-height: 1; text-transform: uppercase; }
+[data-skin='brutal'] .lookup[data-phase='during'] .lookup-title { font-size: 30px; line-height: 1.05; }
+[data-skin='brutal'] .lookup-title em { font-style: normal; }
+[data-skin='brutal'] .lookup-body { color: var(--ink); }
+[data-skin='brutal'] .lookup[data-phase='during'] .lookup-body { font-family: var(--mono); font-size: 12.5px; text-transform: uppercase; color: var(--byline); }
+[data-skin='brutal'] .lookup-heard li { font-family: var(--mono); font-size: 12.5px; color: var(--ink); }
+[data-skin='brutal'] .lookup-heard b { font-weight: 700; }
+[data-skin='brutal'] .lookup-dots { display: none; }
+
+[data-skin='brutal'] .lookup-cursor {
+  display: inline-block;
+  width: 14px;
+  height: 26px;
+  margin-left: 6px;
+  vertical-align: -2px;
+  background: var(--red);
+  animation: lookup-blink 1s steps(1) infinite;
+}
+
+@media (max-width: 460px) {
+  [data-skin='brutal'] .lookup { padding: 18px; min-height: 480px; }
+  [data-skin='brutal'] .lookup[data-phase='after'] { min-height: 0; }
+  [data-skin='brutal'] .lookup-meter { width: 96px; height: 96px; }
+  [data-skin='brutal'] .lookup-meter-n { font-size: 32px; }
+  [data-skin='brutal'] .lookup-title { font-size: 28px; }
+}
+
+/* ---------- the picker ---------- */
+
+[data-skin='brutal'] .skins { border: 3px solid var(--rule); border-radius: 0; background: var(--bg); }
+[data-skin='brutal'] .skins button { border: 0; border-radius: 0; font-weight: 700; color: var(--ink); }
+[data-skin='brutal'] .skins button[aria-pressed='true'] { background: var(--ink); color: var(--bg); }
+
+[data-skin='brutal'] .skin-dial .skin-dial-button {
+  border: 3px solid var(--rule);
+  border-radius: 0;
+  background: var(--bg);
+  color: var(--ink);
+}
+[data-skin='brutal'] .skin-dial .skin-dial-button[aria-expanded='true'] { background: var(--ink); color: var(--bg); }
+[data-skin='brutal'] .skin-dial .skin-dot[aria-checked='true']::after { border: 3px solid var(--ink); }
+[data-skin='brutal'] .skin-dial .skin-dot:focus-visible { outline: 3px solid var(--ink); }
+
+@media (max-width: 899px) {
+  /* No fixed pill to clear any more: the button lives in the band. */
+  [data-skin='brutal'] .page { margin-top: 16px; }
+  [data-skin='brutal'] .masthead { grid-template-columns: 1fr; }
+  [data-skin='brutal'] .tagline { text-align: left; }
+  [data-skin='brutal'] .skin-dial { top: 22px; right: 24px; }
+}
+
+/* ---------- phone ---------- */
+
+@media (max-width: 460px) {
+  [data-skin='brutal'] .page { width: calc(100% - 16px); margin-top: 8px; }
+  [data-skin='brutal'] .skin-dial { top: 18px; right: 16px; }
+  [data-skin='brutal'] .masthead { grid-template-columns: 1fr; padding: 18px 16px; }
+  [data-skin='brutal'] .tagline { text-align: left; }
+  [data-skin='brutal'] .intake,
+  [data-skin='brutal'] .board { padding: 18px 16px; }
+  [data-skin='brutal'] .colophon { padding: 14px 16px; }
+  [data-skin='brutal'] .series-head::before { display: none; }
+  [data-skin='brutal'] .series-head { align-items: stretch; }
+  [data-skin='brutal'] .verdict,
+  [data-skin='brutal'] .volumes { margin-left: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-skin='brutal'] button,
+  [data-skin='brutal'] .file-button,
+  [data-skin='brutal'] .chevron { transform: none !important; }
+}
+
+/* ==================================================================
+   Soft — Clay
+   ------------------------------------------------------------------
+   Every surface is a raised pat of clay on a warm blush sheet, lit
+   from the top-left. The five reading states are the only saturated
+   fills and they are used as fills — tiles, badges, chips — because
+   clay is the one skin where colour is the material, not a mark on it.
+   Things that sit inside a raised panel are pressed into it: a raised
+   list on a raised card would read as two objects, a hollow as one.
+
+   Clay in the dark keeps its hue and loses its light. The white
+   highlight becomes a crisp 1.5px lit edge — a diffuse glow is
+   invisible on saturated fills — the shadow goes to near-black, and
+   the state fills drop in value but keep their chroma; a desaturated
+   dark tile reads as disabled.
+   ================================================================== */
+
+[data-skin='soft'] {
+  --display: Nunito, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --body: Nunito, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  --sheet: linear-gradient(160deg, #f8efe9 0%, #f3e6ee 55%, #eee9f7 100%);
+  --ground: #f4eaee;
+  --surface: #fdf6f1;
+  --ink: #3b2f3a;
+  --body-ink: #453a44;
+  --ink-soft: #7b6a76;
+  --ink-faint: #8d7c88;
+  --line: rgba(128, 100, 120, 0.18);
+  --line-soft: rgba(128, 100, 120, 0.12);
+  --primary: #6a5ab8;
+  --primary-soft: #cfc3f5;
+  --ok: #3f7d66;
+  --warn: #a8762e;
+  --accent: #b5536a;
+
+  --lift:
+    6px 8px 16px rgba(160, 120, 140, 0.28),
+    -5px -6px 14px rgba(255, 255, 255, 0.9),
+    inset 2px 3px 6px rgba(255, 255, 255, 0.55);
+  --press:
+    inset 5px 6px 12px rgba(150, 110, 130, 0.38),
+    inset -3px -4px 10px rgba(255, 255, 255, 0.7);
+
+  --ready: #a8dcc6;
+  --reading: #f6cf9a;
+  --waiting: #b9c6f0;
+  --done: #fdf6f1;
+  --aside: #f2b4bd;
+  --state-ink: #3b2f3a;
+
+  --lilac: linear-gradient(150deg, #b6a9ef, #9d8fe6);
+  --lilac-ink: #ffffff;
+  --peach: linear-gradient(150deg, #f5b9a0, #ef9f9c);
+  --peach-ink: #4a2f2b;
+  --track: rgba(160, 120, 140, 0.2);
+  --h2: #a1728f;
+  --step: #cfc3f5;
+  --stars: #e0a24e;
+
+  --shelf-read: linear-gradient(150deg, #b6a9ef, #9d8fe6);
+  --shelf-reading: #f5b9a0;
+  --shelf-to-read: #efe4ee;
+  --shelf-dnf: #c9b4c3;
+  --shelf-rim: inset 0 0 0 1.5px rgba(128, 100, 120, 0.3);
+  --spine-shadow: 2px 3px 5px rgba(160, 120, 140, 0.3), inset 1px 1px 0 rgba(255, 255, 255, 0.5);
+  --step-sub: #5a4a66;
+
+  --ink-muted: #6f5e69;
+  --ink-hidden-n: #6f5e69;
+  --drawer-wash: rgba(255, 255, 255, 0.35);
+
+  --meter-run: #9d8fe6;
+  --meter-done: #a8dcc6;
+  --meter-fail: #ef9f9c;
+  --fail-tint: #fbeef0;
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-skin='soft'] {
+    --sheet: linear-gradient(160deg, #241f29 0%, #2a2230 55%, #241f2e 100%);
+    --ground: #272029;
+    --surface: #342b3a;
+    --ink: #f3eaf2;
+    --body-ink: #e2d7e1;
+    --ink-soft: #ab9baa;
+    --ink-faint: #938491;
+    --line: rgba(0, 0, 0, 0.32);
+    --line-soft: rgba(0, 0, 0, 0.22);
+    --primary: #b6a9ef;
+    --primary-soft: #554a7a;
+    --ok: #7fcfae;
+    --warn: #e2b36e;
+    --accent: #f0a0b2;
+
+    --lift:
+      10px 13px 26px rgba(0, 0, 0, 0.55),
+      -7px -8px 20px rgba(255, 255, 255, 0.035),
+      inset 1.5px 1.5px 0 rgba(255, 255, 255, 0.18),
+      inset -1.5px -2px 0 rgba(0, 0, 0, 0.42);
+    --press:
+      inset 7px 8px 16px rgba(0, 0, 0, 0.6),
+      inset -4px -5px 12px rgba(255, 255, 255, 0.07);
+
+    --ready: #3f6d5c;
+    /* A shade darker than the prototype so its 10px label clears 4.5:1. */
+    --reading: #84652f;
+    --waiting: #4d5a8b;
+    --done: #302836;
+    --aside: #8c4f5e;
+    --state-ink: #f6eef4;
+
+    --lilac: linear-gradient(150deg, #7d6dcb, #6a5ab8);
+    --lilac-ink: #f6f2ff;
+    --peach: linear-gradient(150deg, #c98570, #b86f6c);
+    --peach-ink: #2a1a18;
+    --track: rgba(0, 0, 0, 0.35);
+    --h2: #cf9fbe;
+    --step: #554a7a;
+    --stars: #e9b86a;
+
+    --shelf-read: linear-gradient(150deg, #7d6dcb, #6a5ab8);
+    --shelf-reading: linear-gradient(150deg, #c98570, #b86f6c);
+    --shelf-to-read: #3d3345;
+    --shelf-dnf: #6a5566;
+    --shelf-rim: inset 0 0 0 1.5px rgba(255, 255, 255, 0.16);
+    --spine-shadow: 3px 4px 8px rgba(0, 0, 0, 0.5), inset 1px 1px 0 rgba(255, 255, 255, 0.18);
+    --step-sub: #cbbfe0;
+
+    --ink-muted: #a393a0;
+    --ink-hidden-n: #a393a0;
+    /* A white wash reads as a grey slab on the dark sheet; darken instead. */
+    --drawer-wash: rgba(0, 0, 0, 0.18);
+
+    --meter-run: #7d6dcb;
+    --meter-done: #3f6d5c;
+    --meter-fail: #b86f6c;
+    --fail-tint: #3a2a36;
+  }
+}
+
+/* ---------- the sheet and the type ---------- */
+
+[data-skin='soft'] body {
+  background: var(--sheet) fixed, var(--ground);
+  color: var(--body-ink);
+}
+
+[data-skin='soft'] h1 {
+  font-weight: 800;
+  font-size: clamp(34px, 7vw, 50px);
+  letter-spacing: -0.02em;
+  line-height: 1.02;
+  color: var(--ink);
+}
+
+[data-skin='soft'] .tagline { font-size: 16.5px; font-weight: 600; color: var(--ink-soft); }
+
+[data-skin='soft'] h2 {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--h2);
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+[data-skin='soft'] .note { color: var(--ink-soft); }
+[data-skin='soft'] .toggle input { accent-color: var(--primary); }
+[data-skin='soft'] .how { color: var(--body-ink); }
+[data-skin='soft'] .how b { color: var(--ink); font-weight: 800; }
+
+/* Numbered steps as raised lilac coins. */
+[data-skin='soft'] .how { gap: 12px; }
+[data-skin='soft'] .how li { padding-left: 42px; min-height: 28px; }
+[data-skin='soft'] .how li::before {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--step);
+  box-shadow: var(--lift);
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+/* ---------- buttons ---------- */
+
+[data-skin='soft'] button {
+  border: 0;
+  border-radius: 16px;
+  background: var(--surface);
+  color: var(--body-ink);
+  font-weight: 700;
+  letter-spacing: 0;
+  box-shadow: var(--lift);
+  transition: box-shadow 0.12s;
+}
+
+[data-skin='soft'] button:active:not(:disabled) { box-shadow: var(--press); }
+[data-skin='soft'] button:disabled { box-shadow: var(--press); opacity: 0.6; }
+[data-skin='soft'] button:focus-visible { outline-color: var(--primary); outline-offset: 3px; }
+
+[data-skin='soft'] button.ghost {
+  border: 0;
+  border-radius: 16px;
+  padding: 12px 18px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--body-ink);
+}
+
+@media (hover: hover) { [data-skin='soft'] button.ghost:hover { color: var(--ink); } }
+
+/* The lookup is the one thing left to do on the board: lilac, and bigger. */
+[data-skin='soft'] .lookup-go {
+  background-image: var(--lilac);
+  color: var(--lilac-ink);
+  font-size: 16px;
+  font-weight: 800;
+  padding: 14px 26px;
+  border-radius: 18px;
+}
+
+[data-skin='soft'] .lookup-go:disabled {
+  background-image: none;
+  background: var(--surface);
+  color: var(--ink-soft);
+}
+
+[data-skin='soft'] .linklike { color: var(--primary); box-shadow: none; background: none; border-radius: 0; }
+
+/* ---------- the intake ---------- */
+
+[data-skin='soft'] .dropzone {
+  border: 0;
+  border-radius: 18px;
+  padding: 16px;
+  background: var(--surface);
+  box-shadow: var(--lift);
+}
+
+[data-skin='soft'] .file-button {
+  border: 0;
+  border-radius: 18px;
+  background-image: var(--peach);
+  color: var(--peach-ink);
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0;
+  padding: 14px 26px;
+  box-shadow: var(--lift);
+  transition: box-shadow 0.12s;
+}
+
+[data-skin='soft'] .file-button:active { box-shadow: var(--press); }
+[data-skin='soft'] .file-input:focus-visible + .file-button { outline-color: var(--primary); }
+[data-skin='soft'] .file-or { color: var(--ink-soft); font-weight: 700; }
+
+/* ---------- the counts ---------- */
+
+[data-skin='soft'] .tiles {
+  gap: 12px;
+  border: 0;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+/* Shown: raised and filled with its state colour. Hidden: pressed into the
+   sheet with no fill, the coloured dot the only colour left. */
+[data-skin='soft'] .tile,
+[data-skin='soft'] .tile:first-child {
+  gap: 10px;
+  min-height: 76px;
+  border: 0;
+  border-radius: 18px;
+  padding: 16px 26px 16px 14px;
+  box-shadow: var(--lift);
+  color: var(--state-ink);
+  transition: box-shadow 0.12s, background-color 0.12s;
+}
+
+[data-skin='soft'] .tile::after { display: none; }
+[data-skin='soft'] .tile-ready { background: var(--ready); --dot: var(--ready); }
+[data-skin='soft'] .tile-reading { background: var(--reading); --dot: var(--reading); }
+[data-skin='soft'] .tile-waiting { background: var(--waiting); --dot: var(--waiting); }
+[data-skin='soft'] .tile-done { background: var(--done); color: var(--body-ink); --dot: var(--shelf-dnf); }
+[data-skin='soft'] .tile-aside { background: var(--aside); --dot: var(--aside); }
+
+[data-skin='soft'] .tile-n { font-family: var(--body); font-size: 36px; font-weight: 800; color: inherit; }
+
+[data-skin='soft'] .tile-label {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  line-height: 1.35;
+  text-transform: uppercase;
+  color: inherit;
+}
+
+[data-skin='soft'] .tile-dot {
+  display: block;
+  flex: none;
+  width: 9px;
+  height: 9px;
+  margin-top: 2px;
+  border-radius: 50%;
+  background: var(--dot);
+  box-shadow: inset 0 0 0 2px rgba(59, 47, 58, 0.35);
+}
+
+[data-skin='soft'] .tile-eye { color: inherit; opacity: 0.8; }
+
+[data-skin='soft'] .tile[aria-pressed='false'] {
+  background: transparent;
+  box-shadow: var(--press);
+  color: var(--ink-muted);
+}
+
+[data-skin='soft'] .tile[aria-pressed='false'] .tile-n { color: var(--ink-hidden-n); }
+[data-skin='soft'] .tile[aria-pressed='false'] .tile-dot { box-shadow: none; }
+
+@media (min-width: 640px) and (max-width: 899px) {
+  [data-skin='soft'] .tiles { gap: 8px; }
+  [data-skin='soft'] .tile,
+  [data-skin='soft'] .tile:first-child { gap: 8px; padding: 14px 24px 14px 12px; }
+  [data-skin='soft'] .tile-n { font-size: 28px; }
+  [data-skin='soft'] .tile-label { gap: 5px; letter-spacing: 0.03em; }
+  [data-skin='soft'] .tile-eye { right: 6px; }
+}
+
+@media (max-width: 639px) {
+  [data-skin='soft'] .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  [data-skin='soft'] .tile { border: 0; }
+  [data-skin='soft'] .tile-n { font-size: 30px; }
+}
+[data-skin='soft'] .tile:focus-visible { outline: 3px solid var(--primary); outline-offset: 3px; }
+
+[data-skin='soft'] .list-count { font-size: 15px; font-weight: 800; }
+[data-skin='soft'] .list-hidden { font-size: 13.5px; font-weight: 600; text-transform: none; }
+[data-skin='soft'] .list-show-all {
+  padding: 4px 2px;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+[data-skin='soft'] .meter {
+  height: 8px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--track);
+  box-shadow: none;
+}
+
+[data-skin='soft'] .meter span { background-image: var(--peach); border-radius: 999px; }
+
+/* ---------- the series rows ---------- */
+
+[data-skin='soft'] .series-list { display: flex; flex-direction: column; gap: 12px; }
+
+[data-skin='soft'] .series-row,
+[data-skin='soft'] .series-row.is-open,
+[data-skin='soft'] .series-row:last-child {
+  border: 0;
+  border-radius: 20px;
+  padding: 16px;
+  gap: 10px;
+  background: var(--surface);
+  box-shadow: var(--lift);
+}
+
+[data-skin='soft'] .series-name { font-family: var(--display); font-size: 17px; font-weight: 700; color: var(--ink); }
+[data-skin='soft'] .byline { font-size: 13px; color: var(--ink-faint); }
+[data-skin='soft'] .progress-line { font-size: 13px; font-weight: 600; color: var(--ink-soft); }
+[data-skin='soft'] .progress-line b { font-weight: 800; }
+
+/* The title button is the hit area, not a surface: only its glyph is clay. */
+[data-skin='soft'] button.disclose,
+[data-skin='soft'] button.disclose:active:not(:disabled) {
+  background: none;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0;
+}
+
+/* The disclosure is a raised button that presses in while held. */
+[data-skin='soft'] .chevron {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: var(--lift);
+  color: var(--ink-soft);
+}
+
+[data-skin='soft'] .disclose:active .chevron { box-shadow: var(--press); }
+@media (hover: hover) { [data-skin='soft'] .disclose:hover .chevron { color: var(--ink); } }
+
+[data-skin='soft'] .verdict { margin-left: 39px; }
+
+[data-skin='soft'] .badge {
+  border: 0;
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: var(--ready);
+  color: var(--state-ink);
+}
+
+[data-skin='soft'] .badge-soon { background: var(--reading); }
+[data-skin='soft'] .badge-wait { background: var(--waiting); }
+
+[data-skin='soft'] .cover { border-radius: 8px; box-shadow: var(--lift); }
+/* Closed, the drawer is pressed into the sheet; open, it rises into a panel
+   and the books sit pressed into that. */
+[data-skin='soft'] .drawer {
+  border: 0;
+  border-radius: 20px;
+  transition: box-shadow 0.12s, background-color 0.12s;
+}
+
+[data-skin='soft'] .drawer-head {
+  gap: 14px;
+  padding: 12px 18px 12px 14px;
+  border-radius: 18px;
+  background: var(--drawer-wash);
+  box-shadow: var(--press);
+  font-weight: 700;
+}
+
+[data-skin='soft'] .drawer-head:active:not(:disabled) { box-shadow: var(--press); }
+[data-skin='soft'] .drawer.is-open { padding: 4px 4px 16px; background: var(--surface); box-shadow: var(--lift); }
+[data-skin='soft'] .drawer.is-open .drawer-head,
+[data-skin='soft'] .drawer.is-open .drawer-head:active:not(:disabled) { background: transparent; box-shadow: none; }
+[data-skin='soft'] .drawer.is-open .chevron { box-shadow: var(--press); }
+[data-skin='soft'] .drawer-head:focus-visible { outline: 3px solid var(--primary); outline-offset: 3px; }
+[data-skin='soft'] .drawer-title { font-family: var(--body); font-size: 16px; font-weight: 800; line-height: 1.25; }
+[data-skin='soft'] .drawer-meta { font-size: 13px; font-weight: 600; letter-spacing: 0; }
+[data-skin='soft'] .drawer-spines { gap: 4px; }
+[data-skin='soft'] .drawer-spines .spine { width: 14px; height: 22px; border-radius: 3px 3px 2px 2px; }
+[data-skin='soft'] .drawer .volumes { margin: 0 12px; }
+[data-skin='soft'] .drawer-note { margin: 0 4px 10px; }
+
+/* ---------- before the lookup ----------
+   Rows wait with an empty cover slot in one of the five state fills, so
+   the list is already clay-coloured before a single cover has loaded. */
+
+[data-skin='soft'] .series-row.is-pending { opacity: 1; }
+[data-skin='soft'] .series-row.is-pending .series-name { color: var(--ink-soft); }
+[data-skin='soft'] .series-row.is-pending .cover { background: var(--tint); }
+[data-skin='soft'] .series-row.is-pending:nth-child(5n + 1) { --tint: var(--ready); }
+[data-skin='soft'] .series-row.is-pending:nth-child(5n + 2) { --tint: var(--reading); }
+[data-skin='soft'] .series-row.is-pending:nth-child(5n + 3) { --tint: var(--waiting); }
+[data-skin='soft'] .series-row.is-pending:nth-child(5n + 4) { --tint: var(--aside); }
+[data-skin='soft'] .series-row.is-pending:nth-child(5n + 5) { --tint: var(--step); }
+
+/* ---------- the loaded library: a raised panel with a pressed shelf ---------- */
+
+[data-skin='soft'] .library {
+  border: 0;
+  padding: 22px 24px;
+  gap: 20px;
+  border-radius: 22px;
+  background: var(--surface);
+  box-shadow: var(--lift);
+}
+
+[data-skin='soft'] .library-name { font-family: var(--body); font-size: 19px; font-weight: 800; }
+[data-skin='soft'] .library-count { font-size: 14px; font-weight: 600; letter-spacing: 0; }
+
+[data-skin='soft'] .shelf {
+  gap: 4px;
+  height: 76px;
+  padding: 0 12px 8px;
+  border: 0;
+  border-radius: 14px;
+  box-shadow: var(--press);
+}
+
+[data-skin='soft'] .spine { border-radius: 4px 4px 2px 2px; box-shadow: var(--spine-shadow); }
+[data-skin='soft'] .swatch { width: 12px; height: 12px; border-radius: 4px; box-shadow: none; }
+
+[data-skin='soft'] .spine-read { --spine: var(--shelf-read); }
+[data-skin='soft'] .spine-reading { --spine: var(--shelf-reading); }
+[data-skin='soft'] .spine-to_read { --spine: var(--shelf-to-read); }
+[data-skin='soft'] .spine-dnf { --spine: var(--shelf-dnf); }
+[data-skin='soft'] .spine.spine-to_read { box-shadow: var(--spine-shadow), var(--shelf-rim); }
+[data-skin='soft'] .swatch.spine-to_read { box-shadow: var(--shelf-rim); }
+
+[data-skin='soft'] .shelf-legend { gap: 8px 18px; font-size: 13.5px; font-weight: 700; color: var(--body-ink); }
+[data-skin='soft'] .shelf-legend b { font-weight: 800; }
+
+[data-skin='soft'] .library-side { width: 230px; padding-left: 0; border-left: 0; gap: 14px; }
+
+[data-skin='soft'] .change-file {
+  border-radius: 14px;
+  padding: 10px 14px;
+  font-size: 13.5px;
+  font-weight: 800;
+  color: var(--primary);
+}
+
+[data-skin='soft'] .series-count {
+  gap: 4px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  background: var(--step);
+  box-shadow: var(--lift);
+}
+
+[data-skin='soft'] .series-count-n { font-family: var(--body); font-size: 38px; font-weight: 800; line-height: 1; color: var(--ink); }
+[data-skin='soft'] .series-count-label { font-weight: 700; }
+[data-skin='soft'] .series-count-rest { font-weight: 600; color: var(--step-sub); }
+
+@media (max-width: 460px) {
+  [data-skin='soft'] .library { padding: 18px; }
+  [data-skin='soft'] .library-side { border-top: 0; padding-top: 0; }
+}
+
+/* ---------- the lookup: a raised card with a clay ring ---------- */
+
+[data-skin='soft'] .lookup {
+  --meter: var(--meter-run);
+  border: 0;
+  padding: 26px 28px;
+  gap: 24px;
+  border-radius: 24px;
+  background: var(--surface);
+  box-shadow: var(--lift);
+}
+
+[data-skin='soft'] .lookup[data-phase='after'] { --meter: var(--meter-done); }
+[data-skin='soft'] .lookup[data-phase='failed'] { --meter: var(--meter-fail); background: var(--fail-tint); }
+
+[data-skin='soft'] .lookup-meter::before {
+  background: conic-gradient(var(--meter) calc(var(--p) * 1turn), var(--track) 0);
+  -webkit-mask: none;
+  mask: none;
+  box-shadow: var(--lift);
+}
+
+[data-skin='soft'] .lookup-meter::after {
+  content: '';
+  position: absolute;
+  inset: 11px;
+  z-index: 1;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: var(--press);
+}
+
+[data-skin='soft'] .lookup-meter-n { font-family: var(--body); font-size: 17px; font-weight: 800; }
+[data-skin='soft'] .lookup[data-phase='during'] .lookup-orbit { inset: -6px; }
+
+[data-skin='soft'] .lookup-orbit::before {
+  top: 0;
+  width: 10px;
+  height: 10px;
+  margin-left: -5px;
+  box-shadow: 0 0 0 3px var(--surface);
+}
+
+[data-skin='soft'] .lookup-title { font-family: var(--body); font-size: 24px; font-weight: 800; line-height: 1.2; }
+[data-skin='soft'] .lookup-title em { font-style: normal; }
+[data-skin='soft'] .lookup-body { font-weight: 600; line-height: 1.55; }
+[data-skin='soft'] .lookup-heard li { color: var(--body-ink); }
+[data-skin='soft'] .lookup-heard b { font-weight: 800; }
+[data-skin='soft'] .lookup-dots { color: var(--ink); }
+[data-skin='soft'] .lookup-retry { background-image: var(--peach); color: var(--peach-ink); }
+[data-skin='soft'] .badge-done { background: var(--shelf-to-read); color: var(--ink); }
+
+@media (max-width: 460px) {
+  [data-skin='soft'] .lookup { padding: 20px; min-height: 440px; }
+  [data-skin='soft'] .lookup[data-phase='after'] { min-height: 0; }
+  [data-skin='soft'] .lookup-meter::after { inset: 9px; }
+}
+
+/* ---------- furniture ---------- */
+
+[data-skin='soft'] .colophon { border-top: 1px solid var(--line); color: var(--ink-faint); }
+[data-skin='soft'] .colophon a { color: var(--primary); }
+[data-skin='soft'] .error { color: var(--accent); font-weight: 700; }
+
+[data-skin='soft'] .skins { border: 0; background: var(--surface); box-shadow: var(--lift); }
+[data-skin='soft'] .skins button { box-shadow: none; background: none; color: var(--ink-soft); font-weight: 700; }
+[data-skin='soft'] .skins button[aria-pressed='true'] { background-image: var(--lilac); color: var(--lilac-ink); }
+
+[data-skin='soft'] .skin-dial .skin-dial-button {
+  border: 0;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--lift);
+}
+[data-skin='soft'] .skin-dial .skin-dial-button[aria-expanded='true'] { box-shadow: var(--press); color: var(--primary); }
+[data-skin='soft'] .skin-dial .skin-dot:focus-visible { outline-color: var(--primary); }
+
+@media (max-width: 460px) {
+  [data-skin='soft'] .verdict { margin-left: 0; }
+  [data-skin='soft'] .series-row { padding: 14px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-skin='soft'] button,
+  [data-skin='soft'] .file-button { transition: none; }
+}
+
+/* ==================================================================
+   Interaction states — one rule per skin
+   ------------------------------------------------------------------
+   Quiet: hover draws a line, pressing inks it. Soft: hover rises,
+   pressing sinks. Bold: hover inks more, pressing moves or floods the
+   plate. Every hover sits in @media (hover: hover) so a phone never
+   keeps it after a tap; every change takes 120ms; with reduced motion
+   nothing moves, only colour changes. Tile focus rings sit inside the
+   tile so they never cut into the next one. Kept last so it wins over
+   each skin's resting rules.
+   ================================================================== */
+
+/* ---------- all skins ---------- */
+[data-skin] .tile, [data-skin] .drawer-head, [data-skin] .lookup-go, [data-skin] button.ghost,
+[data-skin] .chevron, [data-skin] .chev, [data-skin] .tile::after, [data-skin] .tile-n {
+  transition: transform 120ms ease, box-shadow 120ms ease, background-color 120ms ease, color 120ms ease,
+              height 120ms ease, translate 120ms ease, border-color 120ms ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-skin] * { transition-property: background-color, color, border-color !important; }
+  /* Only the hover lifts and nudges stop; a chevron still turns to show open. */
+  [data-skin] .tile, [data-skin] .lookup-go, [data-skin] button.ghost,
+  [data-skin] .disclose .chevron { transform: none !important; }
+  [data-skin] .chev { translate: none !important; }
+}
+
+/* ---------- Quiet: hairlines. Hover draws, pressing inks. ---------- */
+@media (hover: hover) {
+  [data-skin='quiet'] .tile:hover::after { height: 3px; }
+  [data-skin='quiet'] .tile:hover .tile-eye { color: var(--ink); }
+  [data-skin='quiet'] .tile[aria-pressed='false']:hover::after {
+    display: block; height: 0; background: none; border-bottom: 2px dashed var(--tile-color);
+  }
+  [data-skin='quiet'] .tile[aria-pressed='false']:hover .tile-n { color: var(--ink-soft); }
+  [data-skin='quiet'] .drawer-head:hover {
+    background: var(--line-soft);
+    box-shadow: -14px 0 0 var(--line-soft), 14px 0 0 var(--line-soft);
+  }
+  [data-skin='quiet'] .drawer-head:hover .chev,
+  [data-skin='quiet'] .disclose:hover .chev { translate: 2px 0; }
+  [data-skin='quiet'] .disclose:hover .series-name {
+    text-decoration: underline 1px var(--ink-faint); text-underline-offset: 5px;
+  }
+  [data-skin='quiet'] .lookup-go:hover { background: var(--ink); color: var(--ground); }
+}
+[data-skin='quiet'] .tile:active { background: var(--line-soft); }
+[data-skin='quiet'] .tile:active::after { display: block; height: 3px; border: 0; background: var(--tile-color); }
+[data-skin='quiet'] .drawer-head:active {
+  background: var(--line); box-shadow: -14px 0 0 var(--line), 14px 0 0 var(--line);
+}
+[data-skin='quiet'] .disclose:active .chevron { color: var(--primary); }
+[data-skin='quiet'] button.ghost:active { color: var(--primary); border-bottom-color: var(--primary); box-shadow: inset 0 -1px 0 var(--primary); }
+[data-skin='quiet'] .lookup-go:active { background: var(--primary); border-color: var(--primary); color: var(--ground); }
+[data-skin='quiet'] .vol-title a:active { color: var(--primary); border-bottom-color: var(--primary); }
+[data-skin='quiet'] .tile:focus-visible { outline-offset: -2px; }
+
+/* ---------- Soft: clay. Hover rises, pressing sinks. ---------- */
+[data-skin='soft'] { --lift-up: 9px 12px 22px rgba(160,120,140,0.34), -6px -7px 16px rgba(255,255,255,0.95), inset 2px 3px 6px rgba(255,255,255,0.55);
+                        --press-deep: inset 7px 8px 16px rgba(150,110,130,0.46), inset -3px -4px 10px rgba(255,255,255,0.7); }
+@media (prefers-color-scheme: dark) {
+  [data-skin='soft'] { --lift-up: 8px 11px 20px rgba(0,0,0,0.6), inset 1.5px 1.5px 0 rgba(255,255,255,0.14);
+                          --press-deep: inset 7px 8px 16px rgba(0,0,0,0.6), inset -1px -1px 0 rgba(255,255,255,0.08); }
+}
+@media (hover: hover) {
+  [data-skin='soft'] .tile[aria-pressed='true']:hover { transform: translateY(-2px); box-shadow: var(--lift-up); }
+  [data-skin='soft'] .tile:hover .tile-eye { opacity: 1; }
+  [data-skin='soft'] .tile[aria-pressed='false']:hover { background: color-mix(in srgb, var(--dot) 30%, transparent); }
+  [data-skin='soft'] .drawer:not(.is-open) .drawer-head:hover { background: color-mix(in srgb, var(--surface) 70%, transparent); }
+  [data-skin='soft'] .drawer-head:hover .chev { translate: 2px 0; }
+  [data-skin='soft'] .disclose:hover .chevron { transform: translateY(-1px); box-shadow: var(--lift-up); color: var(--ink); }
+  [data-skin='soft'] button.ghost:hover { transform: translateY(-1px); box-shadow: var(--lift-up); }
+  [data-skin='soft'] .lookup-go:hover { transform: translateY(-2px); box-shadow: var(--lift-up); }
+  [data-skin='soft'] .vol-title a:hover { color: var(--primary); border-bottom-color: currentColor; }
+}
+[data-skin='soft'] .tile[aria-pressed='true']:active { transform: none; box-shadow: var(--press); }
+[data-skin='soft'] .tile[aria-pressed='false']:active { box-shadow: var(--press-deep); background: color-mix(in srgb, var(--dot) 45%, transparent); }
+[data-skin='soft'] .drawer:not(.is-open) .drawer-head:active { box-shadow: var(--press-deep); }
+[data-skin='soft'] .vol-title a:active { color: var(--ink); border-bottom-color: var(--ink); }
+[data-skin='soft'] button.ghost:active:not(:disabled),
+[data-skin='soft'] .lookup-go:active:not(:disabled) { transform: none; box-shadow: var(--press); }
+
+/* ---------- Bold: print. Hover inks more, pressing moves the plate. ---------- */
+@media (hover: hover) {
+  [data-skin='brutal'] .tile:hover::after { height: 10px; }
+  [data-skin='brutal'] .tile[aria-pressed='false']:hover .tile-n {
+    color: color-mix(in srgb, var(--tile-color) 30%, transparent); -webkit-text-stroke-color: var(--tile-color);
+  }
+  [data-skin='brutal'] .tile[aria-pressed='false']:hover::after { display: block; height: 6px; background: repeating-linear-gradient(90deg, var(--tile-color) 0 8px, transparent 8px 14px); }
+  [data-skin='brutal'] .drawer-head:hover .drawer-title,
+  [data-skin='brutal'] .disclose:hover .series-name { width: fit-content; box-shadow: inset 0 -0.42em 0 var(--yellow); }
+  [data-skin='brutal'] .lookup-go:hover { background: var(--ink); color: var(--bg); }
+  [data-skin='brutal'] .vol-title a:hover { background: var(--yellow); color: #0a0a0a; box-shadow: 0 0 0 2px var(--yellow); }
+}
+[data-skin='brutal'] .tile:active:not(:disabled) { transform: none; background: var(--line-soft); }
+[data-skin='brutal'] .tile:active::after { display: block; height: 100%; opacity: 0.18; }
+[data-skin='brutal'] .vol-title a:active { background: var(--ink); color: var(--bg); box-shadow: 0 0 0 2px var(--ink); }
+[data-skin='brutal'] .tile:focus-visible { outline-offset: -7px; }
+[data-skin='brutal'] .lookup-go:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+[data-skin='brutal'] .disclose:focus-visible,
+[data-skin='brutal'] .vol-title a:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+[data-skin='soft'] .disclose:focus-visible { outline: 3px solid var(--primary); outline-offset: 4px; border-radius: 14px; }
+[data-skin='soft'] .vol-title a:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; border-radius: 4px; }
+[data-skin='quiet'] .vol-title a:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+/* ---------- the rest of the controls, same rules ----------
+   The file button, "Use a different file", "Try a sample library" and
+   both skin pickers follow the three rules above too. */
+[data-skin] .file-button, [data-skin] .change-file, [data-skin] .skins button,
+[data-skin] .skin-dial-button, [data-skin] .linklike {
+  transition: transform 120ms ease, box-shadow 120ms ease, background-color 120ms ease, color 120ms ease,
+              border-color 120ms ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-skin] .file-button, [data-skin] .change-file, [data-skin] .skin-dial-button { transform: none !important; }
+}
+
+/* Quiet: the ink button turns indigo on hover; an outlined one fills. */
+@media (hover: hover) {
+  [data-skin='quiet'] .file-button:hover { background: var(--primary); border-color: var(--primary); }
+  [data-skin='quiet'] .change-file:hover { background: var(--ink); color: var(--ground); }
+  [data-skin='quiet'] .skins button[aria-pressed='false']:hover { background: var(--line-soft); color: var(--ink); }
+  [data-skin='quiet'] .skin-dial .skin-dial-button[aria-expanded='false']:hover { background: var(--line-soft); }
+}
+[data-skin='quiet'] .file-button:active { background: var(--ink); border-color: var(--ink); box-shadow: inset 0 0 0 2px var(--primary); }
+[data-skin='quiet'] .change-file:active { background: var(--primary); border-color: var(--primary); color: var(--ground); }
+[data-skin='quiet'] .skins button:active { background: var(--primary-soft); color: var(--primary); }
+[data-skin='quiet'] .skin-dial .skin-dial-button:active { background: var(--primary-soft); border-color: var(--primary); color: var(--primary); }
+[data-skin='quiet'] .linklike:active { color: var(--ink); }
+
+/* Soft: everything raised rises; the flat pill segments tint. */
+@media (hover: hover) {
+  [data-skin='soft'] .file-button:hover,
+  [data-skin='soft'] .change-file:hover { transform: translateY(-2px); box-shadow: var(--lift-up); }
+  [data-skin='soft'] .skins button[aria-pressed='false']:hover { color: var(--ink); background: color-mix(in srgb, var(--primary-soft) 45%, transparent); }
+  [data-skin='soft'] .skin-dial .skin-dial-button[aria-expanded='false']:hover { transform: translateY(-1px); box-shadow: var(--lift-up); }
+}
+[data-skin='soft'] .file-button:active,
+[data-skin='soft'] .change-file:active:not(:disabled),
+[data-skin='soft'] .skin-dial .skin-dial-button:active:not(:disabled) { transform: none; box-shadow: var(--press); }
+[data-skin='soft'] .skins button:active:not(:disabled) { box-shadow: var(--press); }
+[data-skin='soft'] .linklike:active { color: var(--ink); }
+/* The triangle has to sink while held, even though the pointer is still on it. */
+[data-skin='soft'] .disclose:active .chevron { transform: none; box-shadow: var(--press); }
+
+/* Bold: the two calls to action swap colours on hover; the rest invert. */
+@media (hover: hover) {
+  [data-skin='brutal'] .file-button:hover { background: var(--blue); color: #ffffff; }
+  [data-skin='brutal'] .change-file:hover { background: var(--ink); color: var(--bg); }
+  [data-skin='brutal'] .skins button[aria-pressed='false']:hover { background: var(--yellow); color: #0a0a0a; }
+  [data-skin='brutal'] .skin-dial .skin-dial-button[aria-expanded='false']:hover { background: var(--yellow); color: #0a0a0a; }
+}
+[data-skin='brutal'] .linklike:active { background: var(--yellow); color: #0a0a0a; }
+
+/* The colophon's "Hardcover" link: the same treatment as a book link. */
+@media (hover: hover) {
+  [data-skin='quiet'] .colophon a:hover { color: var(--ink); }
+  [data-skin='soft'] .colophon a:hover { color: var(--ink); }
+  [data-skin='brutal'] .colophon a:hover { background: var(--yellow); color: #0a0a0a; box-shadow: 0 0 0 2px var(--yellow); }
+}
+[data-skin='quiet'] .colophon a:active { color: var(--primary); }
+[data-skin='soft'] .colophon a:active { color: var(--primary); text-decoration-thickness: 2px; }
+[data-skin='brutal'] .colophon a:active { background: var(--ink); color: var(--bg); box-shadow: 0 0 0 2px var(--ink); }
+
+/* ==================================================================
+   Series list — Band
+   ------------------------------------------------------------------
+   One row per book: number, cover (once looked up), the title with its
+   year under it, then what your shelf says and your stars on the right
+   edge so both line up down the list. No "#". Side stories (6.5 and the
+   like) are set smaller and say so. The next book is named once under the
+   series, open or closed, and banded in the open list. Before the lookup
+   there are no covers, so the rows keep no room for one, and the closed
+   row holds a single spine in place of a cover.
+   ================================================================== */
+
+.volumes { margin: 10px 0 4px 31px; }
+
+.volume-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 14px;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.volume {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto 76px;
+  grid-template-areas: 'pos main status stars';
+  column-gap: 14px;
+  align-items: center;
+  padding: 11px 0;
+  font-size: 15px;
+}
+
+.has-covers .volume {
+  grid-template-columns: 34px 28px minmax(0, 1fr) auto 76px;
+  grid-template-areas: 'pos cover main status stars';
+}
+
+.volume + .volume { border-top: 1px solid var(--line-soft); }
+.volume .cover { grid-area: cover; }
+.volume-none .cover { opacity: 0.6; }
+
+.vol-pos {
+  grid-area: pos;
+  text-align: right;
+  font-family: var(--display);
+  font-size: 20px;
+  line-height: 1;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.vol-main { grid-area: main; display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.vol-title { color: var(--ink); line-height: 1.3; }
+.volume-none .vol-title { color: var(--ink-muted); }
+.vol-sub { font-size: 12.5px; line-height: 1.35; color: var(--ink-muted); }
+.vol-author { color: var(--ink-soft); }
+
+.volume.is-side { padding: 8px 0; }
+.volume.is-side .vol-pos { font-size: 15px; }
+.volume.is-side .vol-title { font-size: 13.5px; }
+
+.vol-status { grid-area: status; font-size: 12.5px; font-weight: 500; white-space: nowrap; text-align: right; }
+.status-read { color: var(--ok); }
+.status-reading { color: var(--primary); }
+.status-to_read { color: var(--warn); }
+.status-dnf { color: var(--ink-muted); }
+
+.vol-stars { grid-area: stars; text-align: right; white-space: nowrap; }
+.rating { letter-spacing: 1px; font-size: 12px; color: var(--warn); }
+.rating .muted { color: var(--line); }
+
+/* Quiet marks the next book with its one accent: a rule and a pale wash. */
+.volume.is-next {
+  margin: 0 -14px;
+  padding-left: 14px;
+  padding-right: 14px;
+  background: var(--primary-soft);
+  box-shadow: inset 3px 0 0 var(--primary);
+}
+
+.volume.is-next .vol-title { font-weight: 500; }
+.volume.is-next,
+.volume.is-next + .volume { border-top-color: transparent; }
+
+/* Standalone books: no number, no cover — title · author, status, stars. */
+.volume-book {
+  grid-template-columns: minmax(0, 1fr) auto 76px;
+  grid-template-areas: 'main status stars';
+  padding: 9px 0;
+}
+
+.drawer .volumes { margin: 0 0 16px 31px; }
+
+/* The NEXT line, under the series name, open or closed. */
+.verdict { margin: 0 0 0 76px; align-items: baseline; }
+.badge-go { color: var(--primary); }
+.next-title { font-family: var(--display); font-size: 19px; line-height: 1.2; }
+.next-why { font-size: 13px; color: var(--ink-soft); }
+
+/* Before the lookup: full-strength rows, one spine where the cover will go. */
+.series-row.is-pending,
+[data-skin] .series-row.is-pending { opacity: 1; }
+.series-row.is-pending .cover-lg { width: 14px; }
+.series-row.is-pending:nth-child(5n + 1) { --tint: var(--warn); }
+.series-row.is-pending:nth-child(5n + 2) { --tint: var(--primary); }
+.series-row.is-pending:nth-child(5n + 3) { --tint: var(--ok); }
+.series-row.is-pending:nth-child(5n + 4) { --tint: var(--accent); }
+.series-row.is-pending:nth-child(5n + 5) { --tint: var(--ink-soft); }
+.series-row.is-pending .cover { background: var(--tint); }
+
+/* Phones: status and stars drop under the title rather than squeeze it. */
+@media (max-width: 520px) {
+  .volume,
+  .has-covers .volume {
+    grid-template-columns: 26px minmax(0, 1fr) auto;
+    grid-template-areas: 'pos main main' 'pos status stars';
+    column-gap: 12px;
+    row-gap: 4px;
+  }
+  .has-covers .volume {
+    grid-template-columns: 26px 26px minmax(0, 1fr) auto;
+    grid-template-areas: 'pos cover main main' 'pos cover status stars';
+  }
+  .volume .cover-sm { width: 26px; height: 39px; }
+  .vol-status { text-align: left; white-space: normal; }
+  .volume-book { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'main main' 'status stars'; }
+  .verdict { margin-left: 0; }
+}
+
+/* ---------- Soft: pressed into the card, the next book on a peach band ---------- */
+
+[data-skin='soft'] { --next-band: linear-gradient(90deg, rgba(246, 207, 154, 0.55), rgba(246, 207, 154, 0.12)); }
+@media (prefers-color-scheme: dark) {
+  [data-skin='soft'] { --next-band: linear-gradient(90deg, rgba(132, 101, 47, 0.6), rgba(132, 101, 47, 0.14)); }
+}
+
+[data-skin='soft'] .volumes { margin: 6px 0 0; }
+[data-skin='soft'] .volume-list { border: 0; border-radius: 20px; padding: 6px 20px; box-shadow: var(--press); }
+[data-skin='soft'] .volume + .volume { border-top: 1px solid var(--line); }
+[data-skin='soft'] .vol-pos { font-family: var(--body); font-size: 15px; font-weight: 800; }
+[data-skin='soft'] .volume.is-side .vol-pos { font-size: 12.5px; }
+[data-skin='soft'] .vol-title { font-weight: 700; }
+[data-skin='soft'] .vol-sub,
+[data-skin='soft'] .vol-status { font-weight: 700; }
+[data-skin='soft'] .volume .cover-sm { border-radius: 5px; box-shadow: 3px 4px 8px rgba(160, 120, 140, 0.26), -3px -3px 7px rgba(255, 255, 255, 0.85); }
+[data-skin='soft'] .volume-none .cover-sm { box-shadow: none; }
+[data-skin='soft'] .rating { color: var(--stars); }
+[data-skin='soft'] .rating .muted { color: var(--track); }
+[data-skin='soft'] .volume.is-next {
+  margin: 0 -20px;
+  padding-left: 20px;
+  padding-right: 20px;
+  border-radius: 14px;
+  background: var(--next-band);
+  box-shadow: none;
+}
+[data-skin='soft'] .volume.is-next .vol-title { font-weight: 800; }
+[data-skin='soft'] .drawer .volumes { margin: 0 12px; }
+[data-skin='soft'] .next-title { font-family: var(--body); font-size: 14.5px; font-weight: 800; }
+[data-skin='soft'] .next-why { font-weight: 700; }
+[data-skin='soft'] .series-row.is-pending .cover { border-radius: 3px; }
+
+@media (prefers-color-scheme: dark) {
+  [data-skin='soft'] .volume .cover-sm { box-shadow: 5px 6px 12px rgba(0, 0, 0, 0.5), inset 1px 1px 0 rgba(255, 255, 255, 0.14); }
+}
+
+/* ---------- Bold: a ruled plate, the next book on the yellow ---------- */
+
+[data-skin='brutal'] .volume-list { border: 3px solid var(--rule); padding: 0 16px; }
+[data-skin='brutal'] .volume + .volume { border-top: 2px solid var(--line-soft); }
+[data-skin='brutal'] .vol-pos { font-family: var(--mono); font-size: 14px; font-weight: 700; }
+[data-skin='brutal'] .volume.is-side .vol-pos { font-size: 11.5px; }
+[data-skin='brutal'] .vol-title { font-weight: 700; }
+[data-skin='brutal'] .vol-sub { font-family: var(--mono); font-size: 12px; color: var(--byline); }
+[data-skin='brutal'] .vol-status { font-family: var(--mono); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.02em; }
+[data-skin='brutal'] .status-to_read { color: var(--ink); }
+[data-skin='brutal'] .status-reading { color: var(--red); }
+[data-skin='brutal'] .status-dnf { color: var(--grey); }
+[data-skin='brutal'] .volume .cover-sm { border-width: 2px; }
+[data-skin='brutal'] .rating { color: var(--ink); }
+[data-skin='brutal'] .rating .muted { color: var(--line-soft); }
+[data-skin='brutal'] .volume.is-next {
+  margin: 0 -16px;
+  padding-left: 16px;
+  padding-right: 16px;
+  background: #ffd400;
+  box-shadow: none;
+}
+/* The yellow never flips in the dark, so what sits on it never does either. */
+[data-skin='brutal'] .volume.is-next .vol-pos,
+[data-skin='brutal'] .volume.is-next .vol-title,
+[data-skin='brutal'] .volume.is-next .vol-sub,
+[data-skin='brutal'] .volume.is-next .vol-status,
+[data-skin='brutal'] .volume.is-next .rating { color: #0a0a0a; }
+[data-skin='brutal'] .volume.is-next .vol-title a { color: #0a0a0a; border-bottom-color: #0a0a0a; }
+[data-skin='brutal'] .drawer .volume-list { border: 0; border-top: 3px solid var(--rule); padding: 0; }
+[data-skin='brutal'] .badge-go { background: #ffd400; color: #0a0a0a; }
+[data-skin='brutal'] .next-title { font-family: var(--body); font-size: 15px; font-weight: 700; }
+[data-skin='brutal'] .next-why { font-family: var(--mono); font-size: 12px; color: var(--byline); }
+[data-skin='brutal'] .series-row.is-pending:nth-child(5n + 1) { --tint: var(--yellow); }
+[data-skin='brutal'] .series-row.is-pending:nth-child(5n + 2) { --tint: var(--blue); }
+[data-skin='brutal'] .series-row.is-pending:nth-child(5n + 3) { --tint: var(--green); }
+[data-skin='brutal'] .series-row.is-pending:nth-child(5n + 4) { --tint: var(--red); }
+[data-skin='brutal'] .series-row.is-pending:nth-child(5n + 5) { --tint: var(--grey); }
+[data-skin='brutal'] .volume.is-next .vol-title { font-weight: 700; }
+/* Line the NEXT tag up under the series name, past the triangle and the cover. */
+[data-skin='soft'] .verdict { margin-left: 79px; }
+
+/* Phones: the count and Set aside go under the series name, not beside it. */
+@media (max-width: 460px) {
+  .series-head { flex-direction: column; align-items: stretch; gap: 8px; }
+  .series-meta { justify-content: space-between; }
+}
+
+/* ==================================================================
+   Set aside — a quiet link under the count
+   ------------------------------------------------------------------
+   The action you take least should not outweigh the next book, so it
+   is a small dotted-underlined word, not a button. Hover darkens it and
+   makes the rule solid; pressing inks it in the skin's accent.
+   ================================================================== */
+
+.series-meta { flex-direction: column; align-items: flex-end; gap: 7px; }
+
+[data-skin] .aside-link {
+  padding: 1px 0;
+  border: 0;
+  border-bottom: 1.5px dotted currentColor;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--ink-muted);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: color 120ms ease, border-color 120ms ease;
+}
+
+@media (hover: hover) {
+  [data-skin] .aside-link:hover { color: var(--ink); border-bottom-style: solid; }
+}
+[data-skin] .aside-link:active:not(:disabled) { color: var(--primary); border-bottom-style: solid; transform: none; box-shadow: none; }
+
+[data-skin='soft'] .aside-link { font-weight: 700; }
+[data-skin='soft'] .aside-link:focus-visible { outline: 3px solid var(--primary); outline-offset: 3px; }
+
+[data-skin='brutal'] .aside-link {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  border-bottom-width: 2px;
+}
+[data-skin='brutal'] .aside-link:active:not(:disabled) { color: #0a0a0a; background: #ffd400; }
+[data-skin='brutal'] .aside-link:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+
+/* Phones: the count and the link share one line under the series name. */
+@media (max-width: 460px) {
+  .series-meta { flex-direction: row; align-items: baseline; }
+}
+
+/* ==================================================================
+   A file the intake refuses
+   ------------------------------------------------------------------
+   Said at once, right above the button that fixes it: a label, what is
+   wrong in one line, why, the offending line of the file when seeing it
+   helps, and what to do. The button below it then reads "Choose a
+   different file". Each skin says "stop" in its own material: a rule in
+   Quiet, a pressed rose hollow in Soft, a red-banded plate in Bold.
+   ================================================================== */
+
+.file-error {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 66ch;
+  padding: 4px 0 4px 18px;
+  border-left: 2px solid var(--accent);
+}
+
+.file-error p { margin: 0; }
+.file-error-label { font-size: 10.5px; font-weight: 500; letter-spacing: 0.24em; text-transform: lowercase; color: var(--accent); }
+.file-error-title { font-family: var(--display); font-size: 25px; line-height: 1.15; color: var(--ink); }
+.file-error-body { font-size: 15px; line-height: 1.5; color: var(--ink-soft); }
+.file-error-fix { font-size: 15px; line-height: 1.5; color: var(--ink); font-weight: 500; }
+
+.file-error-snippet {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 4px 0 2px !important;
+  padding: 9px 12px;
+  background: var(--line-soft);
+  overflow: hidden;
+}
+
+.file-error-snippet-label { font-size: 11px; letter-spacing: 0.08em; color: var(--ink-muted); }
+.file-error-snippet code {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--ink);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* Rows left out of a file that otherwise loaded: a note, not an alarm. */
+.library-left-out { margin: 0; font-size: 13px; line-height: 1.45; color: var(--warn); }
+
+/* ---------- Soft: a pressed rose hollow ---------- */
+
+[data-skin='soft'] .file-error {
+  gap: 7px;
+  padding: 18px 22px 20px;
+  border: 0;
+  border-radius: 20px;
+  background: var(--fail-tint);
+  box-shadow: var(--press);
+}
+
+[data-skin='soft'] .file-error-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+[data-skin='soft'] .file-error-label::before {
+  content: '';
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+[data-skin='soft'] .file-error-title { font-family: var(--body); font-size: 19px; font-weight: 800; }
+[data-skin='soft'] .file-error-body { font-weight: 600; }
+[data-skin='soft'] .file-error-fix { font-weight: 800; }
+[data-skin='soft'] .file-error-snippet { border-radius: 12px; background: var(--surface); box-shadow: var(--press); }
+[data-skin='soft'] .file-error-snippet-label { font-weight: 800; }
+[data-skin='soft'] .library-left-out { font-weight: 700; }
+
+/* ---------- Bold: a plate with a red band ---------- */
+
+[data-skin='brutal'] .file-error {
+  gap: 0;
+  max-width: none;
+  padding: 0;
+  border: 4px solid var(--rule);
+  background: var(--bg);
+}
+
+[data-skin='brutal'] .file-error-label {
+  padding: 7px 14px;
+  background: var(--red);
+  /* Black, not white: 12px type on this red needs it for 4.5:1 in both modes. */
+  color: #0a0a0a;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+[data-skin='brutal'] .file-error-title {
+  padding: 14px 16px 6px;
+  font-family: var(--display);
+  font-size: 28px;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+[data-skin='brutal'] .file-error-body,
+[data-skin='brutal'] .file-error-fix { padding: 0 16px; font-size: 14.5px; }
+[data-skin='brutal'] .file-error-body { color: var(--byline); padding-bottom: 8px; }
+[data-skin='brutal'] .file-error-fix { padding-top: 8px; padding-bottom: 14px; font-weight: 700; }
+[data-skin='brutal'] .file-error-snippet { margin: 4px 16px 2px !important; border: 2px solid var(--rule); background: var(--line-soft); }
+[data-skin='brutal'] .file-error-snippet-label { font-family: var(--mono); text-transform: uppercase; color: var(--ink); }
+[data-skin='brutal'] .library-left-out { font-family: var(--mono); font-size: 12px; color: var(--red); }
+
+/* Soft's accent and warn are tuned for fills; as small text on light clay
+   they need a darker shade to reach 4.5:1. Dark mode keeps its own. */
+[data-skin='soft'] .file-error-label { color: #a24a5f; }
+[data-skin='soft'] .library-left-out { color: #86591c; }
+@media (prefers-color-scheme: dark) {
+  [data-skin='soft'] .file-error-label { color: var(--accent); }
+  [data-skin='soft'] .library-left-out { color: var(--warn); }
+}
