@@ -21,7 +21,22 @@ export interface ParseResult {
   counts: Record<Shelf, number>
   /** How many read books carry a usable Date Read. Gates every monthly statistic. */
   dateReadCoverage: { withDate: number; total: number }
+  /** Rows with no title: nothing to show, so left out. */
   skipped: number
+  /** Rows with the wrong number of columns: unreliable, so left out and reported. */
+  rowProblems: RowProblem[]
+  /**
+   * A quote that opens and never closes. Everything after it is read as one
+   * field, so the file cannot be trusted at all; the intake refuses it.
+   */
+  damagedAt: { line: number; text: string } | null
+  /** The header row as the file spells it, for "not a Goodreads export". */
+  fields: string[]
+}
+
+export interface RowProblem {
+  line: number
+  reason: 'too-few' | 'too-many'
 }
 
 /**
@@ -87,10 +102,33 @@ export function parseGoodreadsCsv(text: string): ParseResult {
     transformHeader: (header) => header.trim(),
   })
 
+  // Papa reports damage per data row; the reader wants a line of the file.
+  const lineAt = (index: number | undefined, row: number) =>
+    index === undefined ? row + 2 : text.slice(0, index).split('\n').length
+  const badRows = new Map<number, RowProblem>()
+  let damagedAt: ParseResult['damagedAt'] = null
+  for (const error of parsed.errors) {
+    if (error.row === undefined) continue
+    const line = lineAt(error.index, error.row)
+    if (error.code === 'MissingQuotes' || error.code === 'InvalidQuotes') {
+      if (!damagedAt || line < damagedAt.line) {
+        damagedAt = { line, text: text.split('\n')[line - 1]?.trim() ?? '' }
+      }
+    } else if (error.code === 'TooFewFields' || error.code === 'TooManyFields') {
+      badRows.set(error.row, { line: error.row + 2, reason: error.code === 'TooFewFields' ? 'too-few' : 'too-many' })
+    }
+  }
+
   const books: Book[] = []
+  const rowProblems: RowProblem[] = []
   let skipped = 0
 
-  for (const row of parsed.data) {
+  for (const [index, row] of parsed.data.entries()) {
+    const broken = badRows.get(index)
+    if (broken) {
+      rowProblems.push(broken)
+      continue
+    }
     const title = row['Title']?.trim()
     if (!title) {
       skipped += 1
@@ -98,7 +136,9 @@ export function parseGoodreadsCsv(text: string): ParseResult {
     }
 
     const shelves = splitShelves(row['Bookshelves'])
+    // Stars are drawn from this number, so anything outside 1–5 means "no rating".
     const ratingValue = Number(row['My Rating'] ?? '0')
+    const rating = Number.isInteger(ratingValue) && ratingValue >= 1 && ratingValue <= 5 ? ratingValue : null
 
     books.push({
       title,
@@ -106,7 +146,7 @@ export function parseGoodreadsCsv(text: string): ParseResult {
       isbn13: cleanIdentifier(row['ISBN13']) ?? cleanIdentifier(row['ISBN']),
       shelf: toShelf(row['Exclusive Shelf'], shelves),
       dateRead: parseDate(row['Date Read']),
-      rating: ratingValue > 0 ? ratingValue : null,
+      rating,
       year: parseYear(row['Original Publication Year']) ?? parseYear(row['Year Published']),
       binding: row['Binding']?.trim() || null,
       shelves,
@@ -126,5 +166,8 @@ export function parseGoodreadsCsv(text: string): ParseResult {
       total: readBooks.length,
     },
     skipped,
+    rowProblems,
+    damagedAt,
+    fields: parsed.meta.fields ?? [],
   }
 }

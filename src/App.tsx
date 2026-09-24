@@ -13,6 +13,9 @@ import { LookupPanel } from './LookupPanel.tsx'
 import type { FailureKind, LookupPhase } from './LookupPanel.tsx'
 import type { SeriesState, Tile, VolumeRow } from './state'
 import { BoardTiles, ListHead } from './BoardTiles.tsx'
+import { SNIFF_BYTES, checkParsed, leftOutNote, sniffExport, sniffText } from './checkExport'
+import { FileError } from './FileError.tsx'
+import type { IntakeProblem } from './FileError.tsx'
 
 /**
  * A Goodreads export of 5,000 books is about 2 MB. Ten times that is not a
@@ -30,27 +33,42 @@ function describeSize(bytes: number): string {
 export default function App() {
   const [parsed, setParsed] = useState<ParseResult | null>(null)
   const [summary, setSummary] = useState<SeriesSummary | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [problem, setProblem] = useState<IntakeProblem | null>(null)
   const [fileName, setFileName] = useState<string | null>(null)
+  const [leftOut, setLeftOut] = useState<string | null>(null)
 
-  function reset() {
+  /** Back to the intake. Leaves any error in place: it explains why we're here. */
+  function clearLibrary() {
     setParsed(null)
     setSummary(null)
-    setError(null)
+    setLeftOut(null)
+  }
+
+  function reset() {
+    clearLibrary()
+    setProblem(null)
     setFileName(null)
+  }
+
+  function refuse(why: IntakeProblem, name: string | null) {
+    clearLibrary()
+    setFileName(name)
+    setProblem(why)
   }
 
   /** Reads a CSV from anywhere: a chosen file, or the bundled sample. */
   function accept(text: string, name: string) {
     const result = parseGoodreadsCsv(text)
-    if (result.books.length === 0) {
-      setError('That file has no book rows. Is it the Goodreads library export?')
-      reset()
+    const wrong = checkParsed(result)
+    if (wrong) {
+      refuse(wrong, name)
       return
     }
+    setProblem(null)
     setParsed(result)
     setSummary(groupIntoSeries(result.books))
     setFileName(name)
+    setLeftOut(leftOutNote(result))
   }
 
   /**
@@ -58,40 +76,44 @@ export default function App() {
    * five-minute export first.
    */
   async function loadSample() {
-    setError(null)
+    setProblem(null)
     try {
       const response = await fetch('/sample-library.csv')
       if (!response.ok) throw new Error(String(response.status))
-      accept(await response.text(), 'a sample library')
+      const text = await response.text()
+      const wrong = sniffText(text)
+      if (wrong) throw new Error(wrong.kind)
+      accept(text, 'a sample library')
     } catch {
-      setError('The sample could not be loaded. Try your own export instead.')
+      refuse({ kind: 'sample' }, null)
     }
   }
 
   async function handleFile(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0]
+    const input = event.target
+    const file = input.files?.[0]
+    // Choosing the same file again after fixing it must still fire a change.
+    input.value = ''
     if (!file) return
-    setError(null)
+    setProblem(null)
 
     if (file.size > MAX_FILE_BYTES) {
-      setError(
-        `That file is ${describeSize(file.size)}, which is far larger than any ` +
-          `Goodreads export. Is it the library export rather than something else?`,
-      )
-      reset()
-      return
-    }
-    if (file.size === 0) {
-      setError('That file is empty. Try exporting it again from Goodreads.')
-      reset()
+      refuse({ kind: 'too-big', size: describeSize(file.size) }, file.name)
       return
     }
 
     try {
+      // Check the start before reading the rest: a wrong file is refused at
+      // once, whatever its size.
+      const head = new Uint8Array(await file.slice(0, SNIFF_BYTES).arrayBuffer())
+      const wrong = sniffExport(head)
+      if (wrong) {
+        refuse(wrong, file.name)
+        return
+      }
       accept(await file.text(), file.name)
     } catch {
-      setError('That file could not be read. Try exporting it again from Goodreads.')
-      reset()
+      refuse({ kind: 'unreadable' }, file.name)
     }
   }
 
@@ -100,7 +122,8 @@ export default function App() {
       <header className="masthead">
         <h1>Loose Ends</h1>
         <p className="tagline">
-          You&rsquo;ve read four. There are seven. Here&rsquo;s book five.
+          <span>You&rsquo;ve read four.</span> <span>There are seven.</span>{' '}
+          <span>Here&rsquo;s book five.</span>
         </p>
         <SkinPicker />
       </header>
@@ -112,6 +135,7 @@ export default function App() {
             books={parsed.books}
             counts={parsed.counts}
             standalone={summary?.unmatched.length ?? 0}
+            leftOut={leftOut}
             onReset={reset}
           />
         ) : (
@@ -134,6 +158,8 @@ export default function App() {
           the file in Excel first; it quietly changes ISBNs and dates.
         </p>
 
+        {problem && <FileError problem={problem} fileName={fileName} />}
+
         <div className="dropzone">
           {/* The input stays focusable for the keyboard; the label is what
               anyone sees, so it can carry the same weight as every other
@@ -146,7 +172,7 @@ export default function App() {
             onChange={handleFile}
           />
           <label className="file-button" htmlFor="export-file">
-            Choose your export file
+            {problem ? 'Choose a different file' : 'Choose your export file'}
           </label>
 
           <span className="file-or">or</span>
@@ -162,7 +188,6 @@ export default function App() {
         </p>
           </>
         )}
-        {error && <p className="error">{error}</p>}
       </section>
 
       {summary && <SeriesBoard summary={summary} />}

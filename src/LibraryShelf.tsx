@@ -50,6 +50,7 @@ export function LibraryShelf({
   books,
   counts,
   standalone,
+  leftOut = null,
   onReset,
 }: {
   name: string
@@ -57,6 +58,8 @@ export function LibraryShelf({
   counts: Record<Shelf, number>
   /** Books that belong to no series. */
   standalone: number
+  /** Rows the parser left out, said once under the shelf; null when none were. */
+  leftOut?: string | null
   onReset: () => void
 }) {
   const total = books.length
@@ -100,6 +103,8 @@ export function LibraryShelf({
             </li>
           ))}
         </ul>
+
+        {leftOut && <p className="library-left-out">{leftOut}</p>}
       </div>
 
       <div className="library-side">
