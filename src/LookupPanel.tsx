@@ -136,7 +136,7 @@ export function LookupPanel({
   if (phase === 'before') {
     title = `Ready to look up ${total} series`
     body =
-      'We’ll ask Hardcover what comes next in each one. It takes a few seconds, and your library never leaves this browser.'
+      'We’ll ask Hardcover what comes next in each one. It takes a few seconds, and only the series names and authors are sent.'
   } else if (phase === 'during') {
     title = 'Asking about'
   } else if (phase === 'after') {
