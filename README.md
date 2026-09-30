@@ -28,6 +28,11 @@ Your library is read in the browser and never uploaded; close the tab and it's
 gone. The only thing that leaves your machine is a list of series *names* and
 their authors, sent to look up which books are in them.
 
+Heart up to five series to keep them at the top, and set aside the ones you've
+walked away from. Those choices — series names only, not your books — are
+remembered in this browser's local storage, never sent anywhere, and
+**Forget my choices** at the top of the board clears them.
+
 ## Why Hardcover
 
 Five other sources were measured against a real 73-series library — Wikidata,

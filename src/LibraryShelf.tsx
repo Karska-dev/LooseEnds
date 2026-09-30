@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { Book, Shelf } from './goodreads'
 
 /**
@@ -52,6 +53,8 @@ export function LibraryShelf({
   standalone,
   leftOut = null,
   onReset,
+  remembered,
+  onForget,
 }: {
   name: string
   books: Book[]
@@ -61,7 +64,12 @@ export function LibraryShelf({
   /** Rows the parser left out, said once under the shelf; null when none were. */
   leftOut?: string | null
   onReset: () => void
+  /** Favourites or set-asides are saved in this browser. */
+  remembered: boolean
+  onForget: () => void
 }) {
+  const [forgotten, setForgotten] = useState(false)
+
   const total = books.length
   const inSeries = total - standalone
   const drawn = spineCounts(counts, total)
@@ -108,9 +116,29 @@ export function LibraryShelf({
       </div>
 
       <div className="library-side">
-        <button type="button" className="change-file" onClick={onReset}>
-          Use a different file
-        </button>
+        <div className="library-actions">
+          <button type="button" className="change-file" onClick={onReset}>
+            Use a different file
+          </button>
+          {remembered ? (
+            <button
+              type="button"
+              className="aside-link forget-link"
+              onClick={() => {
+                onForget()
+                setForgotten(true)
+              }}
+            >
+              Forget my choices
+            </button>
+          ) : (
+            forgotten && (
+              <span className="forget-done" role="status">
+                Choices forgotten
+              </span>
+            )
+          )}
+        </div>
 
         <p className="series-count">
           <span className="series-count-n">{inSeries}</span>

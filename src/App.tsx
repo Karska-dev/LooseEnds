@@ -15,6 +15,9 @@ import type { SeriesState, Tile, VolumeRow } from './state'
 import { BoardTiles, ListHead } from './BoardTiles.tsx'
 import { SNIFF_BYTES, checkParsed, leftOutNote, sniffExport, sniffText } from './checkExport'
 import { FileError } from './FileError.tsx'
+import { MAX_FAVOURITES, addFavourite, asideKeys, bringBack, hasChoices, isFull, presentFavourites, removeFavourite, setAside } from './choices'
+import type { Choices } from './choices'
+import { useChoices } from './useChoices'
 import type { IntakeProblem } from './FileError.tsx'
 
 /**
@@ -36,6 +39,7 @@ export default function App() {
   const [problem, setProblem] = useState<IntakeProblem | null>(null)
   const [fileName, setFileName] = useState<string | null>(null)
   const [leftOut, setLeftOut] = useState<string | null>(null)
+  const [choices, updateChoices, forgetChoices] = useChoices()
 
   /** Back to the intake. Leaves any error in place: it explains why we're here. */
   function clearLibrary() {
@@ -137,6 +141,8 @@ export default function App() {
             standalone={summary?.unmatched.length ?? 0}
             leftOut={leftOut}
             onReset={reset}
+            remembered={hasChoices(choices)}
+            onForget={forgetChoices}
           />
         ) : (
           <>
@@ -184,13 +190,13 @@ export default function App() {
 
         <p className="note">
           Your library is read here in your browser. It is never uploaded and
-          never stored.
+          never stored. Favourites and set-asides are remembered in this browser.
         </p>
           </>
         )}
       </section>
 
-      {summary && <SeriesBoard summary={summary} />}
+      {summary && <SeriesBoard summary={summary} choices={choices} onChoices={updateChoices} />}
 
       <footer className="colophon">
         Series data and covers from{' '}
@@ -198,21 +204,30 @@ export default function App() {
           Hardcover
         </a>
         . Only series names and authors are sent, to look them up; your books and
-        ratings stay in this browser.
+        ratings stay in this browser, and so do your favourites and set-asides.
       </footer>
     </main>
   )
 }
 
-function SeriesBoard({ summary }: { summary: SeriesSummary }) {
+function SeriesBoard({
+  summary,
+  choices,
+  onChoices,
+}: {
+  summary: SeriesSummary
+  choices: Choices
+  onChoices: (update: (current: Choices) => Choices) => void
+}) {
   const started = useMemo(
     () => summary.groups.filter((group) => group.readCount > 0),
     [summary],
   )
   const [resolved, setResolved] = useState<Map<string, SeriesResult>>(new Map())
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
-  const [dismissed, setDismissed] = useState<Set<string>>(new Set())
-  // Every visit starts with Finished and Set aside hidden; nothing is saved.
+  /** Series the lookup set aside by itself: abandoned part-way (a DNF). */
+  const [autoAside, setAutoAside] = useState<Set<string>>(new Set())
+  // Every visit starts with Finished and Set aside hidden; the tiles are not saved.
   const [visibleTiles, setVisibleTiles] = useState<Record<Tile, boolean>>({ ...DEFAULT_VISIBLE })
   const [standaloneOpen, setStandaloneOpen] = useState(false)
   const [openKey, setOpenKey] = useState<string | null>(null)
@@ -248,7 +263,7 @@ function SeriesBoard({ summary }: { summary: SeriesSummary }) {
     // A DNF part-way through means the reader walked away — set those aside.
     // A DNF in a series with nothing left to read is just how it ended, and
     // belongs with the finished ones instead.
-    setDismissed(
+    setAutoAside(
       new Set(
         started
           .filter((group) => {
@@ -265,10 +280,21 @@ function SeriesBoard({ summary }: { summary: SeriesSummary }) {
     [started, resolved],
   )
 
+  const present = useMemo(() => new Set(started.map((group) => group.key)), [started])
+  const dismissed = useMemo(() => asideKeys(choices, autoAside), [choices, autoAside])
+  const favourites = new Set(presentFavourites(choices, present))
+  const full = isFull(choices, present)
+
   // Each series sits on at most one tile, so the figures add up to the list;
   // series with no tile (not looked up, failed, partial) are always listed.
   const tileCounts = countTiles(states, dismissed)
-  const visible = states.filter((state) => isListed(state, dismissed, visibleTiles))
+  // A favourite is always in view, whichever tiles are switched off, and
+  // pinned to the top in the board's usual order.
+  const visible = states.filter(
+    (state) => favourites.has(state.key) || isListed(state, dismissed, visibleTiles),
+  )
+  const pinned = visible.filter((state) => favourites.has(state.key))
+  const rest = visible.filter((state) => !favourites.has(state.key))
   const failedCount = [...resolved.values()].filter((entry) => entry.status === 'error').length
   const namesOn = (tile: Tile) =>
     states.filter((state) => tileOf(state, dismissed.has(state.key)) === tile).map((state) => state.name)
@@ -302,14 +328,31 @@ function SeriesBoard({ summary }: { summary: SeriesSummary }) {
     .filter((state) => resolved.get(state.key)?.status === 'error')
     .map((state) => state.name)
 
-  function toggle(key: string) {
-    setDismissed((current) => {
-      const next = new Set(current)
-      if (next.has(key)) next.delete(key)
-      else next.add(key)
-      return next
-    })
+  function toggleAside(key: string) {
+    onChoices((current) =>
+      dismissed.has(key) ? bringBack(current, key) : setAside(current, key, present),
+    )
   }
+
+  function toggleFavourite(key: string) {
+    onChoices((current) =>
+      favourites.has(key) ? removeFavourite(current, key, present) : addFavourite(current, key, present),
+    )
+  }
+
+  const row = (state: SeriesState) => (
+    <SeriesRow
+      key={state.key}
+      state={state}
+      dismissed={dismissed.has(state.key)}
+      onToggle={() => toggleAside(state.key)}
+      favourite={favourites.has(state.key)}
+      canFavourite={!full}
+      onFavourite={() => toggleFavourite(state.key)}
+      open={openKey === state.key}
+      onOpen={() => setOpenKey(openKey === state.key ? null : state.key)}
+    />
+  )
 
   return (
     <section className="board">
@@ -347,18 +390,37 @@ function SeriesBoard({ summary }: { summary: SeriesSummary }) {
         </>
       )}
 
-      <ul className="series-list" id="series-list">
-        {visible.map((state) => (
-          <SeriesRow
-            key={state.key}
-            state={state}
-            dismissed={dismissed.has(state.key)}
-            onToggle={() => toggle(state.key)}
-            open={openKey === state.key}
-            onOpen={() => setOpenKey(openKey === state.key ? null : state.key)}
-          />
-        ))}
-      </ul>
+      <div className="series-lists" id="series-list">
+        {pinned.length === 0 ? (
+          visible.length > 0 && (
+            <p className="fav-hint">
+              <HeartIcon />
+              Heart up to {MAX_FAVOURITES} series to keep them at the top.
+            </p>
+          )
+        ) : (
+          <>
+            <h3 className="list-label fav-label">
+              Favourites{' '}
+              <span className="list-label-note">
+                {pinned.length} of {MAX_FAVOURITES}
+              </span>
+            </h3>
+            <ul className="series-list">{pinned.map(row)}</ul>
+            {rest.length > 0 && (
+              <h3 className="list-label">
+                Everything else
+                {full && (
+                  <span className="list-label-note">
+                    Your top {MAX_FAVOURITES} is full &mdash; remove a heart above to choose another.
+                  </span>
+                )}
+              </h3>
+            )}
+          </>
+        )}
+        {rest.length > 0 && <ul className="series-list">{rest.map(row)}</ul>}
+      </div>
 
       {standalone.length > 0 && (
         <StandaloneDrawer
@@ -461,16 +523,32 @@ function BookLine({ book }: { book: Book }) {
   )
 }
 
+/** Drawn, not typed: the heart glyph differs in every font and emoji set. */
+function HeartIcon() {
+  return (
+    <svg className="heart-icon" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 20.3c-.3 0-7.6-4.5-9.4-9C1.3 8 3.3 4.6 6.9 4.6c2.1 0 3.7 1.2 5.1 3 1.4-1.8 3-3 5.1-3 3.6 0 5.6 3.4 4.3 6.7-1.8 4.5-9.1 9-9.4 9z" />
+    </svg>
+  )
+}
+
 function SeriesRow({
   state,
   dismissed,
   onToggle,
+  favourite,
+  canFavourite,
+  onFavourite,
   open,
   onOpen,
 }: {
   state: SeriesState
   dismissed: boolean
   onToggle: () => void
+  favourite: boolean
+  /** False when the top five is full: the heart is not offered at all. */
+  canFavourite: boolean
+  onFavourite: () => void
   open: boolean
   onOpen: () => void
 }) {
@@ -481,7 +559,8 @@ function SeriesRow({
   return (
     <li
       className={
-        `series-row${dismissed ? ' is-dismissed' : ''}${open ? ' is-open' : ''}` +
+        // Faded only once the lookup can offer "bring back" beside it.
+        `series-row${dismissed && lookedUp ? ' is-dismissed' : ''}${favourite ? ' is-favourite' : ''}${open ? ' is-open' : ''}` +
         (state.status === 'unknown' ? ' is-pending' : '')
       }
     >
@@ -504,14 +583,32 @@ function SeriesRow({
         </button>
 
         <span className="series-meta">
-          <span className="progress-line">
-            {state.totalBooks !== null ? (
-              <>
-                <b>{state.readCount}</b> of {state.totalBooks}
-              </>
+          <span className="meta-top">
+            {favourite || canFavourite ? (
+              // Outside the open/close button on purpose: a button cannot
+              // sit inside another one.
+              <button
+                type="button"
+                className={`heart${favourite ? ' is-on' : ''}`}
+                aria-pressed={favourite}
+                aria-label={`Favourite: ${state.name}`}
+                onClick={onFavourite}
+              >
+                <HeartIcon />
+              </button>
             ) : (
-              shelfSummary(state.rows)
+              // Keeps the count where it was when the other hearts step away.
+              <span className="heart-slot" aria-hidden="true" />
             )}
+            <span className="progress-line">
+              {state.totalBooks !== null ? (
+                <>
+                  <b>{state.readCount}</b> of {state.totalBooks}
+                </>
+              ) : (
+                shelfSummary(state.rows)
+              )}
+            </span>
           </span>
           {state.status !== 'unknown' && (
             // A quiet word, not a button: it's the thing you do least, so it
