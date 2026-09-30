@@ -577,12 +577,7 @@ function SeriesRow({
           </span>
           <Cover url={state.coverUrl} color={state.coverColor} alt="" size="lg" />
           <span className="series-id">
-            <span className="series-name">
-              {state.name}
-              {state.rows.some((row) => row.hasAudio) && (
-                <AudioMark label="Has audiobooks" />
-              )}
-            </span>
+            <span className="series-name">{state.name}</span>
             <span className="byline">{state.author}</span>
           </span>
         </button>
@@ -720,40 +715,6 @@ function monthYear(date: string): string {
   return name ? `${name} ${year}` : year
 }
 
-/** "12 Mar 2027": an audiobook date is usually a real day, so say the day. */
-function dayMonthYear(date: string): string {
-  const [year, month, day] = date.split('-')
-  const name = MONTHS[Number(month) - 1]
-  return name && day ? `${Number(day)} ${name} ${year}` : monthYear(date)
-}
-
-/**
- * Headphones, drawn rather than an emoji: an emoji is a different picture on
- * every device and ignores the skin. Labelled for screen readers, since it
- * is information, not decoration.
- */
-function AudioMark({ label }: { label: string }) {
-  return (
-    <span className="audio-mark" role="img" aria-label={label} title={label}>
-      <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M4 15v-3a8 8 0 0 1 16 0v3" />
-        <rect x="3" y="14" width="4.5" height="7" rx="1.5" />
-        <rect x="16.5" y="14" width="4.5" height="7" rx="1.5" />
-      </svg>
-    </span>
-  )
-}
-
-/** What the mark on one book says when you hover it or hear it. */
-function audioLabel(row: VolumeRow): string {
-  return row.audioDate ? `Audiobook due ${dayMonthYear(row.audioDate)}` : 'Audiobook available'
-}
-
-/** Optional, and only when there is one: "audiobook 12 Mar 2027". */
-function audioWords(audioDate: string | null): string | null {
-  return audioDate ? `audiobook ${dayMonthYear(audioDate)}` : null
-}
-
 /** "1 read · 2 on your list" — the closed row before any lookup has run. */
 function shelfSummary(rows: VolumeRow[]): string {
   const count = { read: 0, reading: 0, to_read: 0, dnf: 0 }
@@ -786,7 +747,7 @@ function VolumeLine({ row, withCover }: { row: VolumeRow; withCover: boolean }) 
     row.releaseDate && row.publication === 'announced'
       ? `due ${monthYear(row.releaseDate)}`
       : (row.releaseDate?.slice(0, 4) ?? (mine?.year ? String(mine.year) : null))
-  const sub = [year, audioWords(row.audioDate), side ? 'side story' : null, mine && mine.title !== row.title ? `your copy: ${mine.title}` : null]
+  const sub = [year, side ? 'side story' : null, mine && mine.title !== row.title ? `your copy: ${mine.title}` : null]
     .filter(Boolean)
     .join(' \u00b7 ')
 
@@ -808,7 +769,6 @@ function VolumeLine({ row, withCover }: { row: VolumeRow; withCover: boolean }) 
           ) : (
             row.title
           )}
-          {row.hasAudio && <AudioMark label={audioLabel(row)} />}
         </span>
         {sub && <span className="vol-sub">{sub}</span>}
       </span>
@@ -864,9 +824,7 @@ function Verdict({ state }: { state: SeriesState }) {
       <p className="verdict">
         <span className="badge badge-go">Next</span>
         {title}
-        <span className="next-why">
-          {[year, onNow ?? where, audioWords(next.audioDate)].filter(Boolean).join(' \u00b7 ')}
-        </span>
+        <span className="next-why">{[year, onNow ?? where].filter(Boolean).join(' \u00b7 ')}</span>
       </p>
     )
   }
@@ -876,9 +834,7 @@ function Verdict({ state }: { state: SeriesState }) {
       <p className="verdict">
         <span className="badge badge-soon">Due {monthYear(next.releaseDate)}</span>
         {title}
-        {(onNow || next.audioDate) && (
-          <span className="next-why">{[onNow, audioWords(next.audioDate)].filter(Boolean).join(' \u00b7 ')}</span>
-        )}
+        {onNow && <span className="next-why">{onNow}</span>}
       </p>
     )
   }
@@ -887,7 +843,6 @@ function Verdict({ state }: { state: SeriesState }) {
     <p className="verdict">
       <span className="badge badge-wait">No date yet</span>
       {title}
-      {next.audioDate && <span className="next-why">{audioWords(next.audioDate)}</span>}
     </p>
   )
 }

@@ -23,8 +23,6 @@ interface NextVolume {
   title: string
   releaseDate: string | null
   publication: PublicationState
-  /** A future audiobook date, when there is one worth saying (see audioNote). */
-  audioDate: string | null
   /** Already on the reader's to-read shelf: a nudge, not a discovery. */
   onYourList: boolean
 }
@@ -38,10 +36,6 @@ export interface VolumeRow {
   slug: string | null
   releaseDate: string | null
   publication: PublicationState
-  /** A future audiobook date, when there is one worth saying (see audioNote). */
-  audioDate: string | null
-  /** An audiobook exists or is announced, dated or not. */
-  hasAudio: boolean
   isNext: boolean
   /** Null when the reader does not have this volume at all. */
   mine: {
@@ -76,21 +70,6 @@ export interface SeriesState {
   inProgress: boolean
   /** Which volume that is, so the board can say so. */
   inProgressPosition: number | null
-}
-
-/**
- * The audiobook date worth mentioning: still to come, and not simply the same
- * day as the book. Past, missing or same-day audio says nothing new, so it is
- * null and the board shows nothing.
- */
-export function audioNote(
-  releaseDate: string | null,
-  audioDate: string | null | undefined,
-  today: string,
-): string | null {
-  if (!audioDate || audioDate <= today) return null
-  if (audioDate === releaseDate) return null
-  return audioDate
 }
 
 function publicationOf(releaseDate: string | null, today: string): PublicationState {
@@ -282,7 +261,6 @@ export function buildSeriesState(
       title: edition.title,
       releaseDate: edition.releaseDate,
       publication,
-      audioDate: audioNote(edition.releaseDate, edition.audioDate, today),
       onYourList: has(shelves, nextVolume.position, 'to_read'),
     },
     rows,
@@ -336,8 +314,6 @@ function buildRows(
       slug: edition.slug,
       releaseDate: edition.releaseDate,
       publication: publicationOf(edition.releaseDate, today),
-      audioDate: audioNote(edition.releaseDate, edition.audioDate, today),
-      hasAudio: edition.hasAudio === true || Boolean(edition.audioDate),
       isNext: volume.position === nextPosition,
       mine: mine.get(volume.position) ?? null,
     })
@@ -354,8 +330,6 @@ function buildRows(
       slug: null,
       releaseDate: null,
       publication: 'unannounced',
-      audioDate: null,
-      hasAudio: false,
       isNext: false,
       mine: entry,
     })
