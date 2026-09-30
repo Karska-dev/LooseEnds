@@ -18,6 +18,23 @@ function seriesApi(token: string): Plugin {
   return {
     name: 'loose-ends-series-api',
     configureServer(server) {
+      // Turnstile in dev: Cloudflare's always-pass invisible test key, and any
+      // token buys a pass. The real check lives in worker/index.ts; this only
+      // keeps the page's flow identical, so dev exercises the same code path.
+      // /api/series here does not ask for the pass.
+      server.middlewares.use('/api/pass', async (request, response) => {
+        response.setHeader('content-type', 'application/json')
+        response.setHeader('cache-control', 'no-store')
+        if (request.method === 'GET') {
+          response.end(JSON.stringify({ siteKey: '1x00000000000000000000BB' }))
+          return
+        }
+        for await (const _ of request) {
+          // Drain the body; its token is not checked in dev.
+        }
+        response.end(JSON.stringify({ pass: 'dev', expires: Date.now() + 15 * 60 * 1000 }))
+      })
+
       server.middlewares.use('/api/series', async (request, response) => {
         if (request.method !== 'POST') {
           response.statusCode = 405

@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import type { CSSProperties } from 'react'
 import type { SeriesState } from './state'
+import { setTurnstileSlot } from './turnstile'
 
 export type LookupPhase = 'before' | 'during' | 'after' | 'failed'
-export type FailureKind = 'busy' | 'unset' | 'unreachable'
+export type FailureKind = 'busy' | 'unset' | 'unreachable' | 'check'
 
 type BadgeKind = 'go' | 'soon' | 'wait' | 'done'
 
@@ -155,7 +156,11 @@ export function LookupPanel({
     body = parts.length > 0 ? sentence(parts) : null
   } else if (failure === 'unset') {
     title = 'Series lookup isn’t set up here'
-    body = 'This server has no Hardcover token configured, so nothing can be looked up yet.'
+    body = 'This server isn’t fully configured yet, so nothing can be looked up.'
+  } else if (failure === 'check') {
+    title = 'Couldn’t confirm you’re a person'
+    body =
+      'Cloudflare’s quick check didn’t go through, so nothing was looked up. Try again — if a box appears, tick it.'
   } else {
     title = failure === 'busy' ? 'Hardcover is busy right now' : 'Couldn’t reach Hardcover'
     const heardLine =
@@ -240,6 +245,10 @@ export function LookupPanel({
             </button>
           </div>
         )}
+
+        {/* Where Cloudflare Turnstile may ask for a click. Empty and
+            invisible for most people; see src/turnstile.ts. */}
+        <div className="turnstile-slot" ref={setTurnstileSlot} />
 
         {phase === 'failed' && (
           <div className="lookup-actions">

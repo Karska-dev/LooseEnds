@@ -28,6 +28,14 @@
 	// Persists logs for 3 days on the free plan, 200k events/day, queryable in
 	// the dashboard. Without this you only see problems while `wrangler tail`
 	// happens to be running.
+	// Cloudflare Turnstile guards /api/series (see worker/pass.ts). The site
+	// key is public and read by the page via GET /api/pass; the secret is
+	// set with `npx wrangler secret put TURNSTILE_SECRET_KEY`. Until both
+	// exist, lookups answer "not configured" — deliberately closed, not open.
+	// Paste the site key from the Turnstile dashboard between the quotes.
+	"vars": {
+		"TURNSTILE_SITE_KEY": ""
+	},
 	"observability": {
 		"enabled": true,
 		"head_sampling_rate": 1

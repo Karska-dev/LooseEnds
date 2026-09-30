@@ -1,4 +1,5 @@
 import type { SeriesResult } from './shared/hardcover'
+import { CHECK_FAILED, forgetPass, lookupPass } from './turnstile'
 
 export type { SeriesResult }
 
@@ -14,6 +15,24 @@ const PREFETCH_SIZE = 200
 const cache = new Map<string, SeriesResult>()
 
 /**
+ * POST to /api/series with a lookup pass. If the server says the pass is
+ * no good (it expired mid-lookup, or the secret was rotated), get a fresh one
+ * and try that request exactly once more.
+ */
+async function postSeries(payload: unknown): Promise<Response> {
+  const send = async () =>
+    fetch('/api/series', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-lookup-pass': await lookupPass() },
+      body: JSON.stringify(payload),
+    })
+  const first = await send()
+  if (first.status !== 401) return first
+  forgetPass()
+  return send()
+}
+
+/**
  * Asks only for what the server already has. A failure here is not worth
  * surfacing: the paced loop below fetches everything regardless, so the
  * prefetch is an optimisation, never a dependency.
@@ -23,11 +42,7 @@ async function readCached(
 ): Promise<Map<string, SeriesResult>> {
   const found = new Map<string, SeriesResult>()
   try {
-    const response = await fetch('/api/series', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ series: names, cachedOnly: true }),
-    })
+    const response = await postSeries({ series: names, cachedOnly: true })
     if (!response.ok) return found
     const body = (await response.json()) as { results: SeriesResult[] }
     for (const result of body.results) {
@@ -87,11 +102,7 @@ export async function resolveAllSeries(
     let results: SeriesResult[]
 
     try {
-      const response = await fetch('/api/series', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ series: names }),
-      })
+      const response = await postSeries({ series: names })
       const body = await response.text()
       if (response.status === 429) {
         // Sending the remaining chunks would only deepen the throttle.
@@ -113,6 +124,9 @@ export async function resolveAllSeries(
       results = (JSON.parse(body) as { results: SeriesResult[] }).results
     } catch (error) {
       const detail = error instanceof Error ? error.message : 'request failed'
+      // No pass means no batch will get through: stop rather than challenge
+      // the reader again for every remaining ten series.
+      if (detail === CHECK_FAILED || /not configured|too many/i.test(detail)) stopped = true
       results = names.map((item) => ({
         query: item.name,
         matchedName: null,

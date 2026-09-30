@@ -3085,3 +3085,7 @@ button.ghost {
 [data-skin='brutal'] .audio-mark path,
 [data-skin='brutal'] .audio-mark rect { stroke-width: 2.4; }
 [data-skin='brutal'] .audio-mark { color: var(--ink); }
+
+/* Cloudflare Turnstile (src/turnstile.ts). Takes no room unless Cloudflare
+   asks for a click, then shows its box under the lookup sentence. */
+.turnstile-slot:empty { display: none; }
