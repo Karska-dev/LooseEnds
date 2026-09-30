@@ -3057,3 +3057,31 @@ button.ghost {
 @media (max-width: 460px) {
   .library-actions { align-items: flex-start; }
 }
+
+/* ==================================================================
+   Audiobooks — a small headphones mark (#5)
+   ------------------------------------------------------------------
+   Beside the series name when any of its books has an audiobook, and
+   beside each book that has one, out or announced. Quiet by design:
+   the status and the next book stay about what there is to read.
+   ================================================================== */
+
+.audio-mark {
+  display: inline-flex;
+  vertical-align: 0.05em;
+  margin-left: 0.4em;
+  color: var(--ink-muted);
+}
+.audio-mark svg { display: block; }
+.audio-mark path,
+.audio-mark rect {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.series-name .audio-mark svg { width: 15px; height: 15px; }
+[data-skin='brutal'] .audio-mark path,
+[data-skin='brutal'] .audio-mark rect { stroke-width: 2.4; }
+[data-skin='brutal'] .audio-mark { color: var(--ink); }
