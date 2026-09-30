@@ -45,8 +45,22 @@ function volumeReleased(volume: Volume, today: string): boolean {
   )
 }
 
-function hasUnreleasedVolume(result: SeriesResult, today: string): boolean {
-  return result.volumes.some((volume) => !volumeReleased(volume, today))
+/** An audiobook still to come is news too: re-check it daily, like a book. */
+function audioPending(volume: Volume, today: string): boolean {
+  return volume.editions.some((edition) => (edition.audioDate ?? '') > today)
+}
+
+export function hasUnreleasedVolume(result: SeriesResult, today: string): boolean {
+  return result.volumes.some((volume) => !volumeReleased(volume, today) || audioPending(volume, today))
+}
+
+/**
+ * Written before audiobook dates were fetched. Treated as a miss so each
+ * series is fetched once more when someone next asks for it, rather than
+ * waiting out a thirty-day TTL — or evicting the whole cache at once.
+ */
+export function predatesAudioDates(result: SeriesResult): boolean {
+  return result.volumes.some((volume) => volume.editions.some((edition) => !('hasAudio' in edition)))
 }
 
 interface CacheLookup {
@@ -75,7 +89,9 @@ export async function readCache(
     const maxAge = row.has_unreleased === 1 ? PENDING_MAX_AGE_MS : SETTLED_MAX_AGE_MS
     if (now - row.fetched_at >= maxAge) continue
     try {
-      hits.set(row.cache_key, JSON.parse(row.payload) as SeriesResult)
+      const result = JSON.parse(row.payload) as SeriesResult
+      if (predatesAudioDates(result)) continue
+      hits.set(row.cache_key, result)
     } catch {
       // Corrupt row: treat as a miss and let the write below replace it.
     }

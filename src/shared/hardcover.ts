@@ -8,6 +8,17 @@ export interface Edition {
   coverColor: string | null
   /** Links back to hardcover.app, which is also the attribution. */
   slug: string | null
+  /**
+   * Release date of the default audiobook edition in the same language, when
+   * Hardcover has one. Extra information only: status follows `releaseDate`,
+   * what there is to read. Missing on entries cached before it existed.
+   */
+  audioDate?: string | null
+  /**
+   * Hardcover has an audiobook edition of this book in the same language,
+   * dated or not. Missing on entries cached before it existed.
+   */
+  hasAudio?: boolean
 }
 
 export interface Volume {
@@ -209,12 +220,24 @@ interface BookNode {
   image: { url: string | null; color: string | null } | null
   default_ebook_edition: { language_id: number | null } | null
   default_physical_edition: { language_id: number | null } | null
+  default_audio_edition: { language_id: number | null; release_date: string | null } | null
 }
 
 interface SeriesNode {
   name: string
   primary_books_count: number | null
   book_series: { position: number | null; book: BookNode | null }[]
+}
+
+/**
+ * The audiobook, only when it is in the same language as the book: a German
+ * audiobook says nothing about whether there is an English one.
+ */
+function sameLanguageAudio(book: BookNode, languageId: number | null) {
+  const audio = book.default_audio_edition
+  if (!audio) return null
+  if (audio.language_id !== null && languageId !== null && audio.language_id !== languageId) return null
+  return audio
 }
 
 /** Ebook first: translations often have no ebook edition, originals do. */
@@ -274,6 +297,8 @@ function editionsByPosition(node: SeriesNode): Volume[] {
       // fall back to the empty slot until they expire.
       coverColor: safeColor(book.image?.color),
       slug: book.slug,
+      audioDate: sameLanguageAudio(book, languageId)?.release_date ?? null,
+      hasAudio: sameLanguageAudio(book, languageId) !== null,
     }
     const current = perLanguage.get(key)
     if (!current || beats(candidate, current)) {
@@ -298,7 +323,7 @@ function safeColor(value: string | null | undefined): string | null {
   return /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(value.trim()) ? value.trim() : null
 }
 
-const SERIES_FIELDS = `name primary_books_count book_series(order_by: {position: asc}) { position book { title slug release_date users_read_count image { url color } default_ebook_edition { language_id } default_physical_edition { language_id } } }`
+const SERIES_FIELDS = `name primary_books_count book_series(order_by: {position: asc}) { position book { title slug release_date users_read_count image { url color } default_ebook_edition { language_id } default_physical_edition { language_id } default_audio_edition { language_id release_date } } }`
 
 async function fetchSeriesBatch(
   token: string,
