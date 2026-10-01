@@ -62,9 +62,10 @@ goodreads.ts ── books with shelf, date, rating
 series.ts ──── series extracted from "(Series Name, #2)" and grouped
    │
    ▼
-resolve.ts ─── POST /api/series  ─────────┐
+turnstile.ts ─ POST /api/pass (once) ────┐  Turnstile check → 15-min pass
+resolve.ts ─── POST /api/series + pass ──┤
    │                                      │  Cloudflare Worker
-   │                            worker/index.ts
+   │                            worker/index.ts (checks the pass)
    │                                      │
    │                           worker/cache.ts (D1) ──miss──▶ Hardcover
    │                                      │
@@ -172,6 +173,10 @@ Three things a contributor should know before trusting the output.
   it lives separately in `vite.config.ts` and `worker/index.ts`. Anything one
   learns to understand — a new request field, a new cap — has to be taught to
   the other, or localhost quietly behaves differently from the deployed site.
+- **Turnstile is a formality in development.** The page still asks for a
+  lookup pass, but `vite.config.ts` hands out Cloudflare's always-pass test
+  key and a dummy pass, and the dev `/api/series` doesn't check it. The real
+  check (`worker/pass.ts`, `worker/index.ts`) is covered by `tests/pass.test.ts`.
 - **There is no cache in development.** Every lookup is a live Hardcover call,
   paced at 1.1 seconds, so a large library takes a while. That is expected,
   not a hang.

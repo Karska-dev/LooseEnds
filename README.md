@@ -26,7 +26,11 @@ Excel first — it mangles ISBNs and dates.
 Then drop the file in. There is no account, no sign-up and nothing to install.
 Your library is read in the browser and never uploaded; close the tab and it's
 gone. The only thing that leaves your machine is a list of series *names* and
-their authors, sent to look up which books are in them.
+their authors, sent to look up which books are in them. Pressing **Look up**
+also runs Cloudflare Turnstile — a quick check that you're a person, usually
+invisible. It sees your browser, not your books; it keeps the lookup for
+readers rather than scripts, since every lookup is answered with this site's
+own Hardcover access.
 
 Heart up to five series to keep them at the top, and set aside the ones you've
 walked away from. Those choices — series names only, not your books — are

@@ -1,8 +1,9 @@
-import { resolveSeriesNames } from '../src/shared/hardcover'
-import type { SeriesQuery, SeriesResult } from '../src/shared/hardcover'
-import { cacheKey, readCache, writeCache } from './cache'
-import type { D1Database } from './cache'
-import { claimedOrigin, isSameOrigin } from './origin'
+import { resolveSeriesNames } from '../src/shared/hardcover.ts'
+import type { SeriesQuery, SeriesResult } from '../src/shared/hardcover.ts'
+import { cacheKey, readCache, writeCache } from './cache.ts'
+import type { D1Database } from './cache.ts'
+import { claimedOrigin, isSameOrigin } from './origin.ts'
+import { checkPass, issuePass, verifyTurnstile } from './pass.ts'
 
 interface Env {
   HARDCOVER_TOKEN: string
@@ -12,6 +13,10 @@ interface Env {
   DB?: D1Database
   /** Absent in local development, where throttling is skipped. */
   SERIES_LIMITER?: { limit(options: { key: string }): Promise<{ success: boolean }> }
+  /** Turnstile widget's public site key (a plain var in wrangler.jsonc). */
+  TURNSTILE_SITE_KEY?: string
+  /** Turnstile secret (`wrangler secret put`). Also derives the pass-signing key. */
+  TURNSTILE_SECRET_KEY?: string
 }
 
 /** Keep each request well inside the Worker's subrequest budget. */
@@ -28,6 +33,10 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url)
 
+    if (url.pathname === '/api/pass') {
+      return handlePass(request, env, url)
+    }
+
     if (url.pathname === '/api/series') {
       if (request.method !== 'POST') {
         return json({ error: 'Use POST with a JSON body.' }, 405)
@@ -38,6 +47,18 @@ export default {
       if (!isSameOrigin(request)) {
         log('series.forbidden_origin', { status: 403, origin: claimedOrigin(request) })
         return json({ error: 'Lookups only work from the Loose Ends page itself.' }, 403)
+      }
+
+      // Also before the limiter: a request without a live pass is refused
+      // for free. Without the secret nothing can be checked, so nothing is
+      // answered — an unconfigured deploy must fail closed, not open.
+      if (!env.TURNSTILE_SECRET_KEY) {
+        log('series.misconfigured', { status: 500, reason: 'TURNSTILE_SECRET_KEY missing' })
+        return json({ error: 'Lookup protection is not configured on this server.' }, 500)
+      }
+      if (!(await checkPass(request.headers.get('x-lookup-pass'), env.TURNSTILE_SECRET_KEY, Date.now()))) {
+        log('series.no_pass', { status: 401 })
+        return json({ error: 'The lookup pass is missing or expired.', code: 'pass' }, 401)
       }
 
       // Keyed by caller IP, not by path: the point is to stop one client
@@ -61,6 +82,73 @@ export default {
     // Everything else is the built single-page app.
     return env.ASSETS.fetch(request)
   },
+}
+
+/**
+ * GET  → the public site key, so the page needs no build-time setting.
+ * POST → spends one Turnstile token on a lookup pass (see worker/pass.ts).
+ */
+async function handlePass(request: Request, env: Env, url: URL): Promise<Response> {
+  const noStore = { 'cache-control': 'no-store' }
+
+  if (!env.TURNSTILE_SITE_KEY || !env.TURNSTILE_SECRET_KEY) {
+    log('pass.misconfigured', {
+      status: 500,
+      siteKey: Boolean(env.TURNSTILE_SITE_KEY),
+      secret: Boolean(env.TURNSTILE_SECRET_KEY),
+    })
+    return json({ error: 'Lookup protection is not configured on this server.' }, 500, noStore)
+  }
+
+  if (request.method === 'GET') {
+    return json({ siteKey: env.TURNSTILE_SITE_KEY }, 200, noStore)
+  }
+  if (request.method !== 'POST') {
+    return json({ error: 'Use GET or POST.' }, 405, noStore)
+  }
+
+  if (!isSameOrigin(request)) {
+    log('pass.forbidden_origin', { status: 403, origin: claimedOrigin(request) })
+    return json({ error: 'Lookups only work from the Loose Ends page itself.' }, 403, noStore)
+  }
+
+  const ip = request.headers.get('CF-Connecting-IP')
+  if (env.SERIES_LIMITER) {
+    const { success } = await env.SERIES_LIMITER.limit({ key: ip ?? 'unknown' })
+    if (!success) {
+      log('pass.rate_limited', { status: 429 })
+      return json({ error: 'Too many lookups just now. Wait a minute and try again.' }, 429, {
+        ...noStore,
+        'retry-after': '60',
+      })
+    }
+  }
+
+  let token = ''
+  try {
+    const body = (await request.json()) as { token?: unknown }
+    if (typeof body.token === 'string') token = body.token
+  } catch {
+    // Falls through to the empty-token refusal below.
+  }
+  if (!token || token.length > 2048) {
+    log('pass.bad_request', { status: 400 })
+    return json({ error: 'Send the Turnstile token as {"token": "…"}.' }, 400, noStore)
+  }
+
+  const outcome = await verifyTurnstile(token, env.TURNSTILE_SECRET_KEY, { ip, hostname: url.hostname })
+  if (!outcome.ok) {
+    log('pass.refused', { status: 403, codes: outcome.codes })
+    return json(
+      { error: 'Couldn’t confirm you’re a person. Try again.', code: 'turnstile' },
+      403,
+      noStore,
+    )
+  }
+
+  const issued = await issuePass(env.TURNSTILE_SECRET_KEY, Date.now())
+  log('pass.issued', { status: 200 })
+  return json(issued, 200, noStore)
 }
 
 async function handleSeries(request: Request, env: Env): Promise<Response> {

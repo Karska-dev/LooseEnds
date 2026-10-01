@@ -205,6 +205,8 @@ export default function App() {
         </a>
         . Only series names and authors are sent, to look them up; your books and
         ratings stay in this browser, and so do your favourites and set-asides.
+        Pressing Look up runs Cloudflare Turnstile, a quick check that you&rsquo;re a
+        person; it sees your browser, not your books.
       </footer>
     </main>
   )
@@ -907,5 +909,6 @@ function failureKind(detail: string | null): FailureKind {
   const text = (detail ?? '').toLowerCase()
   if (text.includes('too many') || text.includes('429')) return 'busy'
   if (text.includes('not configured')) return 'unset'
+  if (text.includes('person')) return 'check'
   return 'unreachable'
 }
