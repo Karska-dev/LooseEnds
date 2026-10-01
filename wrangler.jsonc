@@ -34,7 +34,7 @@
 	// exist, lookups answer "not configured" — deliberately closed, not open.
 	// Paste the site key from the Turnstile dashboard between the quotes.
 	"vars": {
-		"TURNSTILE_SITE_KEY": ""
+		"TURNSTILE_SITE_KEY": "0x4AAAAAAFLLcNQh65jnRhR4"
 	},
 	"observability": {
 		"enabled": true,
