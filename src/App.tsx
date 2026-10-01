@@ -910,5 +910,6 @@ function failureKind(detail: string | null): FailureKind {
   if (text.includes('too many') || text.includes('429')) return 'busy'
   if (text.includes('not configured')) return 'unset'
   if (text.includes('person')) return 'check'
+  if (text.includes('daily')) return 'budget'
   return 'unreachable'
 }

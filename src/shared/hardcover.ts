@@ -93,12 +93,22 @@ export function authHeader(token: string): string {
   return `Bearer ${token.trim().replace(/^Bearer\s+/i, '').trim()}`
 }
 
-async function gql<T>(token: string, query: string): Promise<Outcome<T>> {
+/**
+ * Counts the HTTP requests actually sent to Hardcover, retries included.
+ * Their daily limit is counted in requests, so the daily budget
+ * (worker/budget.ts) must be too.
+ */
+export interface Meter {
+  requests: number
+}
+
+async function gql<T>(token: string, query: string, meter?: Meter): Promise<Outcome<T>> {
   let lastDetail = 'unreachable'
   const authorization = authHeader(token)
 
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
+      if (meter) meter.requests += 1
       const response = await fetch(ENDPOINT, {
         method: 'POST',
         headers: {
@@ -201,11 +211,13 @@ async function searchSeries(
   token: string,
   name: string,
   author?: string,
+  meter?: Meter,
 ): Promise<Outcome<SearchHit | null>> {
   const query = `query { search(query: "${escapeForGql(name)}", query_type: "series", per_page: 15, page: 1) { results } }`
   const outcome = await gql<{ search?: { results?: { hits?: { document: SearchHit }[] } } }>(
     token,
     query,
+    meter,
   )
   if (!outcome.ok) return outcome
   const hits = (outcome.data.search?.results?.hits ?? []).map((hit) => hit.document)
@@ -328,11 +340,13 @@ const SERIES_FIELDS = `name primary_books_count book_series(order_by: {position:
 async function fetchSeriesBatch(
   token: string,
   ids: number[],
+  meter?: Meter,
 ): Promise<Outcome<Map<number, SeriesNode>>> {
   const aliases = ids.map((id, index) => `s${index}: series_by_pk(id: ${id}) { ${SERIES_FIELDS} }`)
   const outcome = await gql<Record<string, SeriesNode | null>>(
     token,
     `query { ${aliases.join(' ')} }`,
+    meter,
   )
   if (!outcome.ok) return outcome
 
@@ -351,6 +365,7 @@ function delay(ms: number): Promise<void> {
 export async function resolveSeriesNames(
   queries: SeriesQuery[],
   token: string,
+  meter?: Meter,
 ): Promise<SeriesResult[]> {
   const names = queries.map((item) => item.name)
   const results = new Map<string, SeriesResult>()
@@ -361,7 +376,7 @@ export async function resolveSeriesNames(
     const name = names[index]
     if (index > 0) await delay(MIN_REQUEST_GAP_MS)
 
-    const outcome = await searchSeries(token, name, queries[index].author)
+    const outcome = await searchSeries(token, name, queries[index].author, meter)
     if (!outcome.ok) {
       results.set(name, blank(name, 'error', outcome.detail))
       continue
@@ -386,6 +401,7 @@ export async function resolveSeriesNames(
     const outcome = await fetchSeriesBatch(
       token,
       batch.map((item) => item.id),
+      meter,
     )
 
     for (const item of batch) {

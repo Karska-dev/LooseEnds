@@ -34,7 +34,10 @@
 	// exist, lookups answer "not configured" — deliberately closed, not open.
 	// Paste the site key from the Turnstile dashboard between the quotes.
 	"vars": {
-		"TURNSTILE_SITE_KEY": "0x4AAAAAAFLLcNQh65jnRhR4"
+		"TURNSTILE_SITE_KEY": "0x4AAAAAAFLLcNQh65jnRhR4",
+		// Requests to Hardcover allowed per UTC day (their free plan: 5,000).
+		// At the cap, series not yet cached wait until midnight UTC.
+		"HARDCOVER_DAILY_BUDGET": "4000"
 	},
 	"observability": {
 		"enabled": true,
