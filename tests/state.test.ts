@@ -2,6 +2,8 @@ import { test, describe } from 'node:test'
 import assert from 'node:assert/strict'
 
 import { buildSeriesState } from '../src/state.ts'
+import type { SeriesState } from '../src/state.ts'
+import type { Volume } from '../src/shared/hardcover.ts'
 import { FUTURE, PAST, TODAY, groupOf, resolved, volume } from './helpers.ts'
 
 /**
@@ -280,6 +282,69 @@ describe('editions', () => {
     const state = buildSeriesState(group, resolved(volumes, 2), TODAY)
 
     assert.equal(state.next?.title, 'Zwei')
+  })
+})
+
+describe('foreign-only extras (#1)', () => {
+  const foreign = (position: number, title: string, languageId: number | null = 5): Volume => ({
+    position,
+    editions: [{ title, releaseDate: PAST, languageId, readers: 3, coverUrl: null, coverColor: null, slug: null }],
+  })
+  const positions = (state: SeriesState) => state.rows.map((row) => row.position)
+
+  test('side positions with no English edition are left out of an English series', () => {
+    const group = groupOf([['read', 'One (Test Series, #1)']])
+    const volumes = [
+      foreign(0.5, 'سيد الخواتم'),
+      volume(1),
+      foreign(1.5, 'Taru sormusten herrasta', null),
+      volume(2),
+      volume(2.5), // an English novella stays
+    ]
+    const state = buildSeriesState(group, resolved(volumes, 2), TODAY)
+    assert.deepEqual(positions(state), [1, 2, 2.5])
+  })
+
+  test('a main-line book stays even when it exists only in another language', () => {
+    const group = groupOf([
+      ['read', 'One (Test Series, #1)'],
+      ['read', 'Two (Test Series, #2)'],
+    ])
+    const volumes = [volume(1), volume(2), foreign(3, 'Drei')]
+    const state = buildSeriesState(group, resolved(volumes, 3), TODAY)
+    assert.deepEqual(positions(state), [1, 2, 3])
+    assert.equal(state.next?.title, 'Drei', 'still the next book, not "finished"')
+    assert.equal(state.totalBooks, 3)
+  })
+
+  test('a series with no English edition at all is shown as it is', () => {
+    const group = groupOf([['read', 'One (Test Series, #1)']])
+    const volumes = [foreign(0.5, 'Vorgeschichte'), foreign(1, 'Eins'), foreign(2, 'Zwei')]
+    const state = buildSeriesState(group, resolved(volumes, 2), TODAY)
+    assert.deepEqual(positions(state), [0.5, 1, 2])
+  })
+
+  test('the reader\'s own book at a skipped position is listed under their title', () => {
+    const group = groupOf([
+      ['read', 'One (Test Series, #1)'],
+      ['read', 'The Prologue (Test Series, #0.5)'],
+    ])
+    const volumes = [foreign(0.5, 'Пролог'), volume(1), volume(2)]
+    const state = buildSeriesState(group, resolved(volumes, 2), TODAY)
+    const row = state.rows.find((entry) => entry.position === 0.5)
+    assert.equal(row?.title, 'The Prologue')
+    assert.equal(row?.mine?.shelf, 'read')
+  })
+
+  test('leaving extras out changes neither the count nor what is next', () => {
+    const group = groupOf([['read', 'One (Test Series, #1)']])
+    const base = [volume(1), volume(2), volume(3)]
+    const withExtras = [foreign(0.5, 'Extra'), ...base, foreign(3.5, 'Noch eins')]
+    const a = buildSeriesState(group, resolved(base, 3), TODAY)
+    const b = buildSeriesState(group, resolved(withExtras, 3), TODAY)
+    assert.equal(b.totalBooks, a.totalBooks)
+    assert.equal(b.status, a.status)
+    assert.deepEqual(b.next, a.next)
   })
 })
 

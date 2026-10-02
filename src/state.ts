@@ -183,6 +183,25 @@ function pickNext(volumes: Volume[], shelves: Shelves): Volume | null {
  */
 const ENGLISH = 1
 
+function hasEnglish(volume: Volume): boolean {
+  return volume.editions.some((edition) => edition.languageId === ENGLISH)
+}
+
+/**
+ * A side position — #0.5, #1.5, a box set at #0 — that exists only in other
+ * languages, in a series we can otherwise show in English. Hardcover files
+ * foreign-only extras there: The Lord of the Rings has an Arabic #0.5 and a
+ * Finnish #1.5. They are left out of the volume list (#1).
+ *
+ * Main-line books are never left out, whatever their language. In a series
+ * still being translated, book 6 may exist only in German; dropping it would
+ * tell an English reader the series is finished. It stays, under its
+ * most-read title, and still counts as the next book.
+ */
+function isForeignExtra(volume: Volume, seriesInEnglish: boolean): boolean {
+  return seriesInEnglish && !isMainLine(volume.position) && !hasEnglish(volume)
+}
+
 /** Keeps the whole series in one language instead of a mix of translations. */
 function chooseEdition(volume: Volume): Edition | null {
   if (volume.editions.length === 0) return null
@@ -323,8 +342,12 @@ function buildRows(
   const mine = myBooksByPosition(group)
   const rows: VolumeRow[] = []
   const seen = new Set<number>()
+  const seriesInEnglish = volumes.some(hasEnglish)
 
   for (const volume of volumes) {
+    // If the reader owns a book at a skipped position, the loop below still
+    // lists it — under their own title rather than a translation's.
+    if (isForeignExtra(volume, seriesInEnglish)) continue
     const edition = chooseEdition(volume)
     if (!edition) continue
     seen.add(volume.position)
