@@ -172,6 +172,39 @@ export function nameRelated(name: string, query: string): boolean {
   return left.includes(right) || right.includes(left)
 }
 
+/** Words that say "this is a series" without saying which one. */
+const GENERIC_WORDS = new Set([
+  'the', 'a', 'an', 'series', 'saga', 'trilogy', 'cycle', 'chronicles', 'novels', 'books', 'sequence',
+])
+
+function coreName(value: string): string {
+  return normaliseName(value)
+    .split(' ')
+    .filter((word) => !GENERIC_WORDS.has(word))
+    .join(' ')
+}
+
+/**
+ * How close a series name is to the one in the reader's export.
+ *   0 — the same name                    "Foundation"         for "Foundation"
+ *   1 — the same but for generic words   "The Mistborn Saga"  for "Mistborn"
+ *   2 — merely contains it               "Greater Foundation Universe",
+ *                                        "Foundation (Chronological Order)"
+ */
+export function nameCloseness(name: string, query: string): 0 | 1 | 2 {
+  if (normaliseName(name) === normaliseName(query)) return 0
+  const core = coreName(name)
+  return core !== '' && core === coreName(query) ? 1 : 2
+}
+
+/**
+ * A closer name only wins if it is a real series, not a near-empty duplicate
+ * a user created: it needs at least this share of the readers of the most-
+ * read candidate. "Foundation" has 11,159 against the universe's 12,715; a
+ * shell with three readers beside a series with thousands does not qualify.
+ */
+const CLOSER_NAME_MIN_SHARE = 0.2
+
 /**
  * Narrow progressively, keeping each filter only when it leaves something.
  *
@@ -179,6 +212,13 @@ export function nameRelated(name: string, query: string): boolean {
  * Mistborn Saga" (10 books, 32k readers) and "The Cosmere" (34 books, 73k
  * readers), which is a superset containing it — so neither book count nor
  * reader count picks the right one. Only the name does.
+ *
+ * And among related names, the closest wins before popularity is consulted.
+ * Searching "Foundation" returns "Foundation" (7 books), "Foundation
+ * (Chronological Order)", "Foundation Universe" and "Greater Foundation
+ * Universe" (15 books, the most readers) — all by Asimov, all containing the
+ * word. A Goodreads "(Foundation, #1)" means the first of those; picking by
+ * readers filed it under I, Robot.
  */
 export function bestHit(
   hits: SearchHit[],
@@ -199,34 +239,86 @@ export function bestHit(
   const byAuthor = pool.filter((hit) => sameAuthor(hit.author_name, author))
   if (byAuthor.length > 0) pool = byAuthor
 
-  return (
-    [...pool].sort(
-      (a, b) =>
-        (b.readers_count ?? 0) - (a.readers_count ?? 0) ||
-        (b.primary_books_count ?? 0) - (a.primary_books_count ?? 0),
-    )[0] ?? null
+  const byPopularity = (a: SearchHit, b: SearchHit) =>
+    (b.readers_count ?? 0) - (a.readers_count ?? 0) ||
+    (b.primary_books_count ?? 0) - (a.primary_books_count ?? 0)
+
+  // Closest name first, as long as it is not a near-empty duplicate.
+  const mostReaders = Math.max(0, ...pool.map((hit) => hit.readers_count ?? 0))
+  for (const closeness of [0, 1] as const) {
+    const close = pool
+      .filter((hit) => nameCloseness(hit.name, query) === closeness)
+      .filter((hit) => (hit.readers_count ?? 0) >= mostReaders * CLOSER_NAME_MIN_SHARE)
+    if (close.length > 0) return [...close].sort(byPopularity)[0]
+  }
+
+  return [...pool].sort(byPopularity)[0] ?? null
+}
+
+/**
+ * The reader's author is known, and the pick is by somebody else: nothing by
+ * that author was among the hits. "Legacy" returns fifteen series called
+ * exactly "Legacy", none of them Melissa K. Roehrich's "The Legacy Series".
+ */
+export function byAnotherAuthor(pick: SearchHit | null, author?: string): boolean {
+  return Boolean(author) && pick !== null && !sameAuthor(pick.author_name, author)
+}
+
+/**
+ * The pick from the second search, the one with the author's name in it.
+ * Stricter than bestHit: the hit must be by the reader's author AND about
+ * the reader's series. Without the name test this search would hand back
+ * whatever else that author wrote, which is worse than the first pick.
+ */
+export function bestHitByAuthor(hits: SearchHit[], query: string, author: string): SearchHit | null {
+  const theirs = hits.filter(
+    (hit) =>
+      (hit.primary_books_count ?? 0) > 0 &&
+      nameRelated(hit.name, query) &&
+      sameAuthor(hit.author_name, author),
   )
+  return theirs.length > 0 ? bestHit(theirs, query, author) : null
 }
 
 function escapeForGql(value: string): string {
   return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
 }
 
-async function searchSeries(
-  token: string,
-  name: string,
-  author?: string,
-  meter?: Meter,
-): Promise<Outcome<SearchHit | null>> {
-  const query = `query { search(query: "${escapeForGql(name)}", query_type: "series", per_page: 15, page: 1) { results } }`
+async function searchHits(token: string, text: string, meter?: Meter): Promise<Outcome<SearchHit[]>> {
+  const query = `query { search(query: "${escapeForGql(text)}", query_type: "series", per_page: 15, page: 1) { results } }`
   const outcome = await gql<{ search?: { results?: { hits?: { document: SearchHit }[] } } }>(
     token,
     query,
     meter,
   )
   if (!outcome.ok) return outcome
-  const hits = (outcome.data.search?.results?.hits ?? []).map((hit) => hit.document)
-  return { ok: true, data: bestHit(hits, name, author) }
+  return { ok: true, data: (outcome.data.search?.results?.hits ?? []).map((hit) => hit.document) }
+}
+
+/**
+ * One search by name. A second, with the author's name added, only when the
+ * first found the name but nobody by the reader's author — a one-word name
+ * shared by more series than a page of hits holds. If the second finds the
+ * author's series it wins; if not, the first pick stands, because a series
+ * can honestly be filed under another name (a co-author, a pen name).
+ */
+async function searchSeries(
+  token: string,
+  name: string,
+  author?: string,
+  meter?: Meter,
+): Promise<Outcome<SearchHit | null>> {
+  const first = await searchHits(token, name, meter)
+  if (!first.ok) return first
+  const pick = bestHit(first.data, name, author)
+  if (!author || !byAnotherAuthor(pick, author)) return { ok: true, data: pick }
+
+  await delay(MIN_REQUEST_GAP_MS)
+  const second = await searchHits(token, `${name} ${author}`, meter)
+  // A failure here is a failure, not "keep the first pick": the answer is
+  // cached for weeks, and a throttled request must not decide it.
+  if (!second.ok) return second
+  return { ok: true, data: bestHitByAuthor(second.data, name, author) ?? pick }
 }
 
 export interface BookNode {
@@ -240,6 +332,8 @@ export interface BookNode {
   default_ebook_edition: { language_id: number | null } | null
   default_physical_edition: { language_id: number | null } | null
   default_audio_edition: { language_id: number | null; release_date: string | null } | null
+  /** Set on a duplicate record: the id of the book it is a copy of. */
+  canonical_id?: number | null
 }
 
 export interface SeriesNode {
@@ -378,13 +472,14 @@ function safeColor(value: string | null | undefined): string | null {
  *
  *   1. the series themselves, and their (series, position, book) links
  *   2. the books those links point to, each with its default editions
+ *   3. the originals of any duplicate records among them (see withOriginals)
  *
  * Nothing below nests more than three levels, counting the leaf fields
  * (books → default_audio_edition → release_date), which is the strictest way
  * a depth limit could be counted.
  */
 const BOOK_FIELDS =
-  'id title slug release_date users_read_count image { url color } ' +
+  'id canonical_id title slug release_date users_read_count image { url color } ' +
   'default_ebook_edition { language_id } default_physical_edition { language_id } ' +
   'default_audio_edition { language_id release_date }'
 
@@ -398,6 +493,43 @@ interface LinkRow {
   series_id: number
   position: number | null
   book_id: number
+}
+
+/**
+ * Hardcover keeps a translation, or a copy somebody entered twice, as a book
+ * record of its own that points at the original through canonical_id. Such a
+ * copy has no language and no readers, and it is often the copy, not the
+ * original, that carries the series position: "Dune" #7 is linked to "Łowcy
+ * Diuny" and an untagged "Hunters Of Dune", while the real "Hunters of Dune"
+ * sits in the same series with no position at all. So a copy stands for its
+ * original here.
+ *
+ * Except when the original has a place of its own in this series, somewhere
+ * else: "Dune 2" at #1 is a copy of "Dune Messiah", which is #2. A misfiled
+ * copy must not move a book.
+ */
+export function withOriginals(
+  links: { position: number | null; book_id: number }[],
+  books: Map<number, BookNode>,
+): SeriesNode['book_series'] {
+  const placed = new Map<number, Set<number>>()
+  for (const link of links) {
+    if (link.position === null) continue
+    const positions = placed.get(link.book_id) ?? new Set<number>()
+    positions.add(link.position)
+    placed.set(link.book_id, positions)
+  }
+
+  return links.map((link) => {
+    const book = books.get(link.book_id) ?? null
+    const originalId = book?.canonical_id ?? null
+    const original = originalId === null ? undefined : books.get(originalId)
+    if (originalId === null || !original) return { position: link.position, book }
+
+    const own = placed.get(originalId)
+    const livesElsewhere = own !== undefined && link.position !== null && !own.has(link.position)
+    return { position: link.position, book: livesElsewhere ? book : original }
+  })
 }
 
 async function fetchSeriesBatch(
@@ -429,14 +561,36 @@ async function fetchSeriesBatch(
     for (const book of outcome.data.books ?? []) books.set(book.id, book)
   }
 
+  // Originals that the copies point at and that are not linked to these
+  // series themselves. Usually a handful; nothing is sent when there are none.
+  const originals = [
+    ...new Set(
+      [...books.values()]
+        .map((book) => book.canonical_id)
+        .filter((id): id is number => typeof id === 'number' && !books.has(id)),
+    ),
+  ]
+  for (let index = 0; index < originals.length; index += BOOKS_PER_FETCH) {
+    await delay(MIN_REQUEST_GAP_MS)
+    const chunk = originals.slice(index, index + BOOKS_PER_FETCH)
+    const outcome = await gql<{ books?: (BookNode & { id: number })[] }>(
+      token,
+      `query { books(where: {id: {_in: [${chunk.join(', ')}]}}) { ${BOOK_FIELDS} } }`,
+      meter,
+    )
+    if (!outcome.ok) return outcome
+    for (const book of outcome.data.books ?? []) books.set(book.id, book)
+  }
+
   const out = new Map<number, SeriesNode>()
   for (const row of first.data.series ?? []) {
-    out.set(row.id, { name: row.name, primary_books_count: row.primary_books_count, book_series: [] })
-  }
-  for (const link of links) {
-    out.get(link.series_id)?.book_series.push({
-      position: link.position,
-      book: books.get(link.book_id) ?? null,
+    out.set(row.id, {
+      name: row.name,
+      primary_books_count: row.primary_books_count,
+      book_series: withOriginals(
+        links.filter((link) => link.series_id === row.id),
+        books,
+      ),
     })
   }
   return { ok: true, data: out }
