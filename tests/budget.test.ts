@@ -43,18 +43,20 @@ function fakeDb(start: { calls?: number; table?: boolean } = {}) {
 }
 
 describe('budget arithmetic', () => {
-  test('a series costs its search plus a share of a five-series fetch', () => {
-    assert.equal(costOf(1), 2)
-    assert.equal(costOf(5), 6)
+  test('a series costs its search, and a batch costs two flat fetches', () => {
+    assert.equal(costOf(0), 0)
+    assert.equal(costOf(1), 3)
+    assert.equal(costOf(5), 7)
     assert.equal(costOf(10), 12)
+    assert.equal(costOf(11), 15)
   })
 
   test('affordable never spends past what is left', () => {
     assert.equal(affordable(100, 10), 10)
     assert.equal(affordable(12, 10), 10)
     assert.equal(affordable(11, 10), 9)
-    assert.equal(affordable(2, 10), 1)
-    assert.equal(affordable(1, 10), 0)
+    assert.equal(affordable(3, 10), 1)
+    assert.equal(affordable(2, 10), 0)
     assert.equal(affordable(0, 10), 0)
     assert.equal(affordable(-50, 10), 0)
     for (let left = 0; left < 40; left += 1) {
