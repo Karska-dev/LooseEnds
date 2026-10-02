@@ -160,7 +160,12 @@ Three things a contributor should know before trusting the output.
   exceeding the limit means throttling that resets. The proper fix is a shared
   token bucket in a Durable Object; it has not been needed.
 
-- **English editions only.** The API returns every language per position, and
+- **English editions only, with two deliberate edges.** Side positions (#0.5,
+  #1.5, #0) with no English edition are dropped from the volume list when the
+  series has any English edition (`isForeignExtra` in `state.ts`). Main-line
+  books are never dropped: one that exists only in another language stays,
+  under its most-read title, because hiding it would call a series finished
+  when it is only untranslated. The API returns every language per position, and
   `SeriesEntry.cleanTitle` is kept for this: match the reader's own titles
   against the editions to infer their language, then use it for the whole
   series. Decide once per series, never per position, or a list comes back

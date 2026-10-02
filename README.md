@@ -70,9 +70,12 @@ file.
 
 ## Status
 
-Early, but working. English editions only. Around 10% of books carry no series
-in their Goodreads title; those are listed separately rather than matched, and
-a series whose Goodreads name differs from Hardcover's can mis-match.
+Early, but working. English editions only — side stories and extras that
+exist only in another language are left out, and a main-series book with no
+English edition yet is shown under its most-read title rather than hidden.
+Around 10% of books carry no series in their Goodreads title; those are listed
+separately rather than matched, and a series whose Goodreads name differs from
+Hardcover's can mis-match.
 
 ## Contributing
 
