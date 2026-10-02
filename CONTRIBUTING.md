@@ -145,16 +145,20 @@ them through the parser rather than predicted.
 Three things a contributor should know before trusting the output.
 
 - **Matching is name-based, so it can mis-hit.** Series come out of Goodreads
-  title strings and are matched to Hardcover by name, narrowed by author. A
-  series whose Goodreads name differs from Hardcover's by more than a plural
-  may resolve to the wrong series, or to a user-created entry that lumps an
-  author's whole output together. A generic one-word name is held up entirely
-  by the author match. `npm run explain` shows exactly which filter decided.
-  The real answer is a manual override table, which does not exist yet.
+  title strings and are matched to Hardcover by name, narrowed by author. The
+  closest name wins before the most-read one, and when no hit is by the
+  reader's author the search is repeated with the author's name added
+  (`bestHit`, `searchSeries` in `src/shared/hardcover.ts`). A series whose
+  Goodreads name really differs from Hardcover's, or a common name whose
+  author Hardcover files differently, can still resolve to the wrong series,
+  or to a user-created entry that lumps several together. `npm run explain`
+  shows exactly which rule decided. The real answer is a way for the reader
+  to correct a match (#25), which does not exist yet.
 
 - **The upstream pacing is per Worker invocation, not global.** One invocation
-  resolves at most ten series — about twelve upstream requests over thirteen
-  seconds, roughly 55/minute against Hardcover's 60. Two visitors resolving
+  resolves at most ten series — usually about thirteen upstream requests, a
+  few more when series need the second search, spaced 1.1 seconds apart:
+  roughly 55/minute against Hardcover's 60. Two visitors resolving
   uncached series at the same moment can exceed it, because neither invocation
   knows about the other. The cache absorbs nearly all of this in practice, and
   exceeding the limit means throttling that resets. The proper fix is a shared
@@ -165,7 +169,10 @@ Three things a contributor should know before trusting the output.
   series has any English edition (`isForeignExtra` in `state.ts`). Main-line
   books are never dropped: one that exists only in another language stays,
   under its most-read title, because hiding it would call a series finished
-  when it is only untranslated. The API returns every language per position, and
+  when it is only untranslated. A translation or duplicate that Hardcover
+  keeps as its own record is shown as the book it is a copy of
+  (`withOriginals`), which is where most English titles at odd positions
+  come from. The API returns every language per position, and
   `SeriesEntry.cleanTitle` is kept for this: match the reader's own titles
   against the editions to infer their language, then use it for the whole
   series. Decide once per series, never per position, or a list comes back
