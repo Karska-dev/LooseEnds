@@ -17,6 +17,9 @@ all — the last of which is a real answer, not a gap.
 
 ## Using it
 
+**Open it:** <https://looseends.karska-dev.workers.dev/> — or press **Try a
+sample library** there to see it without a file.
+
 **Get your export:** on Goodreads, **My Books → Tools → Import and export →
 Export Library**.
 
