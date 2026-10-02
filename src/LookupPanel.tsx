@@ -4,7 +4,7 @@ import type { SeriesState } from './state'
 import { setTurnstileSlot } from './turnstile'
 
 export type LookupPhase = 'before' | 'during' | 'after' | 'failed'
-export type FailureKind = 'busy' | 'unset' | 'unreachable' | 'check'
+export type FailureKind = 'busy' | 'unset' | 'unreachable' | 'check' | 'budget'
 
 type BadgeKind = 'go' | 'soon' | 'wait' | 'done'
 
@@ -157,6 +157,13 @@ export function LookupPanel({
   } else if (failure === 'unset') {
     title = 'Series lookup isn’t set up here'
     body = 'This server isn’t fully configured yet, so nothing can be looked up.'
+  } else if (failure === 'budget') {
+    title = 'Today’s new lookups are used up'
+    const heardLine =
+      heardCount > 0
+        ? `We have ${heardCount} of your ${total} series.`
+        : `None of your ${total} series could be looked up.`
+    body = `${heardLine} The rest are new to this site, and it has used its share of Hardcover for today. They’ll work again after midnight UTC.`
   } else if (failure === 'check') {
     title = 'Couldn’t confirm you’re a person'
     body =

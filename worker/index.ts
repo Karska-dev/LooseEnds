@@ -4,6 +4,7 @@ import { cacheKey, readCache, writeCache } from './cache.ts'
 import type { D1Database } from './cache.ts'
 import { claimedOrigin, isSameOrigin } from './origin.ts'
 import { checkPass, issuePass, verifyTurnstile } from './pass.ts'
+import { BUDGET_DETAIL, affordable, budgetFrom, recordSpend, spentToday } from './budget.ts'
 
 interface Env {
   HARDCOVER_TOKEN: string
@@ -17,6 +18,8 @@ interface Env {
   TURNSTILE_SITE_KEY?: string
   /** Turnstile secret (`wrangler secret put`). Also derives the pass-signing key. */
   TURNSTILE_SECRET_KEY?: string
+  /** Requests to Hardcover allowed per UTC day; see worker/budget.ts. */
+  HARDCOVER_DAILY_BUDGET?: string
 }
 
 /** Keep each request well inside the Worker's subrequest budget. */
@@ -195,7 +198,27 @@ async function handleSeries(request: Request, env: Env): Promise<Response> {
     }
 
     // Two series names can normalise to one key. Look each key up once.
-    const uniqueMisses = cachedOnly ? [] : [...new Set(misses)]
+    const wanted = cachedOnly ? [] : [...new Set(misses)]
+
+    // The daily budget: only as many new series as today's remaining
+    // Hardcover requests allow. The rest are told so, not silently dropped.
+    // If the count cannot be read, look up anyway and say so in the log — a
+    // broken counter must not take the lookup down with it.
+    const cap = budgetFrom(env.HARDCOVER_DAILY_BUDGET)
+    let spent: number | null = null
+    let uniqueMisses = wanted
+    if (env.DB && wanted.length > 0) {
+      try {
+        spent = await spentToday(env.DB, today)
+        uniqueMisses = wanted.slice(0, affordable(cap - spent, wanted.length))
+      } catch (error) {
+        log('budget.unavailable', { message: error instanceof Error ? error.message : String(error) })
+      }
+    }
+    const overBudget = new Set(wanted.slice(uniqueMisses.length))
+    if (overBudget.size > 0) {
+      log('series.budget_exhausted', { cap, spent, refused: overBudget.size, allowed: uniqueMisses.length })
+    }
 
     if (uniqueMisses.length > 0 && !env.HARDCOVER_TOKEN) {
       log('series.misconfigured', {
@@ -206,12 +229,22 @@ async function handleSeries(request: Request, env: Env): Promise<Response> {
       return json({ error: 'Series lookup is not configured on this server.' }, 500)
     }
 
+    const meter = { requests: 0 }
     const fetched = uniqueMisses.length
       ? await resolveSeriesNames(
           uniqueMisses.map((key) => byKey.get(key)!),
           env.HARDCOVER_TOKEN,
+          meter,
         )
       : []
+
+    if (env.DB && meter.requests > 0) {
+      try {
+        await recordSpend(env.DB, today, meter.requests)
+      } catch (error) {
+        log('budget.unavailable', { message: error instanceof Error ? error.message : String(error) })
+      }
+    }
 
     let written: { attempted: number; error: string | null } = { attempted: 0, error: null }
     if (env.DB && fetched.length > 0) {
@@ -231,7 +264,9 @@ async function handleSeries(request: Request, env: Env): Promise<Response> {
         })
       : series.map((item, index) => {
           const hit = cached.get(keys[index])
-          return hit ?? byQuery.get(item.name) ?? fallback(item.name)
+          if (hit) return hit
+          if (overBudget.has(keys[index])) return fallback(item.name, BUDGET_DETAIL)
+          return byQuery.get(item.name) ?? fallback(item.name)
         })
 
     const tally = { ok: 0, not_found: 0, error: 0 }
@@ -246,6 +281,11 @@ async function handleSeries(request: Request, env: Env): Promise<Response> {
       hasDb: Boolean(env.DB),
       cacheHits: cached.size,
       upstreamFetches: uniqueMisses.length,
+      // Real requests sent to Hardcover by this call, and the day so far.
+      upstreamRequests: meter.requests,
+      budgetSpent: spent === null ? null : spent + meter.requests,
+      budgetCap: cap,
+      overBudget: overBudget.size,
       cacheWrites: written.attempted,
       cacheWriteError: written.error,
       // The exact strings used as keys, so a read/write mismatch is visible
@@ -267,7 +307,7 @@ async function handleSeries(request: Request, env: Env): Promise<Response> {
   }
 }
 
-function fallback(query: string): SeriesResult {
+function fallback(query: string, detail = 'no result'): SeriesResult {
   return {
     query,
     matchedName: null,
@@ -275,7 +315,7 @@ function fallback(query: string): SeriesResult {
     totalBooks: null,
     volumes: [],
     status: 'error',
-    detail: 'no result',
+    detail,
   }
 }
 
