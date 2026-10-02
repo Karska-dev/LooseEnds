@@ -34,12 +34,14 @@ export function budgetFrom(setting: string | undefined): number {
 
 /**
  * Requests needed to resolve `count` uncached series when nothing is
- * retried: one search each, then two flat fetches per ten found (the links,
- * then the books). A batch with more than 250 books costs one more; the
- * meter counts what was really sent, this only decides what to attempt.
+ * retried: one search each, then three flat fetches per ten found (the
+ * links, the books, the originals of duplicate records). A batch with more
+ * than 250 books costs one more, and so does each series that needs a
+ * second search with the author's name; the meter counts what was really
+ * sent, this only decides what to attempt.
  */
 export function costOf(count: number): number {
-  return count === 0 ? 0 : count + 2 * Math.ceil(count / 10)
+  return count === 0 ? 0 : count + 3 * Math.ceil(count / 10)
 }
 
 /** How many of `wanted` uncached series fit in what is left of the day. */
