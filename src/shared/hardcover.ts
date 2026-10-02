@@ -41,8 +41,13 @@ export interface SeriesResult {
 }
 
 const ENDPOINT = 'https://api.hardcover.app/v1/graphql'
-/** Hardcover allows at most 5 top-level queries per request. */
-const ALIAS_LIMIT = 5
+/**
+ * Series fetched together. The Worker never resolves more than ten per
+ * request, so in practice one batch is the whole request.
+ */
+const SERIES_PER_FETCH = 10
+/** Books asked for in one request; a long series with every translation runs to hundreds. */
+const BOOKS_PER_FETCH = 250
 /** Hardcover allows 60 requests per minute. Stay just under one per second. */
 const MIN_REQUEST_GAP_MS = 1100
 
@@ -224,7 +229,9 @@ async function searchSeries(
   return { ok: true, data: bestHit(hits, name, author) }
 }
 
-interface BookNode {
+export interface BookNode {
+  /** Present on flat fetches; breaks ties so the result never depends on row order. */
+  id?: number
   title: string
   slug: string | null
   release_date: string | null
@@ -235,7 +242,7 @@ interface BookNode {
   default_audio_edition: { language_id: number | null; release_date: string | null } | null
 }
 
-interface SeriesNode {
+export interface SeriesNode {
   name: string
   primary_books_count: number | null
   book_series: { position: number | null; book: BookNode | null }[]
@@ -276,15 +283,40 @@ function isAggregate(title: string): boolean {
 }
 
 /** A real book beats a bundle at the same position, however many have read it. */
-function beats(candidate: Edition, current: Edition): boolean {
-  const candidateBundle = isAggregate(candidate.title)
-  const currentBundle = isAggregate(current.title)
-  if (candidateBundle !== currentBundle) return currentBundle
-  return candidate.readers > current.readers
+interface Ranked {
+  edition: Edition
+  /** Hardcover's book id: lower is the older record, usually the original. */
+  id: number
 }
 
-function editionsByPosition(node: SeriesNode): Volume[] {
-  const byPosition = new Map<number, Map<string, Edition>>()
+/**
+ * Whether `candidate` should replace `current` at the same position and
+ * language. More readers wins. A tie — common among translations nobody has
+ * logged — goes to the older record, then to the title, so the answer is the
+ * same whatever order Hardcover returns the rows in.
+ */
+function beats(candidate: Ranked, current: Ranked): boolean {
+  const candidateBundle = isAggregate(candidate.edition.title)
+  const currentBundle = isAggregate(current.edition.title)
+  if (candidateBundle !== currentBundle) return currentBundle
+  if (candidate.edition.readers !== current.edition.readers) {
+    return candidate.edition.readers > current.edition.readers
+  }
+  if (candidate.id !== current.id) return candidate.id < current.id
+  return candidate.edition.title < current.edition.title
+}
+
+/** Most-read first; ties by language id (unknown last), then title. */
+function byReaders(a: Edition, b: Edition): number {
+  return (
+    b.readers - a.readers ||
+    (a.languageId ?? Infinity) - (b.languageId ?? Infinity) ||
+    (a.title < b.title ? -1 : a.title > b.title ? 1 : 0)
+  )
+}
+
+export function editionsByPosition(node: SeriesNode): Volume[] {
+  const byPosition = new Map<number, Map<string, Ranked>>()
 
   for (const entry of node.book_series) {
     const position = entry.position
@@ -299,7 +331,7 @@ function editionsByPosition(node: SeriesNode): Volume[] {
 
     const languageId = languageOf(book)
     const key = String(languageId ?? 'unknown')
-    const candidate: Edition = {
+    const edition: Edition = {
       title: book.title,
       releaseDate: book.release_date,
       languageId,
@@ -312,6 +344,7 @@ function editionsByPosition(node: SeriesNode): Volume[] {
       audioDate: sameLanguageAudio(book, languageId)?.release_date ?? null,
       hasAudio: sameLanguageAudio(book, languageId) !== null,
     }
+    const candidate: Ranked = { edition, id: book.id ?? Infinity }
     const current = perLanguage.get(key)
     if (!current || beats(candidate, current)) {
       perLanguage.set(key, candidate)
@@ -321,7 +354,10 @@ function editionsByPosition(node: SeriesNode): Volume[] {
   return [...byPosition.entries()]
     .map(([position, perLanguage]) => ({
       position,
-      editions: [...perLanguage.values()].sort((a, b) => b.readers - a.readers).slice(0, 8),
+      editions: [...perLanguage.values()]
+        .map((ranked) => ranked.edition)
+        .sort(byReaders)
+        .slice(0, 8),
     }))
     .sort((a, b) => a.position - b.position)
 }
@@ -335,26 +371,74 @@ function safeColor(value: string | null | undefined): string | null {
   return /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(value.trim()) ? value.trim() : null
 }
 
-const SERIES_FIELDS = `name primary_books_count book_series(order_by: {position: asc}) { position book { title slug release_date users_read_count image { url color } default_ebook_edition { language_id } default_physical_edition { language_id } default_audio_edition { language_id release_date } } }`
+/**
+ * Flat on purpose. Hardcover is introducing a maximum query depth of 3, and
+ * the natural query — series → book_series → book → default edition — is 4
+ * levels deep. So the tree is fetched as rows and put back together here:
+ *
+ *   1. the series themselves, and their (series, position, book) links
+ *   2. the books those links point to, each with its default editions
+ *
+ * Nothing below nests more than three levels, counting the leaf fields
+ * (books → default_audio_edition → release_date), which is the strictest way
+ * a depth limit could be counted.
+ */
+const BOOK_FIELDS =
+  'id title slug release_date users_read_count image { url color } ' +
+  'default_ebook_edition { language_id } default_physical_edition { language_id } ' +
+  'default_audio_edition { language_id release_date }'
+
+interface SeriesRow {
+  id: number
+  name: string
+  primary_books_count: number | null
+}
+
+interface LinkRow {
+  series_id: number
+  position: number | null
+  book_id: number
+}
 
 async function fetchSeriesBatch(
   token: string,
   ids: number[],
   meter?: Meter,
 ): Promise<Outcome<Map<number, SeriesNode>>> {
-  const aliases = ids.map((id, index) => `s${index}: series_by_pk(id: ${id}) { ${SERIES_FIELDS} }`)
-  const outcome = await gql<Record<string, SeriesNode | null>>(
+  const list = ids.join(', ')
+  const first = await gql<{ series?: SeriesRow[]; book_series?: LinkRow[] }>(
     token,
-    `query { ${aliases.join(' ')} }`,
+    `query { series(where: {id: {_in: [${list}]}}) { id name primary_books_count } ` +
+      `book_series(where: {series_id: {_in: [${list}]}}, order_by: {position: asc}) { series_id position book_id } }`,
     meter,
   )
-  if (!outcome.ok) return outcome
+  if (!first.ok) return first
+
+  const links = first.data.book_series ?? []
+  const bookIds = [...new Set(links.map((link) => link.book_id))]
+  const books = new Map<number, BookNode>()
+  for (let index = 0; index < bookIds.length; index += BOOKS_PER_FETCH) {
+    await delay(MIN_REQUEST_GAP_MS)
+    const chunk = bookIds.slice(index, index + BOOKS_PER_FETCH)
+    const outcome = await gql<{ books?: (BookNode & { id: number })[] }>(
+      token,
+      `query { books(where: {id: {_in: [${chunk.join(', ')}]}}) { ${BOOK_FIELDS} } }`,
+      meter,
+    )
+    if (!outcome.ok) return outcome
+    for (const book of outcome.data.books ?? []) books.set(book.id, book)
+  }
 
   const out = new Map<number, SeriesNode>()
-  ids.forEach((id, index) => {
-    const node = outcome.data[`s${index}`]
-    if (node) out.set(id, node)
-  })
+  for (const row of first.data.series ?? []) {
+    out.set(row.id, { name: row.name, primary_books_count: row.primary_books_count, book_series: [] })
+  }
+  for (const link of links) {
+    out.get(link.series_id)?.book_series.push({
+      position: link.position,
+      book: books.get(link.book_id) ?? null,
+    })
+  }
   return { ok: true, data: out }
 }
 
@@ -394,9 +478,9 @@ export async function resolveSeriesNames(
     })
   }
 
-  // Phase 2 — five series per request via aliases.
-  for (let index = 0; index < found.length; index += ALIAS_LIMIT) {
-    const batch = found.slice(index, index + ALIAS_LIMIT)
+  // Phase 2 — the series' books, as flat rows (see fetchSeriesBatch).
+  for (let index = 0; index < found.length; index += SERIES_PER_FETCH) {
+    const batch = found.slice(index, index + SERIES_PER_FETCH)
     await delay(MIN_REQUEST_GAP_MS)
     const outcome = await fetchSeriesBatch(
       token,
