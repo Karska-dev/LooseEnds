@@ -974,11 +974,22 @@ export function plainText(markdown: string): string {
     .replace(/!\[[^\]]*\]\((?:[^()]|\([^()]*\))*\)/g, ' ')
     .replace(/\[([^\]]*)\]\((?:[^()]|\([^()]*\))*\)/g, '$1')
     .replace(/https?:\/\/\S+/g, ' ')
-    .replace(/[ \t\u00a0]+/g, ' ')
+    // Two passes that rarely match, not one that matches at every space:
+    // on a long page that is the difference between 1 ms and 7.
+    .replace(/[\t\u00a0]/g, ' ')
+    .replace(/ {2,}/g, ' ')
     .replace(/ ?\n ?/g, '\n')
     .replace(/\n{3,}/g, '\n\n')
     .trim()
 }
+
+/**
+ * As much of a page as is read. A list of a series' books is a few thousand
+ * characters, and the median page is nine thousand; the rare page past this
+ * is something else entirely (one search returned a whole novel as a PDF),
+ * and cleaning it would spend the Worker's CPU time on nothing.
+ */
+const MAX_RAW_CHARS = 100_000
 
 export function pagesFromTavily(body: unknown): Page[] {
   const results = (body as { results?: unknown[] } | null)?.results
@@ -989,7 +1000,7 @@ export function pagesFromTavily(body: unknown): Page[] {
     // `content` is the search's excerpt of the page; `raw_content` the page
     // itself, which many sites do not let the search fetch.
     const snippet = typeof row.content === 'string' ? plainText(row.content) : ''
-    const body = typeof row.raw_content === 'string' ? plainText(row.raw_content) : ''
+    const body = typeof row.raw_content === 'string' ? plainText(row.raw_content.slice(0, MAX_RAW_CHARS)) : ''
     const text = [snippet, body].filter(Boolean).join('\n\n')
     const score = typeof row.score === 'number' ? { score: row.score } : {}
     return [{ url: row.url, title: typeof row.title === 'string' ? row.title : row.url, text, snippet, ...score }]

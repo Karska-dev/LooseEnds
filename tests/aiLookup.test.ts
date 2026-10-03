@@ -646,6 +646,18 @@ describe('helpers', () => {
     assert.equal(pages[1].text, 'snippet\n\nfull text')
   })
 
+  test('a page far too long to be a book list is read only from the top', () => {
+    const novel = `Praise for the author. ${'A whole chapter of the book. '.repeat(20_000)}THE END`
+    const [page] = pagesFromTavily({ results: [{ url: 'https://pdf.example/x', title: 'X', content: 'snippet', raw_content: novel }] })
+    assert.ok(page.text.startsWith('snippet\n\nPraise for the author.'))
+    assert.ok(page.text.length <= 100_010)
+    assert.ok(!page.text.includes('THE END'))
+  })
+
+  test('tabs, hard spaces and runs of spaces become one space', () => {
+    assert.equal(plainText('1.\tAsh\u00a0\u00a0and   Ember \n  2. Salt'), '1. Ash and Ember\n2. Salt')
+  })
+
   test('links and images are reduced to the words a reader sees', () => {
     const markdown =
       'Book 2 –\u00a0[Ruthless Fae](https://www.amazon.com/gp/product/B07VJ383S6)\u00a0(also available on [Audible](https://www.amazon.com/dp/B097S6JH9H/ref=tmm_(aud)_swatch))\n\n' +
