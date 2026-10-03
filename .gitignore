@@ -14,6 +14,10 @@ dist-ssr
 OPERATIONS.md
 TODO.md
 
+# the owner's working rules for AI assistants: a local agreement, not part of
+# the project.
+CLAUDE.md
+
 # logs
 logs
 *.log
