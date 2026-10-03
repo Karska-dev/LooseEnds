@@ -1,4 +1,4 @@
-import type { SeriesResult, Volume } from '../src/shared/hardcover'
+import type { SeriesResult, Volume } from '../src/shared/hardcover.ts'
 
 /** Minimal shape of the D1 binding, so we need no extra dependency. */
 interface D1PreparedStatement {
