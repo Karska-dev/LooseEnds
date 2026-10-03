@@ -5,15 +5,22 @@ import type { D1Database } from './cache.ts'
 import { claimedOrigin, isSameOrigin } from './origin.ts'
 import { checkPass, issuePass, verifyTurnstile } from './pass.ts'
 import { BUDGET_DETAIL, affordable, budgetFrom, recordSpend, spentToday } from './budget.ts'
+import { handleAiSeries } from './ai.ts'
+import type { AiEnv } from './ai.ts'
+import { json, log } from './http.ts'
 
-interface Env {
+type Limiter = { limit(options: { key: string }): Promise<{ success: boolean }> }
+
+interface Env extends AiEnv {
   HARDCOVER_TOKEN: string
   /** Static asset binding: the built Vite output. */
   ASSETS: { fetch(request: Request): Promise<Response> }
   /** Absent in local development, where the cache is simply skipped. */
   DB?: D1Database
   /** Absent in local development, where throttling is skipped. */
-  SERIES_LIMITER?: { limit(options: { key: string }): Promise<{ success: boolean }> }
+  SERIES_LIMITER?: Limiter
+  /** A tighter throttle for /api/ai-series, where every miss costs allowance. */
+  AI_LIMITER?: Limiter
   /** Turnstile widget's public site key (a plain var in wrangler.jsonc). */
   TURNSTILE_SITE_KEY?: string
   /** Turnstile secret (`wrangler secret put`). Also derives the pass-signing key. */
@@ -41,50 +48,68 @@ export default {
     }
 
     if (url.pathname === '/api/series') {
-      if (request.method !== 'POST') {
-        return json({ error: 'Use POST with a JSON body.' }, 405)
-      }
+      return (await refuse(request, env, env.SERIES_LIMITER, 'series')) ?? handleSeries(request, env)
+    }
 
-      // Before the limiter, so a refused caller costs nothing and does not
-      // use up anyone's allowance.
-      if (!isSameOrigin(request)) {
-        log('series.forbidden_origin', { status: 403, origin: claimedOrigin(request) })
-        return json({ error: 'Lookups only work from the Loose Ends page itself.' }, 403)
-      }
-
-      // Also before the limiter: a request without a live pass is refused
-      // for free. Without the secret nothing can be checked, so nothing is
-      // answered — an unconfigured deploy must fail closed, not open.
-      if (!env.TURNSTILE_SECRET_KEY) {
-        log('series.misconfigured', { status: 500, reason: 'TURNSTILE_SECRET_KEY missing' })
-        return json({ error: 'Lookup protection is not configured on this server.' }, 500)
-      }
-      if (!(await checkPass(request.headers.get('x-lookup-pass'), env.TURNSTILE_SECRET_KEY, Date.now()))) {
-        log('series.no_pass', { status: 401 })
-        return json({ error: 'The lookup pass is missing or expired.', code: 'pass' }, 401)
-      }
-
-      // Keyed by caller IP, not by path: the point is to stop one client
-      // exhausting the upstream token, not to cap the endpoint overall.
-      const ip = request.headers.get('CF-Connecting-IP') ?? 'unknown'
-      if (env.SERIES_LIMITER) {
-        const { success } = await env.SERIES_LIMITER.limit({ key: ip })
-        if (!success) {
-          log('series.rate_limited', { status: 429 })
-          return json(
-            { error: 'Too many lookups just now. Wait a minute and try again.' },
-            429,
-            { 'retry-after': '60' },
-          )
-        }
-      }
-
-      return handleSeries(request, env)
+    // The experimental AI lookup: the same door, its own throttle.
+    if (url.pathname === '/api/ai-series') {
+      return (await refuse(request, env, env.AI_LIMITER, 'ai')) ?? handleAiSeries(request, env)
     }
 
     // Everything else is the built single-page app.
     return env.ASSETS.fetch(request)
   },
+}
+
+/**
+ * What stands in front of both lookups, cheapest check first: the method,
+ * that the request came from our own page, a live lookup pass, and the
+ * per-IP throttle. Returns the refusal, or null to go ahead.
+ */
+async function refuse(
+  request: Request,
+  env: Env,
+  limiter: Limiter | undefined,
+  event: 'series' | 'ai',
+): Promise<Response | null> {
+  if (request.method !== 'POST') {
+    return json({ error: 'Use POST with a JSON body.' }, 405)
+  }
+
+  // Before the limiter, so a refused caller costs nothing and does not
+  // use up anyone's allowance.
+  if (!isSameOrigin(request)) {
+    log(`${event}.forbidden_origin`, { status: 403, origin: claimedOrigin(request) })
+    return json({ error: 'Lookups only work from the Loose Ends page itself.' }, 403)
+  }
+
+  // Also before the limiter: a request without a live pass is refused
+  // for free. Without the secret nothing can be checked, so nothing is
+  // answered — an unconfigured deploy must fail closed, not open.
+  if (!env.TURNSTILE_SECRET_KEY) {
+    log(`${event}.misconfigured`, { status: 500, reason: 'TURNSTILE_SECRET_KEY missing' })
+    return json({ error: 'Lookup protection is not configured on this server.' }, 500)
+  }
+  if (!(await checkPass(request.headers.get('x-lookup-pass'), env.TURNSTILE_SECRET_KEY, Date.now()))) {
+    log(`${event}.no_pass`, { status: 401 })
+    return json({ error: 'The lookup pass is missing or expired.', code: 'pass' }, 401)
+  }
+
+  // Keyed by caller IP, not by path: the point is to stop one client
+  // exhausting the upstream allowance, not to cap the endpoint overall.
+  const ip = request.headers.get('CF-Connecting-IP') ?? 'unknown'
+  if (limiter) {
+    const { success } = await limiter.limit({ key: ip })
+    if (!success) {
+      log(`${event}.rate_limited`, { status: 429 })
+      return json(
+        { error: 'Too many lookups just now. Wait a minute and try again.' },
+        429,
+        { 'retry-after': '60' },
+      )
+    }
+  }
+  return null
 }
 
 /**
@@ -329,29 +354,4 @@ function isSeriesQueryList(value: unknown): value is SeriesQuery[] {
         typeof (item as SeriesQuery).name === 'string',
     )
   )
-}
-
-/**
- * One line of JSON per interesting event. A handled 500 produces no stack
- * trace and no console output on its own, so anything we do not log here is
- * invisible in production — which is how a missing binding looked like
- * silence rather than a problem.
- */
-function log(event: string, fields: Record<string, unknown> = {}): void {
-  console.log(JSON.stringify({ event, ...fields }))
-}
-
-function json(
-  body: unknown,
-  status = 200,
-  extraHeaders: Record<string, string> = {},
-): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: {
-      'content-type': 'application/json',
-      'cache-control': status === 200 ? 'public, max-age=3600' : 'no-store',
-      ...extraHeaders,
-    },
-  })
 }

@@ -6,6 +6,7 @@ import {
   choosePages,
   excerpt,
   fallbackQueryFor,
+  mentionsSeries,
   markReleasedInferred,
   pagesFromTavily,
   parseDraft,
@@ -671,6 +672,29 @@ describe('helpers', () => {
     )
     assert.equal(books[0].hasAudio, true)
     assert.equal(books[1].hasAudio, false)
+  })
+})
+
+describe('mentionsSeries', () => {
+  const page = (text: string, score?: number): Page => ({ url: 'https://example.com/a', title: 'A page', text, score })
+
+  test('a page that names the series is about it', () => {
+    assert.equal(mentionsSeries([page('The Hollow Crown books in order')], 'The Hollow Crown'), true)
+  })
+
+  test('"The" in front and "Trilogy" behind are not part of the name', () => {
+    assert.equal(mentionsSeries([page('All three Hollow Crown novels, ranked')], 'The Hollow Crown Trilogy'), true)
+  })
+
+  test('pages about something else are not', () => {
+    assert.equal(mentionsSeries([page('Ten cosy mysteries for autumn')], 'The Hollow Crown'), false)
+    assert.equal(mentionsSeries([], 'The Hollow Crown'), false)
+  })
+
+  test('a search that rates all it found as beside the point is believed', () => {
+    const text = 'A list that happens to say hollow crown once'
+    assert.equal(mentionsSeries([page(text, 0.04), page(text, 0.02)], 'The Hollow Crown'), false)
+    assert.equal(mentionsSeries([page(text, 0.04), page(text, 0.6)], 'The Hollow Crown'), true)
   })
 })
 

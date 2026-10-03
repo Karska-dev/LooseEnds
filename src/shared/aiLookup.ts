@@ -29,6 +29,8 @@ export interface Page {
   text: string
   /** Just the search's excerpt. Many sites refuse to be fetched; this still comes. */
   snippet?: string
+  /** How relevant the search thought this result, 0 to 1, when it says. */
+  score?: number
 }
 
 /** What the model is asked to return. Every field is checked afterwards. */
@@ -259,10 +261,36 @@ export function fallbackQueryFor(query: SeriesQuery): string {
   return `${query.author ?? ''} ${query.name} series books in order`.replace(/\s+/g, ' ').trim()
 }
 
-/** At least one source names the series: the search understood the question. */
+/**
+ * Said when neither search came back with anything about the series. It is
+ * usually the search having a bad moment, not the series being unknown —
+ * the same question often works an hour later — so the cache keeps this
+ * answer for a day, not for weeks.
+ */
+export const NOTHING_RELEVANT = 'the search found nothing about this series'
+
+/**
+ * The one miss that says something about the series itself: pages about it
+ * were found and read, and too little of what the model listed was on them.
+ * Every other miss is the search or the model having a bad moment.
+ */
+export const TOO_FEW_BOOKS = 'too few verified books'
+
+/** Below this, the search itself rates its best result as beside the point. */
+const MIN_SCORE = 0.3
+
+/**
+ * Whether the search understood the question: one source names the series,
+ * and the search does not rate everything it found as irrelevant. "Trilogy"
+ * and the like are left out of the name, since pages say "series" as often.
+ */
 export function mentionsSeries(pages: Page[], seriesName: string): boolean {
-  const name = normalise(seriesName).replace(/^the /, '')
-  return name.length > 0 && pages.some((page) => normalise(`${page.title} ${page.text}`).includes(name))
+  const name = normalise(seriesName)
+    .replace(/^the /, '')
+    .replace(/ (?:series|trilogy|duology|duet|saga|books|novels)$/, '')
+  if (name.length === 0 || !pages.some((page) => normalise(`${page.title} ${page.text}`).includes(name))) return false
+  const scores = pages.flatMap((page) => (typeof page.score === 'number' ? [page.score] : []))
+  return scores.length === 0 || Math.max(...scores) >= MIN_SCORE
 }
 
 /**
@@ -391,8 +419,8 @@ export function supportedDate(date: string, windows: string[]): string | null {
  * neighbour's date. Text before the title is not used for the same reason:
  * between two titles it could belong to either.
  */
-function segmentsFor(text: string, needle: string, otherStarts: number[]): string[] {
-  return occurrences(text, needle).map((at) => {
+function segmentsFor(text: string, needle: string, own: number[], otherStarts: number[]): string[] {
+  return own.map((at) => {
     const limit = at + needle.length + NEAR
     const next = otherStarts.find((start) => start >= at + needle.length)
     return text.slice(at, next === undefined ? limit : Math.min(next, limit))
@@ -430,10 +458,10 @@ interface PageNumber {
  * could belong to either, so each page is read both ways and the reading
  * that numbers more of its titles wins.
  */
-function numbersOnPage(text: string, needles: string[], seriesName: string): Map<string, PageNumber> {
+function numbersOnPage(text: string, where: Map<string, number[]>, seriesName: string): Map<string, PageNumber> {
   const seriesTokens = new Set(seriesName.split(' ').filter(Boolean))
-  const all = needles
-    .flatMap((needle) => occurrences(text, needle).map((at) => ({ needle, at })))
+  const all = [...where.entries()]
+    .flatMap(([needle, places]) => places.map((at) => ({ needle, at })))
     .sort((a, b) => a.at - b.at)
   // A first book named after its series ("Bride", "The Wolf King") turns up
   // wherever the series is mentioned. Only where a number stands right
@@ -444,10 +472,15 @@ function numbersOnPage(text: string, needles: string[], seriesName: string): Map
 
   // The series name is looked for outside the titles themselves: in a series
   // called "Villain", "Kiss the Villain 34." is not "Villain #34".
-  let masked = text
+  const pieces: string[] = []
+  let upTo = 0
   for (const { needle, at } of starts) {
-    masked = masked.slice(0, at) + '~'.repeat(needle.length) + masked.slice(at + needle.length)
+    if (at < upTo) continue
+    pieces.push(text.slice(upTo, at), '~'.repeat(needle.length))
+    upTo = at + needle.length
   }
+  pieces.push(text.slice(upTo))
+  const masked = pieces.join('')
 
   // "zodiac academy 4", "the bonds that tie book 1", and "4 of zodiac academy".
   const series = seriesName.replace(/^the /, '')
@@ -559,7 +592,12 @@ export function verifyAgainstPages(
     else if (!drafted.has(needle)) drafted.set(needle, book)
   }
   const needles = [...drafted.keys()]
-  const numbers = texts.map((text) => numbersOnPage(text, needles, normalise(seriesName)))
+  // Where each title stands on each page, found once: everything below asks.
+  const where = texts.map((text) => new Map(needles.map((needle) => [needle, occurrences(text, needle)])))
+  const starts = where.map((places) =>
+    [...places.entries()].flatMap(([needle, list]) => list.map((at) => ({ needle, at }))).sort((a, b) => a.at - b.at),
+  )
+  const numbers = texts.map((text, index) => numbersOnPage(text, where[index], normalise(seriesName)))
 
   interface Candidate extends VerifiedBook {
     /** How many fetched pages name this title. */
@@ -571,7 +609,7 @@ export function verifyAgainstPages(
 
   for (const [needle, book] of drafted) {
     const title = book.title.trim()
-    const on = pages.map((_, index) => index).filter((index) => occurrences(texts[index], needle).length > 0)
+    const on = pages.map((_, index) => index).filter((index) => (where[index].get(needle) ?? []).length > 0)
     if (on.length === 0) {
       dropped.push({ title, reason: 'title not on any fetched page' })
       continue
@@ -605,11 +643,8 @@ export function verifyAgainstPages(
 
     // This book's own stretch of each page: up to the next drafted title.
     const segments = on.map((index) => {
-      const otherStarts = needles
-        .filter((other) => other !== needle)
-        .flatMap((other) => occurrences(texts[index], other))
-        .sort((a, b) => a - b)
-      return { index, windows: segmentsFor(texts[index], needle, otherStarts) }
+      const otherStarts = starts[index].filter((other) => other.needle !== needle).map((other) => other.at)
+      return { index, windows: segmentsFor(texts[index], needle, where[index].get(needle) ?? [], otherStarts) }
     })
 
     // The model's date, as precisely as any page backs it. Failing that, a
@@ -847,6 +882,12 @@ export async function aiLookupSeries(
     if (mentionsSeries(again, query.name) || pages.length === 0) pages = again
   }
   report.ms.search = Date.now() - clock
+  // Still nothing about the series: do not hand the model pages about
+  // something else. It would find "books" in them.
+  if (pages.length > 0 && query.author && !mentionsSeries(pages, query.name)) {
+    report.pages = []
+    return { result: notFound(query, deps.today, NOTHING_RELEVANT), report, draft: null, pages }
+  }
 
   report.pages = pages.map((page) => ({
     url: page.url,
@@ -881,7 +922,7 @@ export async function aiLookupSeries(
   report.numberedByModel = verified.books.filter((book) => book.positionFrom === 'model').length
 
   if (verified.books.length < MIN_BOOKS) {
-    return { result: notFound(query, deps.today, 'too few verified books'), report, draft, pages }
+    return { result: notFound(query, deps.today, TOO_FEW_BOOKS), report, draft, pages }
   }
   return {
     result: toSeriesResult(query, draft.seriesName, verified.books, verified.readingOrder, deps.today),
@@ -943,13 +984,14 @@ export function pagesFromTavily(body: unknown): Page[] {
   const results = (body as { results?: unknown[] } | null)?.results
   if (!Array.isArray(results)) return []
   return results.flatMap((item) => {
-    const row = item as { url?: unknown; title?: unknown; raw_content?: unknown; content?: unknown }
+    const row = item as { url?: unknown; title?: unknown; raw_content?: unknown; content?: unknown; score?: unknown }
     if (typeof row.url !== 'string') return []
     // `content` is the search's excerpt of the page; `raw_content` the page
     // itself, which many sites do not let the search fetch.
     const snippet = typeof row.content === 'string' ? plainText(row.content) : ''
     const body = typeof row.raw_content === 'string' ? plainText(row.raw_content) : ''
     const text = [snippet, body].filter(Boolean).join('\n\n')
-    return [{ url: row.url, title: typeof row.title === 'string' ? row.title : row.url, text, snippet }]
+    const score = typeof row.score === 'number' ? { score: row.score } : {}
+    return [{ url: row.url, title: typeof row.title === 'string' ? row.title : row.url, text, snippet, ...score }]
   })
 }

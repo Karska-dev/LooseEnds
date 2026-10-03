@@ -11,8 +11,26 @@
 			"name": "SERIES_LIMITER",
 			"namespace_id": "1001",
 			"simple": { "limit": 30, "period": 60 }
+		},
+		// Per-IP throttle on /api/ai-series (the experimental AI lookup). The
+		// page asks once to read the cache, then for one series at a time, and
+		// a lookup takes ten seconds or more: an honest visitor makes four or
+		// five requests a minute. 12 leaves room for cached answers, which
+		// come back at once, and for a reload.
+		{
+			"name": "AI_LIMITER",
+			"namespace_id": "1002",
+			"simple": { "limit": 12, "period": 60 }
 		}
 	],
+
+	// Workers AI reads the pages the AI lookup finds (see worker/ai.ts). On
+	// the Workers Free plan the first 10,000 neurons a day are free, and
+	// past that the call fails rather than bills. The binding name must stay
+	// "AI".
+	"ai": {
+		"binding": "AI"
+	},
 
 	// Shared cache of public series metadata. The binding name must stay "DB":
 	// that is what worker/index.ts reads. `wrangler d1 create` suggests a block
@@ -37,7 +55,12 @@
 		"TURNSTILE_SITE_KEY": "0x4AAAAAAFLLcNQh65jnRhR4",
 		// Requests to Hardcover allowed per UTC day (their free plan: 5,000).
 		// At the cap, series not yet cached wait until midnight UTC.
-		"HARDCOVER_DAILY_BUDGET": "4000"
+		"HARDCOVER_DAILY_BUDGET": "4000",
+		// Web searches the AI lookup may make per UTC day, for all visitors
+		// together. A lookup is one search, sometimes two. Tavily's free plan
+		// is 1,000 a month; 30 a day keeps a month inside it. The search key
+		// is a secret: `npx wrangler secret put TAVILY_KEY`.
+		"AI_DAILY_BUDGET": "30"
 	},
 	"observability": {
 		"enabled": true,
