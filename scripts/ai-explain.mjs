@@ -8,6 +8,7 @@
  *   node scripts/ai-explain.mjs --all --model gemma4:e4b # another local model
  *   node scripts/ai-explain.mjs --all --limit 5          # a quick first try
  *   node scripts/ai-explain.mjs --all --only "Zodiac,Bride"   # just these
+ *   node scripts/ai-explain.mjs --all --workers-ai       # the production model
  *
  * For each series: one web search (Tavily), a local model reads the pages
  * (Ollama), plain code keeps only what the pages say — the real pipeline in
@@ -25,6 +26,20 @@
  *   HARDCOVER_TOKEN   — optional; without it nothing is compared
  *   OLLAMA_MODEL      — optional, default qwen3.5:9b
  *   OLLAMA_URL        — optional, default http://localhost:11434
+ *
+ * --workers-ai asks Cloudflare's model instead of a local one: the model the
+ * deployed site uses, called through Cloudflare's REST API with the same
+ * request the Worker sends. A local model's score does not predict it, so
+ * this is the run that says how good production will be, what a lookup
+ * really costs in neurons, and how long it takes. It needs two more settings:
+ *   WORKERS_AI_ACCOUNT_ID — dashboard → Workers AI → "Use REST API"
+ *   WORKERS_AI_API_TOKEN  — a token with Workers AI Read and Edit
+ *   AI_MODEL              — optional, default the Worker's own default
+ * They are deliberately not called CLOUDFLARE_ACCOUNT_ID and
+ * CLOUDFLARE_API_TOKEN. Wrangler reads those names for itself and would use
+ * this narrow token for every command, deploys included, and be refused.
+ * Its calls count against the account's 10,000 free neurons a day; the 31
+ * benchmark series use about 7,000. Saved replies replay for nothing.
  *
  * Every web search, every model reply and every Hardcover answer is saved
  * under .dev-cache/ (git-ignored) and replayed next time. A series costs one
@@ -45,6 +60,7 @@ import { createHash } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { aiLookupSeries, normalise, pagesFromTavily, searchQueryFor, tavilyRequestBody } from '../src/shared/aiLookup.ts'
+import { DEFAULT_AI_MODEL, LookupError, newAiMeter, workersAiModel } from '../src/shared/aiProviders.ts'
 import { resolveSeriesNames } from '../src/shared/hardcover.ts'
 
 const argv = process.argv.slice(2)
@@ -67,8 +83,15 @@ function setting(key) {
 
 const TAVILY_KEY = setting('TAVILY_KEY')
 const HARDCOVER_TOKEN = flag('no-hardcover') ? null : setting('HARDCOVER_TOKEN')
-const MODEL = option('model') ?? setting('OLLAMA_MODEL') ?? 'qwen3.5:9b'
+/** Ask Cloudflare's model, as production does, instead of a local one. */
+const WORKERS_AI = flag('workers-ai')
+const MODEL = WORKERS_AI
+  ? (option('model') ?? setting('AI_MODEL') ?? DEFAULT_AI_MODEL)
+  : (option('model') ?? setting('OLLAMA_MODEL') ?? 'qwen3.5:9b')
 const OLLAMA_URL = (setting('OLLAMA_URL') ?? 'http://localhost:11434').replace(/\/$/, '')
+const WORKERS_AI_ACCOUNT_ID = setting('WORKERS_AI_ACCOUNT_ID')
+const WORKERS_AI_API_TOKEN = setting('WORKERS_AI_API_TOKEN')
+const VIA = WORKERS_AI ? 'Workers AI (REST)' : OLLAMA_URL
 const TODAY = new Date().toISOString().slice(0, 10)
 const DEPTH = option('depth') === 'advanced' ? 'advanced' : 'basic'
 const CACHE = '.dev-cache'
@@ -76,8 +99,9 @@ const CACHE = '.dev-cache'
 /**
  * Workers AI prices for the model the plan starts with
  * (@cf/meta/llama-3.3-70b-instruct-fp8-fast), in neurons per million tokens.
- * Only an estimate: a local model's token counts are close to, not the same
- * as, the production model's.
+ * With a local model this is only an estimate: its token counts are close
+ * to, not the same as, the production model's. With --workers-ai the counts
+ * are Cloudflare's own.
  */
 const NEURONS_PER_M = { input: 26668, output: 204805 }
 
@@ -85,8 +109,9 @@ const all = flag('all')
 if (!all && positional.length === 0) {
   console.error(
     'Usage: node scripts/ai-explain.mjs "<series name>" [--author "<author>"]\n' +
-      '       node scripts/ai-explain.mjs --all [--limit N] [--only "name,name"] [--model <ollama model>] [--file <list.json>]\n' +
-      'Flags: --refresh (search again), --rethink (ask the model again), --depth advanced, --no-hardcover',
+      '       node scripts/ai-explain.mjs --all [--limit N] [--only "name,name"] [--model <model>] [--file <list.json>]\n' +
+      'Flags: --workers-ai (Cloudflare\'s model, not a local one), --refresh (search again),\n' +
+      '       --rethink (ask the model again), --depth advanced, --no-hardcover',
   )
   process.exit(1)
 }
@@ -174,7 +199,7 @@ async function search(query, searchText) {
   throw new Error('Tavily kept refusing. Try again in a minute.')
 }
 
-// ---------- extract: a local model through Ollama ----------
+// ---------- extract: a local model through Ollama, or Cloudflare's ----------
 
 const tokens = { input: 0, output: 0 }
 let sendThink = true
@@ -197,7 +222,7 @@ async function runModel(request) {
   }
   const started = Date.now()
   const before = { ...tokens }
-  const reply = await askOllama(request)
+  const reply = WORKERS_AI ? await askWorkersAi(request) : await askOllama(request)
   lastModelSeconds = (Date.now() - started) / 1000
   modelUse.fresh += 1
   saveJson(path, { reply, input: tokens.input - before.input, output: tokens.output - before.output, seconds: lastModelSeconds })
@@ -264,6 +289,79 @@ async function askOllama(request) {
     }
   }
   return reply
+}
+
+/**
+ * Workers AI, reached from a laptop.
+ *
+ * Inside a Worker the model is a binding: env.AI.run(model, input). Outside
+ * one, the same model is behind Cloudflare's REST API. This object gives the
+ * REST API the binding's shape — it returns what the binding returns and
+ * throws where the binding throws — so the script can hand it to
+ * workersAiModel, the very function production uses.
+ *
+ * Pattern: adapter, used here to keep a test honest. What is measured is
+ * production's own request, reply handling and error handling; a second
+ * copy written for this script could pass while the real one failed.
+ */
+const restBinding = {
+  async run(model, input) {
+    if (!WORKERS_AI_ACCOUNT_ID || !WORKERS_AI_API_TOKEN) {
+      stop(
+        '--workers-ai needs WORKERS_AI_ACCOUNT_ID and WORKERS_AI_API_TOKEN in the environment or .env.local.\n' +
+          'Cloudflare dashboard → Workers AI → "Use REST API": it shows the account ID and makes a token\n' +
+          'with Workers AI Read and Edit.',
+      )
+    }
+    let response
+    try {
+      response = await fetch(`https://api.cloudflare.com/client/v4/accounts/${WORKERS_AI_ACCOUNT_ID}/ai/run/${model}`, {
+        method: 'POST',
+        headers: { authorization: `Bearer ${WORKERS_AI_API_TOKEN}`, 'content-type': 'application/json' },
+        body: JSON.stringify(input),
+      })
+    } catch (error) {
+      throw new Error(`Cloudflare could not be reached: ${error?.cause?.code ?? error?.message ?? error}`)
+    }
+    const text = await response.text()
+    let body = null
+    try {
+      body = JSON.parse(text)
+    } catch {
+      // Not JSON: reported below with the status.
+    }
+    if (response.status === 401 || response.status === 403) {
+      stop(
+        `Cloudflare rejected the token (HTTP ${response.status}). WORKERS_AI_API_TOKEN needs Workers AI Read and Edit,\n` +
+          'and WORKERS_AI_ACCOUNT_ID must be the account it was made for.',
+      )
+    }
+    if (!response.ok || !body?.success) {
+      // Cloudflare's own words, code first: this is how we learn what its
+      // errors really say (the Worker recognises the daily limit by them).
+      const said = (body?.errors ?? []).map((error) => `${error.code}: ${error.message}`).join('; ')
+      throw new Error(said || `HTTP ${response.status}: ${text.slice(0, 200)}`)
+    }
+    return body.result
+  },
+}
+
+async function askWorkersAi(request) {
+  const meter = newAiMeter()
+  try {
+    const reply = await workersAiModel(restBinding, MODEL, meter)(request)
+    tokens.input += meter.inputTokens
+    tokens.output += meter.outputTokens
+    return reply
+  } catch (error) {
+    if (error instanceof LookupError && error.kind === 'limit') {
+      stop(
+        `Workers AI says its allowance for today is used up: ${error.message}\n` +
+          'Replies already saved replay for nothing; run again after 00:00 UTC for the rest.',
+      )
+    }
+    throw error
+  }
 }
 
 // ---------- the same series from Hardcover, saved and replayed ----------
@@ -420,7 +518,7 @@ if (all) {
   queries = [{ name: positional[0], author: option('author') }]
 }
 
-console.log(`AI lookup — model ${MODEL} via ${OLLAMA_URL}, ${queries.length} series, ${TODAY}`)
+console.log(`AI lookup — model ${MODEL} via ${VIA}, ${queries.length} series, ${TODAY}`)
 const hardcoverAnswers = await hardcoverFor(queries)
 
 const lines = []
@@ -540,15 +638,24 @@ if (all) {
   console.log(`Audiobook marks               ${sum((line) => line.audioMarks)}`)
   console.log(`Time per series               ${(sum((line) => line.seconds) / lines.length).toFixed(1)}s (${modelUse.fresh} model call(s) made now, ${modelUse.replayed} replayed)`)
   console.log(`Tokens per lookup             ${perLookup.input} in, ${perLookup.output} out`)
-  console.log(`Workers AI estimate           ~${neurons} neurons per lookup → about ${neurons > 0 ? Math.floor(10000 / neurons) : '—'} lookups a day on the free 10,000`)
+  // With --workers-ai the token counts are Cloudflare's own for this model,
+  // so the figure is measured, not carried over from a local model.
+  const perDay = neurons > 0 ? Math.floor(10000 / neurons) : '—'
+  if (WORKERS_AI && tokens.input === 0) {
+    console.log('Workers AI neurons            not known: the replies carried no token counts')
+  } else if (WORKERS_AI) {
+    console.log(`Workers AI, measured          ${neurons} neurons per lookup → about ${perDay} lookups a day on the free 10,000`)
+  } else {
+    console.log(`Workers AI estimate           ~${neurons} neurons per lookup → about ${perDay} lookups a day on the free 10,000`)
+  }
   console.log(`Tavily                        ${spent.fresh} new search(es), ${spent.credits} credit(s); ${spent.replayed} replayed from .dev-cache`)
 
   const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
   const path = join(CACHE, 'reports', `ai-benchmark-${MODEL.replace(/[^a-z0-9.]+/gi, '-')}-${DEPTH}-${stamp}.json`)
-  saveJson(path, { model: MODEL, depth: DEPTH, date: TODAY, tokens, perLookup, neuronsEstimate: neurons, tavily: spent, series: lines })
+  saveJson(path, { model: MODEL, via: VIA, depth: DEPTH, date: TODAY, tokens, perLookup, neuronsEstimate: neurons, tavily: spent, series: lines })
   console.log(`\nFull results: ${path}`)
 } else if (tokens.input > 0) {
   const neurons = Math.round((tokens.input * NEURONS_PER_M.input + tokens.output * NEURONS_PER_M.output) / 1e6)
-  console.log(`Tokens: ${tokens.input} in, ${tokens.output} out — about ${neurons} Workers AI neurons at production prices (estimate).`)
+  console.log(`Tokens: ${tokens.input} in, ${tokens.output} out — about ${neurons} Workers AI neurons at production prices${WORKERS_AI ? '' : ' (estimate)'}.`)
   console.log(`Tavily: ${spent.fresh ? `${spent.credits} credit(s) spent` : 'replayed from .dev-cache, no credit spent'}.`)
 }
