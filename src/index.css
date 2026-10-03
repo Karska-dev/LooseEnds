@@ -21,9 +21,18 @@
   --warn: #8a5a1f;
   --accent: #a34a33;
 
-  --display: "Instrument Serif", Georgia, "Times New Roman", serif;
-  --body: "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* Every web font here has Cyrillic as well as Latin, so the page is set in
+     the same faces in English and in Ukrainian. */
+  --display: "Playfair Display", Georgia, "Times New Roman", serif;
+  --body: "Golos Text", system-ui, -apple-system, "Segoe UI", sans-serif;
   --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Playfair Display draws old-style figures unless asked: a zero the size
+     of an "o", so "0/8" reads as "o/8". Lining figures are the ones that
+     stand as tall as capitals. The other fonts have only those, so for them
+     this changes nothing. A rule that sets tabular-nums has to repeat
+     lining-nums beside it: the property is replaced whole, not added to. */
+  font-variant-numeric: lining-nums;
 
   color-scheme: light dark;
 }
@@ -243,7 +252,7 @@ button.ghost {
   font-size: 42px;
   font-weight: 400;
   line-height: 1;
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: lining-nums tabular-nums;
   color: var(--ink);
 }
 
@@ -426,7 +435,7 @@ button.ghost {
   margin: 0;
   font-size: 14px;
   color: var(--ink-soft);
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: lining-nums tabular-nums;
   white-space: nowrap;
 }
 
@@ -736,7 +745,7 @@ button.ghost {
   font-size: 60px;
   line-height: 0.9;
   color: var(--primary);
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: lining-nums tabular-nums;
 }
 
 .series-count-label { font-size: 14px; color: var(--ink); }
@@ -812,7 +821,7 @@ button.ghost {
   font-family: var(--display);
   font-size: 24px;
   color: var(--ink);
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: lining-nums tabular-nums;
 }
 
 .lookup-orbit { display: none; }
@@ -916,13 +925,28 @@ button.ghost {
    The default (no attribute) is Quiet.
    ================================================================== */
 
-/* ---------- the picker itself ---------- */
+/* ---------- the pickers: language, then look ---------- */
 
-.skins {
-  position: fixed;
+/* One corner block for both, so neither has to know how wide the other is
+   in the current language and look.
+
+   Absolute, not fixed: it sits in the window's top corner and scrolls away
+   with the page. The look pill alone used to stay fixed there. Two pills
+   are wide enough to cover the board's right edge in any window narrower
+   than about 1500px, and a setting changed once a visit is not worth
+   covering the list for. It is positioned against the window because none
+   of its ancestors is positioned at this width (see .masthead below). */
+.prefs {
+  position: absolute;
   top: 12px;
   right: 12px;
   z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.skins {
   display: flex;
   gap: 4px;
   padding: 4px;
@@ -947,12 +971,12 @@ button.ghost {
   color: var(--surface);
 }
 
-/* Below 900px the pill has no room and sits on the title, so it gives way
-   to the dial: one round button in the masthead that scrolls with the page
-   and drops three small circles, one per look. No panel, no words; each
-   circle shows "Aa" in its own look and the current one wears a ring. */
-
-.masthead { position: relative; }
+/* Below 900px the pills have no room and sit on the title, so they give way
+   to round buttons in the masthead that scroll with the page. The look's
+   button (the dial) drops three small circles, one per look. No panel, no
+   words; each circle shows "Aa" in its own look and the current one wears a
+   ring. The language's button needs no menu: with two languages it shows
+   the other one, and a press switches to it. */
 
 .skin-dial { display: none; }
 
@@ -970,6 +994,9 @@ button.ghost {
 }
 
 .skin-dial .skin-dial-button svg { display: block; }
+
+/* "EN" or "УКР" in a 40px circle: three letters have to fit. */
+.lang-dial .skin-dial-button { font-size: 11px; font-weight: 700; letter-spacing: 0.02em; }
 
 .skin-dial .skin-dial-button[aria-expanded='true'] {
   background: var(--primary-soft);
@@ -1013,7 +1040,7 @@ button.ghost {
   border: 1px solid #aeb6c3;
   background: #f7f8fb;
   color: #0f141c;
-  font: 400 19px/1 "Instrument Serif", Georgia, serif;
+  font: 400 17px/1 "Playfair Display", Georgia, serif;
   box-shadow: 0 4px 10px rgba(15, 20, 28, 0.14);
 }
 
@@ -1051,9 +1078,13 @@ button.ghost {
 
 @media (max-width: 899px) {
   .skins { display: none; }
-  .skin-dial { display: block; position: absolute; top: 0; right: 0; z-index: 20; }
+  /* Positioned here only, so the buttons sit in the masthead's own corner. */
+  .masthead { position: relative; }
+  .prefs { top: 0; right: 0; z-index: 20; }
+  /* Relative, so the dial's circles drop from their own button. */
+  .skin-dial { display: block; position: relative; }
   .masthead h1,
-  .masthead .tagline { padding-right: 52px; }
+  .masthead .tagline { padding-right: 100px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1196,8 +1227,8 @@ button.ghost {
    Bold — Panel press
    ------------------------------------------------------------------
    A printed poster: the page is one framed sheet, split by 4px rules,
-   with a red masthead band, Anton for anything that counts and Space
-   Mono for anything that is a fact. Colour is flat and means one thing
+   with a red masthead band, Anton for anything that counts and IBM
+   Plex Mono for anything that is a fact. Colour is flat and means one thing
    each — green ready, red now, blue waiting, yellow "act here".
 
    Dark inverts the rules (black on cream, cream on black) and lifts the
@@ -1210,9 +1241,16 @@ button.ghost {
    ================================================================== */
 
 [data-skin='brutal'] {
-  --display: Anton, Impact, "Arial Narrow", sans-serif;
-  --body: "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --mono: "Space Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  /* Technique: a font stack as per-letter fallback. The browser picks a
+     font for each character separately, taking the first in the list that
+     has it. Anton has no Cyrillic, so English headings are Anton and
+     Ukrainian ones fall through: to Impact where it is installed (Mac,
+     Windows), and to Fira Sans Extra Condensed on phones, which have no
+     Impact. A web font is downloaded only when a character actually needs
+     it, so Fira costs nothing on an English page or on a Mac. */
+  --display: Anton, Impact, "Fira Sans Extra Condensed", "Arial Narrow", sans-serif;
+  --body: "Golos Text", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
   --bg: #f6f5f1;
   --rule: #0a0a0a;
@@ -1266,7 +1304,7 @@ button.ghost {
 
 [data-skin='brutal'] .page {
   width: calc(100% - 32px);
-  /* Clear of the fixed skin picker, which would otherwise sit on the band. */
+  /* Clear of the pickers in the corner, which would otherwise sit on the band. */
   margin: 64px auto 48px;
   padding: 0;
   gap: 0;
@@ -1724,14 +1762,14 @@ button.ghost {
   [data-skin='brutal'] .page { margin-top: 16px; }
   [data-skin='brutal'] .masthead { grid-template-columns: 1fr; }
   [data-skin='brutal'] .tagline { text-align: left; }
-  [data-skin='brutal'] .skin-dial { top: 22px; right: 24px; }
+  [data-skin='brutal'] .prefs { top: 22px; right: 24px; }
 }
 
 /* ---------- phone ---------- */
 
 @media (max-width: 460px) {
   [data-skin='brutal'] .page { width: calc(100% - 16px); margin-top: 8px; }
-  [data-skin='brutal'] .skin-dial { top: 18px; right: 16px; }
+  [data-skin='brutal'] .prefs { top: 18px; right: 16px; }
   [data-skin='brutal'] .masthead { grid-template-columns: 1fr; padding: 18px 16px; }
   [data-skin='brutal'] .tagline { text-align: left; }
   [data-skin='brutal'] .intake,
@@ -2576,7 +2614,7 @@ button.ghost {
   font-size: 20px;
   line-height: 1;
   color: var(--ink-muted);
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: lining-nums tabular-nums;
 }
 
 .vol-main { grid-area: main; display: flex; flex-direction: column; gap: 1px; min-width: 0; }
@@ -3155,7 +3193,7 @@ button.ghost {
   color: var(--ink-soft);
 }
 
-.allowance b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+.allowance b { color: var(--ink); font-weight: 600; font-variant-numeric: lining-nums tabular-nums; }
 .allowance small { flex-basis: 100%; font-size: 13px; color: var(--ink-muted); }
 .allowance-bar { position: relative; flex: none; width: 120px; height: 3px; background: var(--line); }
 .allowance-bar i { position: absolute; inset: 0 auto 0 0; background: var(--ink); }

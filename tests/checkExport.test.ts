@@ -3,6 +3,8 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { parseGoodreadsCsv } from '../src/goodreads.ts'
 import { checkParsed, leftOutNote, sniffExport } from '../src/checkExport.ts'
+import { en } from '../src/i18n/en.ts'
+import { uk } from '../src/i18n/uk.ts'
 
 const fixture = (name: string) => readFileSync(new URL(`./fixtures/${name}`, import.meta.url))
 const bytes = (name: string) => new Uint8Array(fixture(name))
@@ -60,7 +62,8 @@ describe('checkParsed — what the full read finds', () => {
   it('odd but readable rows still load, with a note on what was left out', () => {
     const result = parse('bad-edge-cases.csv')
     assert.equal(checkParsed(result), null)
-    assert.equal(leftOutNote(result), '2 rows left out: 2 with no title.')
+    assert.equal(leftOutNote(result, en), '2 rows left out: 2 with no title.')
+    assert.equal(leftOutNote(result, uk), 'Пропущено 2 рядки: 2 — без назви.')
   })
 
   it('ratings outside 1–5 are treated as no rating', () => {
@@ -72,6 +75,6 @@ describe('checkParsed — what the full read finds', () => {
   it('a clean export has nothing to report', () => {
     const result = parse('classics.csv')
     assert.equal(checkParsed(result), null)
-    assert.equal(leftOutNote(result), null)
+    assert.equal(leftOutNote(result, en), null)
   })
 })

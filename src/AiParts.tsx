@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
+import { useLanguage } from './language.ts'
 
 /**
  * The small things only the AI tab draws: a stand-in cover, the link to the
@@ -77,13 +78,9 @@ export function SourceLink({ url }: { url: string }) {
 
 /** A release date no page gave. Not "no date yet": that would read as unannounced. */
 export function UnknownDate() {
+  const { t } = useLanguage()
   return (
-    <span
-      className="unknown"
-      role="img"
-      title="Release date not found on the source page"
-      aria-label="Release date not found on the source page"
-    >
+    <span className="unknown" role="img" title={t.volume.unknownDate} aria-label={t.volume.unknownDate}>
       ?
     </span>
   )
@@ -112,6 +109,7 @@ function Headphones() {
  * useEffect is its cleanup: it removes the listeners when the note closes.
  */
 export function AiAudioMark({ audio }: { audio?: { year: string | null; publisher: string | null } | null }) {
+  const { t } = useLanguage()
   const [open, setOpen] = useState(false)
   const wrap = useRef<HTMLSpanElement>(null)
   const id = useId()
@@ -134,7 +132,7 @@ export function AiAudioMark({ audio }: { audio?: { year: string | null; publishe
 
   const facts = [audio?.year, audio?.publisher].filter(Boolean).join(' · ')
   if (!facts) {
-    const label = 'Audiobook mentioned on the source page'
+    const label = t.volume.audioMentioned
     return (
       <span className="audio-mark" role="img" aria-label={label} title={label}>
         <Headphones />
@@ -149,13 +147,13 @@ export function AiAudioMark({ audio }: { audio?: { year: string | null; publishe
         className="au-btn audio-mark"
         aria-expanded={open}
         aria-controls={id}
-        aria-label={`Audiobook: ${facts}`}
+        aria-label={t.volume.audioFacts(facts)}
         onClick={() => setOpen((was) => !was)}
       >
         <Headphones />
       </button>
       <span className="au-pop" id={id} role="note">
-        <span className="au-pop-h">Audiobook</span>
+        <span className="au-pop-h">{t.volume.audiobook}</span>
         <span>{facts}</span>
       </span>
     </span>

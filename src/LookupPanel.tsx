@@ -1,16 +1,12 @@
 import { useEffect, useState } from 'react'
 import type { CSSProperties } from 'react'
-import { brief, listNames, word } from './lookupWords.ts'
+import { useLanguage } from './language.ts'
+import { brief } from './lookupWords.ts'
 import type { SeriesState } from './state'
 import { setTurnstileSlot } from './turnstile'
 
 export type LookupPhase = 'before' | 'during' | 'after' | 'failed'
 export type FailureKind = 'busy' | 'unset' | 'unreachable' | 'check' | 'budget'
-
-function sentence(parts: string[]): string {
-  const joined = parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`
-  return `${joined.charAt(0).toUpperCase()}${joined.slice(1)}.`
-}
 
 export interface LookupSummary {
   ready: number
@@ -24,6 +20,9 @@ export interface LookupSummary {
  * about, what came back. Before, during and failed share one minimum height
  * so the page underneath does not jump between them; the finished panel is
  * allowed to be shorter, because nothing follows it.
+ *
+ * The sentences themselves are in the catalogue (`lookup` in src/i18n);
+ * this component decides which one applies and where it goes.
  */
 export function LookupPanel({
   phase,
@@ -52,6 +51,8 @@ export function LookupPanel({
   onLookUp: () => void
   onShowResults: () => void
 }) {
+  const { t } = useLanguage()
+  const words = t.lookup
   // The batch is in flight as one request, so which series is "current" is
   // not knowable; cycling through the ones still out is honest about that
   // and keeps the line moving.
@@ -94,56 +95,28 @@ export function LookupPanel({
   let title: string
   let body: string | null = null
   if (phase === 'before') {
-    title = `Ready to look up ${total} series`
-    body =
-      'We’ll ask Hardcover what comes next in each one. It takes a few seconds, and only the series names and authors are sent.'
+    title = words.beforeTitle(total)
+    body = words.beforeBody
   } else if (phase === 'during') {
-    title = 'Asking about'
+    title = words.asking
   } else if (phase === 'after') {
-    title =
-      summary.ready > 0
-        ? `${word(summary.ready, true)} series ${summary.ready === 1 ? 'has' : 'have'} a next book waiting`
-        : 'You’re all caught up'
-    const parts: string[] = []
-    const { reading, waiting, complete } = summary
-    if (reading.length === 1) parts.push(`you’re partway through ${reading[0]}`)
-    else if (reading.length > 1) parts.push(`you’re partway through ${word(reading.length)} series`)
-    if (waiting.length === 1) parts.push(`${waiting[0]} is waiting on its author`)
-    else if (waiting.length > 1) parts.push(`${word(waiting.length)} are waiting on their authors`)
-    if (complete.length === 1) parts.push(`you’ve finished ${complete[0]}`)
-    else if (complete.length > 1) parts.push(`you’ve finished ${word(complete.length)}`)
-    body = parts.length > 0 ? sentence(parts) : null
+    title = words.afterTitle(summary.ready)
+    body = words.afterBody(summary)
   } else if (failure === 'unset') {
-    title = 'Series lookup isn’t set up here'
-    body = 'This server isn’t fully configured yet, so nothing can be looked up.'
+    title = words.unsetTitle
+    body = words.unsetBody
   } else if (failure === 'budget') {
-    title = 'Today’s new lookups are used up'
-    const heardLine =
-      heardCount > 0
-        ? `We have ${heardCount} of your ${total} series.`
-        : `None of your ${total} series could be looked up.`
-    body = `${heardLine} The rest are new to this site, and it has used its share of Hardcover for today. They’ll work again after midnight UTC.`
+    title = words.budgetTitle
+    body = words.budgetBody(heardCount, total)
   } else if (failure === 'check') {
-    title = 'Couldn’t confirm you’re a person'
-    body =
-      'Cloudflare’s quick check didn’t go through, so nothing was looked up. Try again — if a box appears, tick it.'
+    title = words.checkTitle
+    body = words.checkBody
   } else {
-    title = failure === 'busy' ? 'Hardcover is busy right now' : 'Couldn’t reach Hardcover'
-    const heardLine =
-      heardCount > 0
-        ? `We heard back about ${heardCount} of your ${total} series.`
-        : `None of your ${total} series came back.`
-    const who = heardCount > 0 ? listNames(failedNames) : 'They'
-    body =
-      failure === 'busy'
-        ? secs > 0
-          ? `${heardLine} ${who} can try again in ${secs} seconds.`
-          : `${heardLine} ${who} can try again now.`
-        : `${heardLine} Try again — it is usually temporary.`
+    title = failure === 'busy' ? words.busyTitle : words.unreachableTitle
+    body = words.failedBody(heardCount, total, failedNames, failure === 'busy' ? secs : null)
   }
 
-  const spoken =
-    phase === 'during' ? `Looking up series: ${heardCount} of ${total} done.` : title
+  const spoken = phase === 'during' ? words.spoken(heardCount, total) : title
 
   return (
     <div className="lookup" data-phase={phase}>
@@ -181,17 +154,13 @@ export function LookupPanel({
           )}
         </h3>
 
-        {phase === 'during' && (
-          <p className="lookup-body">
-            Heard back about {heardCount} of {total} so far.
-          </p>
-        )}
+        {phase === 'during' && <p className="lookup-body">{words.heardSoFar(heardCount, total)}</p>}
         {body && <p className="lookup-body">{body}</p>}
 
         {phase === 'during' && shown.length > 0 && (
           <ul className="lookup-heard">
             {shown.map((state) => {
-              const line = brief(state)
+              const line = brief(state, t)
               return (
                 <li key={state.key}>
                   <span className={`badge badge-${line.kind}`}>{line.label}</span>
@@ -207,7 +176,7 @@ export function LookupPanel({
         {phase === 'before' && (
           <div className="lookup-actions">
             <button type="button" className="lookup-go" onClick={onLookUp}>
-              Look up {total} series
+              {words.go(total)}
             </button>
           </div>
         )}
@@ -219,11 +188,11 @@ export function LookupPanel({
         {phase === 'failed' && (
           <div className="lookup-actions">
             <button type="button" className="lookup-go lookup-retry" onClick={onLookUp}>
-              Try again now
+              {words.retry}
             </button>
             {heardCount > 0 && (
               <button type="button" className="ghost" onClick={onShowResults}>
-                Show the {heardCount} we have
+                {words.showWhatWeHave(heardCount)}
               </button>
             )}
           </div>

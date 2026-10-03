@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { Fragment, useMemo, useState } from 'react'
 import type { ChangeEvent, ReactNode } from 'react'
 import { parseGoodreadsCsv } from './goodreads'
 import type { Book, ParseResult } from './goodreads'
@@ -21,11 +21,16 @@ import type { FailureKind, LookupPhase } from './LookupPanel.tsx'
 import type { AiNote, SeriesState, Tile, VolumeRow } from './state'
 import { BoardTiles, ListHead } from './BoardTiles.tsx'
 import { SNIFF_BYTES, checkParsed, leftOutNote, sniffExport, sniffText } from './checkExport'
+import type { IntakeProblem } from './checkExport'
+import type { Messages } from './i18n/index.ts'
+import { dayMonth, dayMonthYear, monthYear } from './dates.ts'
 import { FileError } from './FileError.tsx'
+import { useLanguage } from './language.ts'
+import { LanguagePicker } from './LanguagePicker.tsx'
+import { Rich } from './Rich.tsx'
 import { MAX_FAVOURITES, addFavourite, asideKeys, bringBack, hasChoices, isFull, presentFavourites, removeFavourite, setAside } from './choices'
 import type { Choices } from './choices'
 import { useChoices } from './useChoices'
-import type { IntakeProblem } from './FileError.tsx'
 
 /**
  * A Goodreads export of 5,000 books is about 2 MB. Ten times that is not a
@@ -34,18 +39,22 @@ import type { IntakeProblem } from './FileError.tsx'
  */
 const MAX_FILE_BYTES = 20 * 1024 * 1024
 
-function describeSize(bytes: number): string {
-  return bytes >= 1024 * 1024
-    ? `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-    : `${Math.round(bytes / 1024)} KB`
-}
+/** A link that opens in a new tab, for the tags inside translated sentences. */
+const linkTo = (href: string) => (label: string) => (
+  <a href={href} target="_blank" rel="noopener noreferrer">
+    {label}
+  </a>
+)
 
 export default function App() {
   const [parsed, setParsed] = useState<ParseResult | null>(null)
   const [summary, setSummary] = useState<SeriesSummary | null>(null)
   const [problem, setProblem] = useState<IntakeProblem | null>(null)
   const [fileName, setFileName] = useState<string | null>(null)
-  const [leftOut, setLeftOut] = useState<string | null>(null)
+  // The bundled sample has no file name; what it is called depends on the
+  // language, so the fact is kept here and the words are chosen on render.
+  const [sample, setSample] = useState(false)
+  const { t } = useLanguage()
   const [choices, updateChoices, forgetChoices] = useChoices()
   // Which lookup the board is showing. Every library opens on Hardcover.
   // Pattern: lifting state up. The board and the footer both depend on the
@@ -56,7 +65,7 @@ export default function App() {
   function clearLibrary() {
     setParsed(null)
     setSummary(null)
-    setLeftOut(null)
+    setSample(false)
     setSource('hardcover')
   }
 
@@ -73,7 +82,7 @@ export default function App() {
   }
 
   /** Reads a CSV from anywhere: a chosen file, or the bundled sample. */
-  function accept(text: string, name: string) {
+  function accept(text: string, name: string | null) {
     const result = parseGoodreadsCsv(text)
     const wrong = checkParsed(result)
     if (wrong) {
@@ -84,7 +93,7 @@ export default function App() {
     setParsed(result)
     setSummary(groupIntoSeries(result.books))
     setFileName(name)
-    setLeftOut(leftOutNote(result))
+    setSample(name === null)
   }
 
   /**
@@ -99,7 +108,7 @@ export default function App() {
       const text = await response.text()
       const wrong = sniffText(text)
       if (wrong) throw new Error(wrong.kind)
-      accept(text, 'a sample library')
+      accept(text, null)
     } catch {
       refuse({ kind: 'sample' }, null)
     }
@@ -114,7 +123,7 @@ export default function App() {
     setProblem(null)
 
     if (file.size > MAX_FILE_BYTES) {
-      refuse({ kind: 'too-big', size: describeSize(file.size) }, file.name)
+      refuse({ kind: 'too-big', bytes: file.size }, file.name)
       return
     }
 
@@ -138,43 +147,43 @@ export default function App() {
       <header className="masthead">
         <h1>Loose Ends</h1>
         <p className="tagline">
-          <span>You&rsquo;ve read four.</span> <span>There are seven.</span>{' '}
-          <span>Here&rsquo;s book five.</span>
+          {t.masthead.tagline.map((line, index) => (
+            <Fragment key={index}>
+              {index > 0 && ' '}
+              <span>{line}</span>
+            </Fragment>
+          ))}
         </p>
-        <SkinPicker />
+        <div className="prefs">
+          <LanguagePicker />
+          <SkinPicker />
+        </div>
       </header>
 
       <section className="intake">
         {parsed ? (
           <LibraryShelf
-            name={fileName ?? 'Your export'}
+            name={sample ? t.shelf.sampleName : (fileName ?? t.shelf.exportName)}
             books={parsed.books}
             counts={parsed.counts}
             standalone={summary?.unmatched.length ?? 0}
-            leftOut={leftOut}
+            leftOut={leftOutNote(parsed, t)}
             onReset={reset}
             remembered={hasChoices(choices)}
             onForget={forgetChoices}
           />
         ) : (
           <>
-        <h2>Your Goodreads export</h2>
+        <h2>{t.intake.heading}</h2>
 
         <ol className="how">
-          <li>
-            On Goodreads, open <b>My Books</b>
-          </li>
-          <li>
-            In the left sidebar under Tools, choose <b>Import and export</b>
-          </li>
-          <li>
-            Click <b>Export Library</b>, wait a few seconds, then download the file
-          </li>
+          {t.intake.steps.map((step, index) => (
+            <li key={index}>
+              <Rich text={step} tags={{ b: (name) => <b>{name}</b> }} />
+            </li>
+          ))}
         </ol>
-        <p className="note">
-          Desktop browser only &mdash; the Goodreads app has no export. Don&rsquo;t open
-          the file in Excel first; it quietly changes ISBNs and dates.
-        </p>
+        <p className="note">{t.intake.desktopOnly}</p>
 
         {problem && <FileError problem={problem} fileName={fileName} />}
 
@@ -190,20 +199,17 @@ export default function App() {
             onChange={handleFile}
           />
           <label className="file-button" htmlFor="export-file">
-            {problem ? 'Choose a different file' : 'Choose your export file'}
+            {problem ? t.intake.chooseAnother : t.intake.choose}
           </label>
 
-          <span className="file-or">or</span>
+          <span className="file-or">{t.intake.or}</span>
 
           <button type="button" className="ghost" onClick={loadSample}>
-            Try a sample library
+            {t.intake.sample}
           </button>
         </div>
 
-        <p className="note">
-          Your library is read here in your browser. It is never uploaded and
-          never stored. Favourites and set-asides are remembered in this browser.
-        </p>
+        <p className="note">{t.intake.privacy}</p>
           </>
         )}
       </section>
@@ -218,30 +224,13 @@ export default function App() {
         />
       )}
 
-      {summary && source === 'ai' ? (
-        <footer className="colophon">
-          AI lookup is an experiment. Series names and authors are sent to{' '}
-          <a href="https://tavily.com" target="_blank" rel="noopener noreferrer">
-            Tavily
-          </a>{' '}
-          to search the web, and to Cloudflare Workers AI to read what it finds. Book
-          lists come from the linked pages and may be wrong. Your books and ratings stay
-          in this browser, and so do your favourites and set-asides. Opening this tab runs
-          Cloudflare Turnstile, a quick check that you&rsquo;re a person; it sees your
-          browser, not your books.
-        </footer>
-      ) : (
-        <footer className="colophon">
-          Series data and covers from{' '}
-          <a href="https://hardcover.app" target="_blank" rel="noopener noreferrer">
-            Hardcover
-          </a>
-          . Only series names and authors are sent, to look them up; your books and
-          ratings stay in this browser, and so do your favourites and set-asides.
-          Pressing Look up runs Cloudflare Turnstile, a quick check that you&rsquo;re a
-          person; it sees your browser, not your books.
-        </footer>
-      )}
+      <footer className="colophon">
+        {summary && source === 'ai' ? (
+          <Rich text={t.footer.ai} tags={{ a: linkTo('https://tavily.com') }} />
+        ) : (
+          <Rich text={t.footer.hardcover} tags={{ a: linkTo('https://hardcover.app') }} />
+        )}
+      </footer>
     </main>
   )
 }
@@ -264,6 +253,7 @@ function SeriesBoard({
   source: Source
   onSource: (source: Source) => void
 }) {
+  const { t } = useLanguage()
   const started = useMemo(
     () => summary.groups.filter((group) => group.readCount > 0),
     [summary],
@@ -523,9 +513,9 @@ function SeriesBoard({
 
   return (
     <section className="board">
-      <h2>Series</h2>
+      <h2>{t.board.heading}</h2>
 
-      <div className="source-tabs" role="tablist" aria-label="Where series data comes from">
+      <div className="source-tabs" role="tablist" aria-label={t.board.sources}>
         <button
           type="button"
           role="tab"
@@ -546,7 +536,7 @@ function SeriesBoard({
           aria-controls="series-panel"
           onClick={openAiTab}
         >
-          AI lookup <span className="exp">experimental</span>
+          {t.board.aiTab} <span className="exp">{t.board.experimental}</span>
         </button>
       </div>
 
@@ -615,26 +605,20 @@ function SeriesBoard({
           visible.length > 0 && (
             <p className="fav-hint">
               <HeartIcon />
-              Heart up to {MAX_FAVOURITES} series to keep them at the top.
+              {t.board.heartHint(MAX_FAVOURITES)}
             </p>
           )
         ) : (
           <>
             <h3 className="list-label fav-label">
-              Favourites{' '}
-              <span className="list-label-note">
-                {pinned.length} of {MAX_FAVOURITES}
-              </span>
+              {t.board.favourites}{' '}
+              <span className="list-label-note">{t.board.favouritesCount(pinned.length, MAX_FAVOURITES)}</span>
             </h3>
             <ul className="series-list">{pinned.map(row)}</ul>
             {rest.length > 0 && (
               <h3 className="list-label">
-                Everything else
-                {full && (
-                  <span className="list-label-note">
-                    Your top {MAX_FAVOURITES} is full &mdash; remove a heart above to choose another.
-                  </span>
-                )}
+                {t.board.everythingElse}
+                {full && <span className="list-label-note">{t.board.favouritesFull(MAX_FAVOURITES)}</span>}
               </h3>
             )}
           </>
@@ -651,12 +635,7 @@ function SeriesBoard({
         />
       )}
 
-      {notStarted > 0 && (
-        <p className="note">
-          {notStarted} series in your export {notStarted === 1 ? 'has' : 'have'} nothing
-          read yet, so {notStarted === 1 ? 'it is' : 'they are'} not listed here.
-        </p>
-      )}
+      {notStarted > 0 && <p className="note">{t.board.notStarted(notStarted)}</p>}
     </section>
   )
 }
@@ -683,6 +662,7 @@ function StandaloneDrawer({
   open: boolean
   onToggle: () => void
 }) {
+  const { t } = useLanguage()
   return (
     <section className={`drawer${open ? ' is-open' : ''}`}>
       <button
@@ -698,10 +678,8 @@ function StandaloneDrawer({
           <i className="chev" />
         </span>
         <span className="drawer-id">
-          <span className="drawer-title">Not in a series</span>
-          <span className="drawer-meta">
-            {books.length} book{books.length === 1 ? '' : 's'} &middot; standalone
-          </span>
+          <span className="drawer-title">{t.board.standaloneTitle}</span>
+          <span className="drawer-meta">{t.board.standaloneMeta(books.length)}</span>
         </span>
         {!open && (
           <span className="drawer-spines" aria-hidden="true">
@@ -714,10 +692,7 @@ function StandaloneDrawer({
 
       {open && (
         <div className="volumes" id="standalone-books">
-          <p className="note drawer-note">
-            No series in the Goodreads title. A few may be series books Goodreads never
-            labelled &mdash; worth a look if one of yours is missing above.
-          </p>
+          <p className="note drawer-note">{t.board.standaloneNote}</p>
           <ol className="volume-list">
             {books.map((book, index) => (
               <BookLine key={`${book.title}-${index}`} book={book} />
@@ -730,6 +705,7 @@ function StandaloneDrawer({
 }
 
 function BookLine({ book }: { book: Book }) {
+  const { t } = useLanguage()
   return (
     <li className={`volume volume-book volume-${book.shelf}`}>
       <span className="vol-main">
@@ -738,7 +714,7 @@ function BookLine({ book }: { book: Book }) {
           {book.author && <span className="vol-author"> &middot; {book.author}</span>}
         </span>
       </span>
-      <span className={`vol-status status-${book.shelf}`}>{shelfWords(book.shelf, book.dateRead)}</span>
+      <span className={`vol-status status-${book.shelf}`}>{shelfWords(t, book.shelf, book.dateRead)}</span>
       <span className="vol-stars">{book.rating ? <Stars rating={book.rating} /> : null}</span>
     </li>
   )
@@ -776,6 +752,7 @@ function SeriesRow({
   /** On the AI tab: made-up covers, source links, and no Hardcover links. */
   ai: boolean
 }) {
+  const { t } = useLanguage()
   const panelId = `volumes-${state.key.replace(/[^a-z0-9]+/g, '-')}`
   // Before the lookup there are no covers to show, so the rows don't reserve room for one.
   const lookedUp = state.status !== 'unknown'
@@ -812,7 +789,7 @@ function SeriesRow({
             <span className="series-name">
               {state.name}
               {state.rows.some((row) => row.hasAudio) && (
-                <AudioMark label={ai ? 'Audiobooks mentioned on the source pages' : 'Has audiobooks'} />
+                <AudioMark label={ai ? t.row.hasAudioAi : t.row.hasAudio} />
               )}
             </span>
             <span className="byline">{state.author}</span>
@@ -828,7 +805,7 @@ function SeriesRow({
                 type="button"
                 className={`heart${favourite ? ' is-on' : ''}`}
                 aria-pressed={favourite}
-                aria-label={`Favourite: ${state.name}`}
+                aria-label={t.row.favourite(state.name)}
                 onClick={onFavourite}
               >
                 <HeartIcon />
@@ -840,10 +817,10 @@ function SeriesRow({
             <span className="progress-line">
               {state.totalBooks !== null ? (
                 <>
-                  <b>{state.readCount}</b> of {state.totalBooks}
+                  <b>{state.readCount}</b> {t.row.ofTotal(state.totalBooks)}
                 </>
               ) : (
-                shelfSummary(state.rows)
+                shelfSummary(t, state.rows)
               )}
             </span>
           </span>
@@ -853,10 +830,10 @@ function SeriesRow({
             <button
               type="button"
               className="aside-link"
-              aria-label={`${dismissed ? 'Bring back' : 'Set aside'} ${state.name}`}
+              aria-label={dismissed ? t.row.bringBackNamed(state.name) : t.row.setAsideNamed(state.name)}
               onClick={onToggle}
             >
-              {dismissed ? 'bring back' : 'set aside'}
+              {dismissed ? t.row.bringBack : t.row.setAside}
             </button>
           )}
         </span>
@@ -868,14 +845,14 @@ function SeriesRow({
         <div className="volumes" id={panelId}>
           {lookedUp && state.ai?.readingOrder && (
             <p className="order-note">
-              <span className="order-label">Reading order</span>
+              <span className="order-label">{t.row.readingOrder}</span>
               <span>
                 {state.ai.readingOrder.note} <SourceLink url={state.ai.readingOrder.url} />
               </span>
             </p>
           )}
           {state.rows.length === 0 ? (
-            <p className="note">No volume list yet. Run the lookup first.</p>
+            <p className="note">{t.row.noVolumes}</p>
           ) : (
             // The AI lookup finds no covers, so its list keeps no room for them.
             <ol className={`volume-list${lookedUp && !ai ? ' has-covers' : ''}`}>
@@ -890,10 +867,7 @@ function SeriesRow({
             </ol>
           )}
           {lookedUp && state.ai?.checkedAt && (
-            <p className="ai-stamp">
-              Found by AI on {dayMonthYear(state.ai.checkedAt)}, from the pages linked above. It
-              can be wrong.
-            </p>
+            <p className="ai-stamp">{t.row.foundByAi(dayMonthYear(state.ai.checkedAt, t.months))}</p>
           )}
         </div>
       )}
@@ -950,40 +924,8 @@ function Cover({
 }
 
 /** What the reader's own shelf says, in the words the list uses on the right. */
-function shelfWords(shelf: Book['shelf'], dateRead: string | null): string {
-  switch (shelf) {
-    case 'read':
-      return dateRead ? `read ${monthYear(dateRead)}` : 'read'
-    case 'reading':
-      return 'reading now'
-    case 'dnf':
-      return 'did not finish'
-    case 'to_read':
-      return 'on your list'
-  }
-}
-
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-
-/** "2022-02-19" → "Feb 2022": the day is noise at this distance. */
-function monthYear(date: string): string {
-  const [year, month] = date.split('-')
-  const name = MONTHS[Number(month) - 1]
-  return name ? `${name} ${year}` : year
-}
-
-/** "14 Oct": for a day close enough that the year goes without saying. */
-function dayMonth(date: string): string {
-  const [, month, day] = date.split('-')
-  const name = MONTHS[Number(month) - 1]
-  return name && day ? `${Number(day)} ${name}` : date
-}
-
-/** "12 Mar 2027": an audiobook date is usually a real day, so say the day. */
-function dayMonthYear(date: string): string {
-  const [year, month, day] = date.split('-')
-  const name = MONTHS[Number(month) - 1]
-  return name && day ? `${Number(day)} ${name} ${year}` : monthYear(date)
+function shelfWords(t: Messages, shelf: Book['shelf'], dateRead: string | null): string {
+  return t.volume.shelf(shelf, dateRead ? monthYear(dateRead, t.months) : null)
 }
 
 /**
@@ -1004,26 +946,20 @@ function AudioMark({ label }: { label: string }) {
 }
 
 /** What the mark on one book says when you hover it or hear it. */
-function audioLabel(row: VolumeRow): string {
-  return row.audioDate ? `Audiobook due ${dayMonthYear(row.audioDate)}` : 'Audiobook available'
+function audioLabel(t: Messages, row: VolumeRow): string {
+  return row.audioDate ? t.volume.audioDue(dayMonthYear(row.audioDate, t.months)) : t.volume.audioAvailable
 }
 
 /** Optional, and only when there is one: "audiobook 12 Mar 2027". */
-function audioWords(audioDate: string | null): string | null {
-  return audioDate ? `audiobook ${dayMonthYear(audioDate)}` : null
+function audioWords(t: Messages, audioDate: string | null): string | null {
+  return audioDate ? t.volume.audioOn(dayMonthYear(audioDate, t.months)) : null
 }
 
 /** "1 read · 2 on your list" — the closed row before any lookup has run. */
-function shelfSummary(rows: VolumeRow[]): string {
+function shelfSummary(t: Messages, rows: VolumeRow[]): string {
   const count = { read: 0, reading: 0, to_read: 0, dnf: 0 }
   for (const row of rows) if (row.mine) count[row.mine.shelf] += 1
-  const parts = [
-    count.read > 0 && `${count.read} read`,
-    count.reading > 0 && `${count.reading} reading now`,
-    count.to_read > 0 && `${count.to_read} on your list`,
-    count.dnf > 0 && `${count.dnf} did not finish`,
-  ].filter(Boolean)
-  return parts.length > 0 ? parts.join(' \u00b7 ') : 'none read'
+  return t.row.shelfSummary(count)
 }
 
 /** Whole numbers are the series; 0.5, 6.5 and the like are side stories. */
@@ -1037,31 +973,32 @@ function isSideStory(position: number): boolean {
  * up down the list.
  */
 function VolumeLine({ row, withCover, ai }: { row: VolumeRow; withCover: boolean; ai: boolean }) {
+  const { t } = useLanguage()
   const mine = row.mine
   const shelf = mine?.shelf ?? 'none'
   const side = isSideStory(row.position)
 
   const year =
     row.releaseDate && row.publication === 'announced'
-      ? `due ${monthYear(row.releaseDate)}`
+      ? t.volume.due(monthYear(row.releaseDate, t.months))
       : (row.releaseDate?.slice(0, 4) ?? (mine?.year ? String(mine.year) : null))
   // On the AI tab the reader's copy was matched by title, so it only counts
   // as a different title when more than case or punctuation differs.
   const otherTitle =
     mine && (ai ? normalise(mine.title) !== normalise(row.title) : mine.title !== row.title)
-      ? `your copy: ${mine.title}`
+      ? t.volume.yourCopy(mine.title)
       : null
   const parts: ReactNode[] = [
     // A book the AI list has, with no date on any page read: say so, rather
     // than nothing, which would look like an oversight.
     year ?? (ai && row.sourceUrl ? <UnknownDate key="date" /> : null),
-    audioWords(row.audioDate),
-    side ? 'side story' : null,
+    audioWords(t, row.audioDate),
+    side ? t.volume.sideStory : null,
     otherTitle,
     // Every book on the AI tab says where it was read.
     ai && row.sourceUrl ? (
       <span key="source">
-        from <SourceLink url={row.sourceUrl} />
+        {t.volume.from} <SourceLink url={row.sourceUrl} />
       </span>
     ) : null,
   ].filter(Boolean)
@@ -1093,20 +1030,21 @@ function VolumeLine({ row, withCover, ai }: { row: VolumeRow; withCover: boolean
           ) : (
             row.title
           )}
-          {row.hasAudio && (ai ? <AiAudioMark audio={row.audio} /> : <AudioMark label={audioLabel(row)} />)}
+          {row.hasAudio && (ai ? <AiAudioMark audio={row.audio} /> : <AudioMark label={audioLabel(t, row)} />)}
         </span>
         {sub && <span className="vol-sub">{sub}</span>}
       </span>
 
-      <span className={`vol-status status-${shelf}`}>{mine ? shelfWords(mine.shelf, mine.dateRead) : ''}</span>
+      <span className={`vol-status status-${shelf}`}>{mine ? shelfWords(t, mine.shelf, mine.dateRead) : ''}</span>
       <span className="vol-stars">{mine?.rating ? <Stars rating={mine.rating} /> : null}</span>
     </li>
   )
 }
 
 function Stars({ rating }: { rating: number }) {
+  const { t } = useLanguage()
   return (
-    <span className="rating" title={`${rating} of 5`}>
+    <span className="rating" title={t.volume.stars(rating)}>
       {'\u2605'.repeat(rating)}
       <span className="muted">{'\u2605'.repeat(5 - rating)}</span>
     </span>
@@ -1114,37 +1052,31 @@ function Stars({ rating }: { rating: number }) {
 }
 
 function Verdict({ state }: { state: SeriesState }) {
+  const { t } = useLanguage()
+  const words = t.verdict
   // Before the lookup the button already says what has not happened; five rows
   // repeating it just makes a working page look broken. On the AI tab a
   // series that was asked about and has no list says why.
   if (state.status === 'unknown') return state.ai?.miss ? <MissVerdict note={state.ai} /> : null
   if (state.status === 'reading') {
-    return <p className="verdict muted">You&rsquo;re reading it now</p>
+    return <p className="verdict muted">{words.readingNow}</p>
   }
   if (state.status === 'complete') {
     // A list read off the web often stops short of the newest book, so the
     // AI tab claims no more than it knows.
-    return (
-      <p className="verdict muted">
-        {state.ai ? 'You’ve read every book AI found' : 'You’ve finished it'}
-      </p>
-    )
+    return <p className="verdict muted">{state.ai ? words.finishedAi : words.finished}</p>
   }
   if (state.status === 'partial') {
-    return (
-      <p className="verdict muted">
-        Nothing left to read here, but the volume list looks incomplete
-      </p>
-    )
+    return <p className="verdict muted">{words.partial}</p>
   }
 
   const next = state.next
   if (!next) return null
 
   const year = next.releaseDate?.slice(0, 4)
-  const where = next.onYourList ? 'already on your list' : 'not in your library yet'
-  const onNow =
-    state.inProgressPosition !== null ? `you\u2019re on ${state.inProgressPosition}` : null
+  const where = next.onYourList ? words.onYourList : words.notInLibrary
+  const onNow = state.inProgressPosition !== null ? words.youAreOn(state.inProgressPosition) : null
+  const audio = audioWords(t, next.audioDate)
   const title = (
     <span className="next-title">
       {next.position} &middot; {next.title}
@@ -1154,10 +1086,10 @@ function Verdict({ state }: { state: SeriesState }) {
   if (next.publication === 'published') {
     return (
       <p className="verdict">
-        <span className="badge badge-go">Next</span>
+        <span className="badge badge-go">{words.next}</span>
         {title}
         <span className="next-why">
-          {[year, onNow ?? where, audioWords(next.audioDate)].filter(Boolean).join(' \u00b7 ')}
+          {[year, onNow ?? where, audio].filter(Boolean).join(' \u00b7 ')}
         </span>
       </p>
     )
@@ -1166,37 +1098,27 @@ function Verdict({ state }: { state: SeriesState }) {
   if (next.publication === 'announced' && next.releaseDate) {
     return (
       <p className="verdict">
-        <span className="badge badge-soon">Due {monthYear(next.releaseDate)}</span>
+        <span className="badge badge-soon">{words.due(monthYear(next.releaseDate, t.months))}</span>
         {title}
-        {(onNow || next.audioDate) && (
-          <span className="next-why">{[onNow, audioWords(next.audioDate)].filter(Boolean).join(' \u00b7 ')}</span>
-        )}
+        {(onNow || audio) && <span className="next-why">{[onNow, audio].filter(Boolean).join(' \u00b7 ')}</span>}
       </p>
     )
   }
 
   return (
     <p className="verdict">
-      <span className="badge badge-wait">No date yet</span>
+      <span className="badge badge-wait">{words.noDate}</span>
       {title}
-      {next.audioDate && <span className="next-why">{audioWords(next.audioDate)}</span>}
+      {audio && <span className="next-why">{audio}</span>}
     </p>
   )
 }
 
 /** Why the AI tab has no list for a series, and when that may change. */
 function MissVerdict({ note }: { note: AiNote }) {
-  const again = note.retryAfter ? ` Can be looked up again from ${dayMonth(note.retryAfter)}.` : ''
-  const [label, text] =
-    note.miss === 'not_confirmed'
-      ? ['Not confirmed', `The pages found didn’t agree on the books.${again}`]
-      : note.miss === 'not_found'
-        ? ['Not found', `The search found nothing about this series.${again}`]
-        : note.miss === 'allowance'
-          ? ['Waiting', 'Today’s shared allowance ran out before this one.']
-          : note.miss === 'month'
-            ? ['Waiting', 'This month’s searches ran out before this one.']
-            : ['No answer', 'The lookup couldn’t be reached for this one.']
+  const { t } = useLanguage()
+  if (!note.miss) return null
+  const [label, text] = t.verdict.miss(note.miss, note.retryAfter ? dayMonth(note.retryAfter, t.months) : null)
   return (
     <p className="verdict">
       <span className="badge badge-wait">{label}</span>

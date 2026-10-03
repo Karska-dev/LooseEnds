@@ -110,6 +110,32 @@ Both import the real functions rather than reimplementing them. A diagnostic
 that guesses at the logic will eventually disagree with it and tell you
 something false.
 
+### Words and languages
+
+No component holds text of its own. Everything the page says is in
+`src/i18n/en.ts`, and `src/i18n/uk.ts` is the same object in Ukrainian. The
+type of the English one is the contract: add a line to `en.ts` and `uk.ts`
+stops compiling until it has that line too.
+
+- An entry is a string, or a function when the sentence depends on a number
+  or a name: `books: (n) => …`. Each language builds the whole sentence
+  itself, because Ukrainian has three noun forms after a number where English
+  has two, and puts words in a different order. Do not assemble a sentence
+  from translated pieces in a component.
+- Components get the words with `const { t } = useLanguage()`
+  (`src/language.ts`). Plain functions take `t` as an argument.
+- A sentence with a link or bold text inside carries a tag, `<a>…</a>` or
+  `<b>…</b>`, and is rendered with `<Rich>` (`src/Rich.tsx`).
+- Book titles, series and authors are data and are never translated. Neither
+  are Goodreads' own menu names, which the reader has to find on its
+  English-only site.
+- The server answers in English only. Its error texts are read by code
+  (`failureKind`, `aiFailureKind`), not shown, so they stay as they are.
+
+A third language is a new file shaped like `uk.ts`, one line in `CATALOGUES`
+and one in `LANGUAGES` (`src/i18n/index.ts`). `tests/i18n.test.ts` then
+checks it against the English one.
+
 ## Testing
 
 `npm test` uses Node's built-in runner — no framework, no dev dependency.
