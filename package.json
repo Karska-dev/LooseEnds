@@ -29,7 +29,8 @@
     "lint": "oxlint",
     "test": "node --test \"tests/*.test.ts\"",
     "explain": "node scripts/explain-match.mjs",
-    "evict": "node scripts/evict-cache.mjs"
+    "evict": "node scripts/evict-cache.mjs",
+    "ai-explain": "node scripts/ai-explain.mjs"
   },
   "dependencies": {
     "papaparse": "^5.5.3",
