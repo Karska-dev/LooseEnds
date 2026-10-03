@@ -1,17 +1,24 @@
 import { useMemo, useState } from 'react'
-import type { ChangeEvent } from 'react'
+import type { ChangeEvent, ReactNode } from 'react'
 import { parseGoodreadsCsv } from './goodreads'
 import type { Book, ParseResult } from './goodreads'
 import { groupIntoSeries } from './series'
 import type { SeriesSummary } from './series'
-import { resolveAllSeries } from './resolve'
+import { postWithPass, resolveAllSeries } from './resolve'
 import type { SeriesResult } from './resolve'
+import { lookUpWithAi, readAiCached } from './aiResolve.ts'
+import type { AiAllowance, AiSeriesResult, AiStop } from './aiResolve.ts'
+import { buildAiSeriesState } from './aiState.ts'
+import { AiLookupPanel } from './AiLookupPanel.tsx'
+import type { AiPhase } from './AiLookupPanel.tsx'
+import { AiAudioMark, AiCover, NoCover, SourceLink, UnknownDate } from './AiParts.tsx'
+import { normalise } from './shared/aiLookup.ts'
 import { DEFAULT_VISIBLE, buildSeriesState, countTiles, isListed, sortSeriesStates, tileOf } from './state'
 import { SkinPicker } from './SkinPicker.tsx'
 import { LibraryShelf } from './LibraryShelf.tsx'
 import { LookupPanel } from './LookupPanel.tsx'
 import type { FailureKind, LookupPhase } from './LookupPanel.tsx'
-import type { SeriesState, Tile, VolumeRow } from './state'
+import type { AiNote, SeriesState, Tile, VolumeRow } from './state'
 import { BoardTiles, ListHead } from './BoardTiles.tsx'
 import { SNIFF_BYTES, checkParsed, leftOutNote, sniffExport, sniffText } from './checkExport'
 import { FileError } from './FileError.tsx'
@@ -40,12 +47,17 @@ export default function App() {
   const [fileName, setFileName] = useState<string | null>(null)
   const [leftOut, setLeftOut] = useState<string | null>(null)
   const [choices, updateChoices, forgetChoices] = useChoices()
+  // Which lookup the board is showing. Every library opens on Hardcover.
+  // Pattern: lifting state up. The board and the footer both depend on the
+  // open tab, so the state lives here, in their nearest common parent.
+  const [source, setSource] = useState<Source>('hardcover')
 
   /** Back to the intake. Leaves any error in place: it explains why we're here. */
   function clearLibrary() {
     setParsed(null)
     setSummary(null)
     setLeftOut(null)
+    setSource('hardcover')
   }
 
   function reset() {
@@ -196,30 +208,61 @@ export default function App() {
         )}
       </section>
 
-      {summary && <SeriesBoard summary={summary} choices={choices} onChoices={updateChoices} />}
+      {summary && (
+        <SeriesBoard
+          summary={summary}
+          choices={choices}
+          onChoices={updateChoices}
+          source={source}
+          onSource={setSource}
+        />
+      )}
 
-      <footer className="colophon">
-        Series data and covers from{' '}
-        <a href="https://hardcover.app" target="_blank" rel="noopener noreferrer">
-          Hardcover
-        </a>
-        . Only series names and authors are sent, to look them up; your books and
-        ratings stay in this browser, and so do your favourites and set-asides.
-        Pressing Look up runs Cloudflare Turnstile, a quick check that you&rsquo;re a
-        person; it sees your browser, not your books.
-      </footer>
+      {summary && source === 'ai' ? (
+        <footer className="colophon">
+          AI lookup is an experiment. Series names and authors are sent to{' '}
+          <a href="https://tavily.com" target="_blank" rel="noopener noreferrer">
+            Tavily
+          </a>{' '}
+          to search the web, and to Cloudflare Workers AI to read what it finds. Book
+          lists come from the linked pages and may be wrong. Your books and ratings stay
+          in this browser, and so do your favourites and set-asides. Opening this tab runs
+          Cloudflare Turnstile, a quick check that you&rsquo;re a person; it sees your
+          browser, not your books.
+        </footer>
+      ) : (
+        <footer className="colophon">
+          Series data and covers from{' '}
+          <a href="https://hardcover.app" target="_blank" rel="noopener noreferrer">
+            Hardcover
+          </a>
+          . Only series names and authors are sent, to look them up; your books and
+          ratings stay in this browser, and so do your favourites and set-asides.
+          Pressing Look up runs Cloudflare Turnstile, a quick check that you&rsquo;re a
+          person; it sees your browser, not your books.
+        </footer>
+      )}
     </main>
   )
 }
+
+/** Where the board's series data comes from. Two lookups, never mixed. */
+type Source = 'hardcover' | 'ai'
+
+const postAi = (payload: unknown) => postWithPass('/api/ai-series', payload)
 
 function SeriesBoard({
   summary,
   choices,
   onChoices,
+  source,
+  onSource,
 }: {
   summary: SeriesSummary
   choices: Choices
   onChoices: (update: (current: Choices) => Choices) => void
+  source: Source
+  onSource: (source: Source) => void
 }) {
   const started = useMemo(
     () => summary.groups.filter((group) => group.readCount > 0),
@@ -233,6 +276,22 @@ function SeriesBoard({
   const [visibleTiles, setVisibleTiles] = useState<Record<Tile, boolean>>({ ...DEFAULT_VISIBLE })
   const [standaloneOpen, setStandaloneOpen] = useState(false)
   const [openKey, setOpenKey] = useState<string | null>(null)
+
+  // The AI lookup keeps everything of its own: results, progress, and the
+  // series it set aside. Only the reader's choices are shared between tabs.
+  const [aiResolved, setAiResolved] = useState<Map<string, AiSeriesResult>>(new Map())
+  /** null until the tab is first opened; then whether the cache has been read. */
+  const [aiChecked, setAiChecked] = useState<boolean | null>(null)
+  const [aiRunning, setAiRunning] = useState(false)
+  const [aiCurrent, setAiCurrent] = useState<string | null>(null)
+  const [aiStop, setAiStop] = useState<AiStop | null>(null)
+  const [aiAllowance, setAiAllowance] = useState<AiAllowance | null>(null)
+  /** Keys answered since the button was last pressed, in the order they came. */
+  const [aiHeard, setAiHeard] = useState<string[]>([])
+  /** Keys that were already known when the tab opened. */
+  const [aiKnown, setAiKnown] = useState<Set<string>>(new Set())
+  const [aiAutoAside, setAiAutoAside] = useState<Set<string>>(new Set())
+  const ai = source === 'ai'
 
   /**
    * Books whose Goodreads title carried no series. Mostly genuine
@@ -250,6 +309,21 @@ function SeriesBoard({
 
   /** Series present in the export but never started: not loose ends, still counted. */
   const notStarted = summary.groups.length - started.length
+
+  // Each tab's list, in board order. Worked out here, above the lookups that
+  // read them: the AI lookup asks about series in this order.
+  // Technique: derived state. The lists are never stored; they are computed
+  // from the results, so the two cannot disagree. useMemo keeps the last
+  // answer until `started` or the results change.
+  const hardcoverStates = useMemo(
+    () => sortSeriesStates(started.map((g) => buildSeriesState(g, resolved.get(g.key)))),
+    [started, resolved],
+  )
+  const aiStates = useMemo(
+    () => sortSeriesStates(started.map((g) => buildAiSeriesState(g, aiResolved.get(g.key)))),
+    [started, aiResolved],
+  )
+  const states = ai ? aiStates : hardcoverStates
 
   async function lookUp() {
     setProgress({ done: 0, total: started.length })
@@ -277,13 +351,82 @@ function SeriesBoard({
     )
   }
 
-  const states = useMemo(
-    () => sortSeriesStates(started.map((g) => buildSeriesState(g, resolved.get(g.key)))),
-    [started, resolved],
-  )
+  /** A DNF part-way through a series the AI found: set aside, as on the Hardcover tab. */
+  function setAsideAbandoned(results: Map<string, AiSeriesResult>) {
+    setAiAutoAside(
+      new Set(
+        started
+          .filter((group) => {
+            if (!group.hasDnf) return false
+            const state = buildAiSeriesState(group, results.get(group.key))
+            return state.status !== 'unknown' && state.status !== 'complete'
+          })
+          .map((group) => group.key),
+      ),
+    )
+  }
+
+  /**
+   * The first time the AI tab is opened: show what has been looked up
+   * before, by this reader or anyone else. One request, and it costs none
+   * of the allowance, so it needs no button.
+   */
+  async function openAiTab() {
+    onSource('ai')
+    if (aiChecked !== null) return
+    setAiChecked(false)
+    const { found, allowance } = await readAiCached(
+      started.map((group) => ({ key: group.key, name: group.name, author: group.author })),
+      postAi,
+    )
+    setAiResolved(found)
+    setAiKnown(new Set(found.keys()))
+    setAiAllowance(allowance)
+    setAsideAbandoned(found)
+    setAiChecked(true)
+  }
+
+  /** The rest, one series at a time, in the order the board lists them. */
+  async function lookUpAi() {
+    if (aiRunning) return
+    const results = new Map(aiResolved)
+    const pending = aiStates
+      .filter((state) => {
+        const result = results.get(state.key)
+        return !result || result.status === 'error'
+      })
+      .map((state) => ({ key: state.key, name: state.name, author: state.author }))
+    if (pending.length === 0) return
+
+    setAiRunning(true)
+    setAiStop(null)
+    setAiHeard([])
+    const { stopped } = await lookUpWithAi(
+      pending,
+      postAi,
+      {
+        onStart: (item) => setAiCurrent(item.name),
+        onResult: (item, result, allowance) => {
+          results.set(item.key, result)
+          setAiResolved(new Map(results))
+          if (result.status !== 'error') setAiHeard((heard) => [...heard, item.key])
+          if (allowance) setAiAllowance(allowance)
+        },
+      },
+      // The dev server has no rate limit to stay under.
+      import.meta.env.DEV ? 0 : undefined,
+    )
+    setAiCurrent(null)
+    setAiStop(stopped)
+    setAiRunning(false)
+    setAsideAbandoned(results)
+  }
 
   const present = useMemo(() => new Set(started.map((group) => group.key)), [started])
-  const dismissed = useMemo(() => asideKeys(choices, autoAside), [choices, autoAside])
+  const dismissed = useMemo(
+    () => asideKeys(choices, ai ? aiAutoAside : autoAside),
+    [choices, ai, aiAutoAside, autoAside],
+  )
   const favourites = new Set(presentFavourites(choices, present))
   const full = isFull(choices, present)
 
@@ -330,6 +473,27 @@ function SeriesBoard({
     .filter((state) => resolved.get(state.key)?.status === 'error')
     .map((state) => state.name)
 
+  // The AI panel's figures. A series is pending until it has an answer the
+  // server keeps: a list, or a miss. A failure can be asked about again.
+  const aiPending = started.filter((group) => {
+    const result = aiResolved.get(group.key)
+    return !result || result.status === 'error'
+  }).length
+  const aiByKey = new Map(aiStates.map((state) => [state.key, state]))
+  const aiFound = aiStates.filter((state) => state.status !== 'unknown')
+  const aiPhase: AiPhase =
+    aiChecked !== true
+      ? 'checking'
+      : aiRunning
+        ? 'during'
+        : aiStop
+          ? 'stopped'
+          : aiPending === 0
+            ? 'after'
+            : 'before'
+  // Tiles and counts appear once a tab has something to count.
+  const hasResults = ai ? aiFound.length > 0 : resolved.size > 0
+
   function toggleAside(key: string) {
     onChoices((current) =>
       dismissed.has(key) ? bringBack(current, key) : setAside(current, key, present),
@@ -353,6 +517,7 @@ function SeriesBoard({
       onFavourite={() => toggleFavourite(state.key)}
       open={openKey === state.key}
       onOpen={() => setOpenKey(openKey === state.key ? null : state.key)}
+      ai={ai}
     />
   )
 
@@ -360,6 +525,58 @@ function SeriesBoard({
     <section className="board">
       <h2>Series</h2>
 
+      <div className="source-tabs" role="tablist" aria-label="Where series data comes from">
+        <button
+          type="button"
+          role="tab"
+          id="tab-hardcover"
+          className="source-tab"
+          aria-selected={!ai}
+          aria-controls="series-panel"
+          onClick={() => onSource('hardcover')}
+        >
+          Hardcover
+        </button>
+        <button
+          type="button"
+          role="tab"
+          id="tab-ai"
+          className="source-tab"
+          aria-selected={ai}
+          aria-controls="series-panel"
+          onClick={openAiTab}
+        >
+          AI lookup <span className="exp">experimental</span>
+        </button>
+      </div>
+
+      <div
+        className="tab-panel"
+        id="series-panel"
+        role="tabpanel"
+        aria-labelledby={ai ? 'tab-ai' : 'tab-hardcover'}
+      >
+      {ai ? (
+        <AiLookupPanel
+          phase={aiPhase}
+          total={started.length}
+          foundCount={aiFound.length}
+          pendingCount={aiPending}
+          currentName={aiCurrent}
+          heard={aiHeard
+            .slice(-3)
+            .map((key) => aiByKey.get(key))
+            .filter((state): state is SeriesState => state !== undefined)}
+          knownNames={aiStates.filter((state) => aiKnown.has(state.key)).map((state) => state.name)}
+          ready={tileCounts.ready}
+          missedNames={aiStates
+            .filter((state) => state.ai?.miss === 'not_confirmed' || state.ai?.miss === 'not_found')
+            .map((state) => state.name)}
+          stop={aiStop}
+          allowance={aiAllowance}
+          onLookUp={lookUpAi}
+        />
+      ) : (
       <LookupPanel
         phase={phase}
         total={started.length}
@@ -379,8 +596,9 @@ function SeriesBoard({
           document.getElementById('series-list')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
         }
       />
+      )}
 
-      {resolved.size > 0 && (
+      {hasResults && (
         <>
           <BoardTiles counts={tileCounts} visible={visibleTiles} onToggle={toggleTile} />
           <ListHead
@@ -422,6 +640,7 @@ function SeriesBoard({
           </>
         )}
         {rest.length > 0 && <ul className="series-list">{rest.map(row)}</ul>}
+      </div>
       </div>
 
       {standalone.length > 0 && (
@@ -543,6 +762,7 @@ function SeriesRow({
   onFavourite,
   open,
   onOpen,
+  ai,
 }: {
   state: SeriesState
   dismissed: boolean
@@ -553,6 +773,8 @@ function SeriesRow({
   onFavourite: () => void
   open: boolean
   onOpen: () => void
+  /** On the AI tab: made-up covers, source links, and no Hardcover links. */
+  ai: boolean
 }) {
   const panelId = `volumes-${state.key.replace(/[^a-z0-9]+/g, '-')}`
   // Before the lookup there are no covers to show, so the rows don't reserve room for one.
@@ -563,7 +785,9 @@ function SeriesRow({
       className={
         // Faded only once the lookup can offer "bring back" beside it.
         `series-row${dismissed && lookedUp ? ' is-dismissed' : ''}${favourite ? ' is-favourite' : ''}${open ? ' is-open' : ''}` +
-        (state.status === 'unknown' ? ' is-pending' : '')
+        // On the AI tab found and unfound series share one list, so an
+        // unfound one keeps a cover-sized slot and the names stay in line.
+        (state.status === 'unknown' ? (ai ? ' is-unfound' : ' is-pending') : '')
       }
     >
       <div className="series-head">
@@ -577,12 +801,18 @@ function SeriesRow({
           <span className="chevron" aria-hidden="true">
             <i className="chev" />
           </span>
-          <Cover url={state.coverUrl} color={state.coverColor} alt="" size="lg" />
+          {!ai ? (
+            <Cover url={state.coverUrl} color={state.coverColor} alt="" size="lg" />
+          ) : lookedUp ? (
+            <AiCover name={state.name} />
+          ) : (
+            <NoCover />
+          )}
           <span className="series-id">
             <span className="series-name">
               {state.name}
               {state.rows.some((row) => row.hasAudio) && (
-                <AudioMark label="Has audiobooks" />
+                <AudioMark label={ai ? 'Audiobooks mentioned on the source pages' : 'Has audiobooks'} />
               )}
             </span>
             <span className="byline">{state.author}</span>
@@ -636,14 +866,34 @@ function SeriesRow({
 
       {open && (
         <div className="volumes" id={panelId}>
+          {lookedUp && state.ai?.readingOrder && (
+            <p className="order-note">
+              <span className="order-label">Reading order</span>
+              <span>
+                {state.ai.readingOrder.note} <SourceLink url={state.ai.readingOrder.url} />
+              </span>
+            </p>
+          )}
           {state.rows.length === 0 ? (
             <p className="note">No volume list yet. Run the lookup first.</p>
           ) : (
-            <ol className={`volume-list${lookedUp ? ' has-covers' : ''}`}>
+            // The AI lookup finds no covers, so its list keeps no room for them.
+            <ol className={`volume-list${lookedUp && !ai ? ' has-covers' : ''}`}>
               {state.rows.map((row) => (
-                <VolumeLine key={`${row.position}-${row.title}`} row={row} withCover={lookedUp} />
+                <VolumeLine
+                  key={`${row.position}-${row.title}`}
+                  row={row}
+                  withCover={lookedUp && !ai}
+                  ai={ai && lookedUp}
+                />
               ))}
             </ol>
+          )}
+          {lookedUp && state.ai?.checkedAt && (
+            <p className="ai-stamp">
+              Found by AI on {dayMonthYear(state.ai.checkedAt)}, from the pages linked above. It
+              can be wrong.
+            </p>
           )}
         </div>
       )}
@@ -722,6 +972,13 @@ function monthYear(date: string): string {
   return name ? `${name} ${year}` : year
 }
 
+/** "14 Oct": for a day close enough that the year goes without saying. */
+function dayMonth(date: string): string {
+  const [, month, day] = date.split('-')
+  const name = MONTHS[Number(month) - 1]
+  return name && day ? `${Number(day)} ${name}` : date
+}
+
 /** "12 Mar 2027": an audiobook date is usually a real day, so say the day. */
 function dayMonthYear(date: string): string {
   const [year, month, day] = date.split('-')
@@ -779,7 +1036,7 @@ function isSideStory(position: number): boolean {
  * then what your shelf says and your stars on the right edge, so both line
  * up down the list.
  */
-function VolumeLine({ row, withCover }: { row: VolumeRow; withCover: boolean }) {
+function VolumeLine({ row, withCover, ai }: { row: VolumeRow; withCover: boolean; ai: boolean }) {
   const mine = row.mine
   const shelf = mine?.shelf ?? 'none'
   const side = isSideStory(row.position)
@@ -788,9 +1045,35 @@ function VolumeLine({ row, withCover }: { row: VolumeRow; withCover: boolean }) 
     row.releaseDate && row.publication === 'announced'
       ? `due ${monthYear(row.releaseDate)}`
       : (row.releaseDate?.slice(0, 4) ?? (mine?.year ? String(mine.year) : null))
-  const sub = [year, audioWords(row.audioDate), side ? 'side story' : null, mine && mine.title !== row.title ? `your copy: ${mine.title}` : null]
-    .filter(Boolean)
-    .join(' \u00b7 ')
+  // On the AI tab the reader's copy was matched by title, so it only counts
+  // as a different title when more than case or punctuation differs.
+  const otherTitle =
+    mine && (ai ? normalise(mine.title) !== normalise(row.title) : mine.title !== row.title)
+      ? `your copy: ${mine.title}`
+      : null
+  const parts: ReactNode[] = [
+    // A book the AI list has, with no date on any page read: say so, rather
+    // than nothing, which would look like an oversight.
+    year ?? (ai && row.sourceUrl ? <UnknownDate key="date" /> : null),
+    audioWords(row.audioDate),
+    side ? 'side story' : null,
+    otherTitle,
+    // Every book on the AI tab says where it was read.
+    ai && row.sourceUrl ? (
+      <span key="source">
+        from <SourceLink url={row.sourceUrl} />
+      </span>
+    ) : null,
+  ].filter(Boolean)
+  const sub =
+    parts.length > 0
+      ? parts.map((part, index) => (
+          <span key={index}>
+            {index > 0 && ' \u00b7 '}
+            {part}
+          </span>
+        ))
+      : null
 
   return (
     <li className={`volume volume-${shelf}${row.isNext ? ' is-next' : ''}${side ? ' is-side' : ''}`}>
@@ -810,7 +1093,7 @@ function VolumeLine({ row, withCover }: { row: VolumeRow; withCover: boolean }) 
           ) : (
             row.title
           )}
-          {row.hasAudio && <AudioMark label={audioLabel(row)} />}
+          {row.hasAudio && (ai ? <AiAudioMark audio={row.audio} /> : <AudioMark label={audioLabel(row)} />)}
         </span>
         {sub && <span className="vol-sub">{sub}</span>}
       </span>
@@ -832,13 +1115,20 @@ function Stars({ rating }: { rating: number }) {
 
 function Verdict({ state }: { state: SeriesState }) {
   // Before the lookup the button already says what has not happened; five rows
-  // repeating it just makes a working page look broken.
-  if (state.status === 'unknown') return null
+  // repeating it just makes a working page look broken. On the AI tab a
+  // series that was asked about and has no list says why.
+  if (state.status === 'unknown') return state.ai?.miss ? <MissVerdict note={state.ai} /> : null
   if (state.status === 'reading') {
     return <p className="verdict muted">You&rsquo;re reading it now</p>
   }
   if (state.status === 'complete') {
-    return <p className="verdict muted">You&rsquo;ve finished it</p>
+    // A list read off the web often stops short of the newest book, so the
+    // AI tab claims no more than it knows.
+    return (
+      <p className="verdict muted">
+        {state.ai ? 'You’ve read every book AI found' : 'You’ve finished it'}
+      </p>
+    )
   }
   if (state.status === 'partial') {
     return (
@@ -890,6 +1180,27 @@ function Verdict({ state }: { state: SeriesState }) {
       <span className="badge badge-wait">No date yet</span>
       {title}
       {next.audioDate && <span className="next-why">{audioWords(next.audioDate)}</span>}
+    </p>
+  )
+}
+
+/** Why the AI tab has no list for a series, and when that may change. */
+function MissVerdict({ note }: { note: AiNote }) {
+  const again = note.retryAfter ? ` Can be looked up again from ${dayMonth(note.retryAfter)}.` : ''
+  const [label, text] =
+    note.miss === 'not_confirmed'
+      ? ['Not confirmed', `The pages found didn’t agree on the books.${again}`]
+      : note.miss === 'not_found'
+        ? ['Not found', `The search found nothing about this series.${again}`]
+        : note.miss === 'allowance'
+          ? ['Waiting', 'Today’s shared allowance ran out before this one.']
+          : note.miss === 'month'
+            ? ['Waiting', 'This month’s searches ran out before this one.']
+            : ['No answer', 'The lookup couldn’t be reached for this one.']
+  return (
+    <p className="verdict">
+      <span className="badge badge-wait">{label}</span>
+      <span className="next-why">{text}</span>
     </p>
   )
 }

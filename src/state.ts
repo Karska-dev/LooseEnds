@@ -2,6 +2,46 @@ import type { Shelf } from './goodreads'
 import type { SeriesGroup } from './series'
 import type { Edition, SeriesResult, Volume } from './shared/hardcover'
 
+/**
+ * Extras only the experimental AI lookup fills in (src/shared/aiLookup.ts).
+ * Hardcover's results never carry them, so every one is optional here and
+ * the Hardcover board reads none of them.
+ *
+ * Technique: structural typing. TypeScript matches types by shape, not by
+ * name, so `Edition & { … }` (an intersection type) accepts both a plain
+ * Hardcover edition and an AI one, and this file does not need to import
+ * anything from the AI lookup to read its extra fields.
+ */
+type MaybeAiEdition = Edition & {
+  audio?: { year: string | null; publisher: string | null } | null
+  releasedInferred?: boolean
+}
+type MaybeAiVolume = Volume & { evidence?: { url: string } }
+
+/** Why an AI lookup has no book list for a series. */
+export type AiMiss =
+  /** Pages about the series were read, and too little on them held up. */
+  | 'not_confirmed'
+  /** The search or the model had a bad moment; nothing about the series. */
+  | 'not_found'
+  /** Today's shared allowance ran out before this one. */
+  | 'allowance'
+  /** The month's searches ran out. */
+  | 'month'
+  /** The lookup could not be reached. */
+  | 'failed'
+
+/** What the AI tab knows about a series beyond the book list. */
+export interface AiNote {
+  /** The day it was looked up, "YYYY-MM-DD". */
+  checkedAt: string | null
+  /** The author's suggested reading order, when a page gave one by the series title. */
+  readingOrder: { note: string; url: string } | null
+  miss: AiMiss | null
+  /** For a miss the server remembers: the day it will be looked up again. */
+  retryAfter: string | null
+}
+
 type PublicationState = 'published' | 'announced' | 'unannounced'
 
 type SeriesStatus =
@@ -42,6 +82,10 @@ export interface VolumeRow {
   audioDate: string | null
   /** An audiobook exists or is announced, dated or not. */
   hasAudio: boolean
+  /** AI lookup only: the audiobook's year and publisher, when a page gave them. */
+  audio?: { year: string | null; publisher: string | null } | null
+  /** AI lookup only: the page this book was found on. */
+  sourceUrl?: string | null
   isNext: boolean
   /** Null when the reader does not have this volume at all. */
   mine: {
@@ -76,6 +120,8 @@ export interface SeriesState {
   inProgress: boolean
   /** Which volume that is, so the board can say so. */
   inProgressPosition: number | null
+  /** Present on the AI tab only (src/aiState.ts). */
+  ai?: AiNote
 }
 
 /**
@@ -93,9 +139,13 @@ export function audioNote(
   return audioDate
 }
 
-function publicationOf(releaseDate: string | null, today: string): PublicationState {
-  if (!releaseDate) return 'unannounced'
-  return releaseDate > today ? 'announced' : 'published'
+/**
+ * No date is "not announced" — unless the AI lookup marked the book as out
+ * anyway, because a later book in the series has a date in the past.
+ */
+function publicationOf(edition: MaybeAiEdition, today: string): PublicationState {
+  if (!edition.releaseDate) return edition.releasedInferred ? 'published' : 'unannounced'
+  return edition.releaseDate > today ? 'announced' : 'published'
 }
 
 type Shelves = Map<number, Set<string>>
@@ -292,7 +342,7 @@ export function buildSeriesState(
     return { ...base, totalBooks, next: null, rows, coverUrl, coverColor, status: 'partial' }
   }
 
-  const publication = publicationOf(edition.releaseDate, today)
+  const publication = publicationOf(edition, today)
   return {
     ...base,
     totalBooks,
@@ -335,7 +385,7 @@ function myBooksByPosition(group: SeriesGroup): Map<number, VolumeRow['mine']> {
 
 function buildRows(
   group: SeriesGroup,
-  volumes: Volume[],
+  volumes: MaybeAiVolume[],
   nextPosition: number | null,
   today: string,
 ): VolumeRow[] {
@@ -348,7 +398,7 @@ function buildRows(
     // If the reader owns a book at a skipped position, the loop below still
     // lists it — under their own title rather than a translation's.
     if (isForeignExtra(volume, seriesInEnglish)) continue
-    const edition = chooseEdition(volume)
+    const edition: MaybeAiEdition | null = chooseEdition(volume)
     if (!edition) continue
     seen.add(volume.position)
     rows.push({
@@ -358,9 +408,11 @@ function buildRows(
       coverColor: edition.coverColor,
       slug: edition.slug,
       releaseDate: edition.releaseDate,
-      publication: publicationOf(edition.releaseDate, today),
+      publication: publicationOf(edition, today),
       audioDate: audioNote(edition.releaseDate, edition.audioDate, today),
       hasAudio: edition.hasAudio === true || Boolean(edition.audioDate),
+      ...(edition.audio ? { audio: edition.audio } : {}),
+      ...(volume.evidence ? { sourceUrl: volume.evidence.url } : {}),
       isNext: volume.position === nextPosition,
       mine: mine.get(volume.position) ?? null,
     })

@@ -14,6 +14,10 @@ dist-ssr
 OPERATIONS.md
 TODO.md
 
+# the owner's working rules for AI assistants: a local agreement, not part of
+# the project.
+CLAUDE.md
+
 # logs
 logs
 *.log
@@ -37,3 +41,8 @@ pnpm-debug.log*
 # Local helper scripts and issue/PR bodies handed over by an assistant.
 /ship-*.sh
 /.issue-bodies/
+
+# Saved web searches, Hardcover answers and benchmark runs for the
+# experimental AI lookup (scripts/ai-explain.mjs). File names carry the
+# series a reader looked up, so this stays local.
+/.dev-cache/

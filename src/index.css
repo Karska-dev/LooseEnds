@@ -3089,3 +3089,264 @@ button.ghost {
 /* Cloudflare Turnstile (src/turnstile.ts). Takes no room unless Cloudflare
    asks for a click, then shows its box under the lookup sentence. */
 .turnstile-slot:empty { display: none; }
+
+/* ==================================================================
+   AI lookup — the second tab
+   ------------------------------------------------------------------
+   Two sources, never mixed: a tab each under "Series". The AI tab reuses
+   the lookup panel, the tiles and the rows, and adds only what it has to
+   be honest about — a shared allowance, a made-up cover where there is no
+   cover art, the page each book was read from, a "?" for a date no page
+   gave, and a note for audiobook details.
+
+   Quiet first: hairlines and small type, like the rest of it. Soft and
+   Bold restyle the same parts at the end.
+
+   Technique: design tokens. No rule below names a colour. Each uses a
+   custom property (--ink, --line, --primary …) that every skin, and dark
+   mode, defines for itself, so these rules were written once and work in
+   all six looks. color-mix() derives the cover tints from the same tokens.
+   ================================================================== */
+
+.source-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 28px;
+  border-bottom: 1px solid var(--line);
+}
+
+.source-tab {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0 0 -1px;
+  padding: 0 0 10px;
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  font: 500 15px/1.3 var(--body);
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+
+.source-tab[aria-selected='true'] { color: var(--ink); border-bottom-color: var(--ink); }
+.source-tab:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
+@media (hover: hover) { .source-tab:hover { color: var(--ink); } }
+
+/* "experimental", said once and small, in the one colour that means caution. */
+.exp { font-size: 11px; font-weight: 500; letter-spacing: 0.12em; color: var(--accent); }
+
+.tab-panel { display: flex; flex-direction: column; gap: 18px; }
+
+/* ---------- the panel's extras ---------- */
+
+.ai-fine { margin: 0; max-width: 62ch; font-size: 13px; line-height: 1.55; color: var(--ink-muted); }
+.ai-stamp { margin: 0; font-size: 12.5px; letter-spacing: 0.02em; color: var(--ink-muted); }
+.volumes .ai-stamp { margin: 10px 14px 0; }
+
+.allowance {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.allowance b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+.allowance small { flex-basis: 100%; font-size: 13px; color: var(--ink-muted); }
+.allowance-bar { position: relative; flex: none; width: 120px; height: 3px; background: var(--line); }
+.allowance-bar i { position: absolute; inset: 0 auto 0 0; background: var(--ink); }
+
+.lookup-go:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* ---------- covers: made up for a found series, an empty slot otherwise ---------- */
+
+.ai-cover {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in oklab, var(--tint) 14%, var(--ground));
+  border: 1px solid color-mix(in oklab, var(--tint) 40%, var(--ground));
+}
+
+.ai-initial {
+  font: 400 24px/1 var(--display);
+  color: color-mix(in oklab, var(--tint) 85%, var(--ink));
+}
+
+.ai-spark {
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  width: 8px;
+  height: 8px;
+  fill: color-mix(in oklab, var(--tint) 85%, var(--ink));
+}
+
+.cover.no-cover { background: none; border: 1px dashed color-mix(in oklab, var(--ink-faint) 60%, var(--ground)); }
+/* Not looked up, or no list came of it: present, a step back from the rest. */
+.series-row.is-unfound .series-name { color: var(--ink-soft); }
+
+/* ---------- inside the open list ---------- */
+
+.order-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  max-width: 70ch;
+  margin: 0 14px 10px;
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+
+.order-label {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: lowercase;
+  white-space: nowrap;
+  color: var(--ink-muted);
+}
+
+.src {
+  color: var(--ink-muted);
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+  white-space: nowrap;
+}
+
+.src:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+@media (hover: hover) { .src:hover { color: var(--ink); } }
+
+.unknown { padding: 0 2px; color: var(--ink-muted); border-bottom: 1px dotted var(--ink-faint); cursor: help; }
+
+/* The audiobook note hangs off the title line, so the row is its anchor. */
+.vol-main { position: relative; }
+.au-wrap { display: inline-flex; vertical-align: baseline; }
+
+.au-btn {
+  display: inline-flex;
+  align-items: center;
+  margin: 0 0 0 0.4em;
+  padding: 0 2px;
+  background: none;
+  border: 0;
+  border-bottom: 1px dotted var(--ink-faint);
+  border-radius: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+.au-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+.au-pop {
+  display: none;
+  position: absolute;
+  left: 0;
+  top: calc(100% + 4px);
+  z-index: 5;
+  flex-direction: column;
+  gap: 2px;
+  width: max-content;
+  max-width: min(300px, calc(100vw - 96px));
+  padding: 8px 12px;
+  background: var(--ground);
+  border: 1px solid var(--ink);
+  font: 400 13px/1.45 var(--body);
+  color: var(--ink-soft);
+  white-space: normal;
+}
+
+.au-pop-h { font-size: 11px; letter-spacing: 0.12em; text-transform: lowercase; color: var(--ink-muted); }
+
+.au-wrap:focus-within .au-pop,
+.au-wrap[data-open] .au-pop { display: flex; }
+@media (hover: hover) { .au-wrap:hover .au-pop { display: flex; } }
+
+@media (max-width: 520px) {
+  .order-note,
+  .volumes .ai-stamp { margin-inline: 0; }
+}
+
+/* ---------- Soft: two clay tabs, the open one pressed in ---------- */
+
+[data-skin='soft'] .source-tabs { gap: 12px; border-bottom: 0; }
+
+[data-skin='soft'] .source-tab {
+  margin: 0;
+  padding: 10px 18px;
+  border: 0;
+  border-radius: 16px;
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+[data-skin='soft'] .source-tab[aria-selected='true'] { color: var(--ink); box-shadow: var(--press); }
+[data-skin='soft'] .exp { font-weight: 800; letter-spacing: 0.08em; }
+[data-skin='soft'] .ai-cover { border: 0; }
+[data-skin='soft'] .cover.no-cover { box-shadow: none; }
+[data-skin='soft'] .allowance-bar { height: 8px; border-radius: 4px; box-shadow: var(--press); background: none; overflow: hidden; }
+[data-skin='soft'] .allowance-bar i { border-radius: 4px; background: var(--primary); }
+
+[data-skin='soft'] .au-btn {
+  padding: 0 2px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  box-shadow: none;
+  color: var(--primary);
+}
+
+[data-skin='soft'] .au-pop {
+  border: 0;
+  border-radius: 14px;
+  padding: 10px 14px;
+  background: var(--surface);
+  box-shadow: var(--lift);
+  font-weight: 600;
+}
+
+/* ---------- Bold: two stamped tabs, the open one inked ---------- */
+
+[data-skin='brutal'] .source-tabs { gap: 0; border-bottom: 3px solid var(--rule); }
+
+[data-skin='brutal'] .source-tab {
+  margin: 0 -3px -3px 0;
+  padding: 9px 16px;
+  border: 3px solid var(--rule);
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+}
+
+[data-skin='brutal'] .source-tab[aria-selected='true'] { background: var(--ink); color: var(--bg); }
+/* On the inked tab the caution colour would vanish in one mode or the other. */
+[data-skin='brutal'] .source-tab[aria-selected='true'] .exp { color: inherit; opacity: 0.75; }
+[data-skin='brutal'] .exp { font-family: var(--mono); letter-spacing: 0; text-transform: none; }
+[data-skin='brutal'] .allowance { font-family: var(--mono); font-size: 12px; }
+[data-skin='brutal'] .allowance-bar { height: 10px; border: 2px solid var(--rule); background: none; }
+[data-skin='brutal'] .ai-fine,
+[data-skin='brutal'] .ai-stamp { color: var(--byline); }
+[data-skin='brutal'] .ai-initial { font-size: 26px; }
+[data-skin='brutal'] .cover.no-cover { border: 2px dashed var(--grey); }
+[data-skin='brutal'] .src { color: var(--ink); }
+
+[data-skin='brutal'] .au-btn {
+  padding: 0 2px;
+  border: 0;
+  border-bottom: 2px solid var(--rule);
+}
+
+[data-skin='brutal'] .au-pop { border: 3px solid var(--rule); font-family: var(--mono); font-size: 12px; color: var(--ink); }
+
+@media (hover: hover) {
+  [data-skin='soft'] .source-tab[aria-selected='false']:hover { color: var(--ink); transform: translateY(-1px); box-shadow: var(--lift-up); }
+  [data-skin='brutal'] .source-tab[aria-selected='false']:hover { background: var(--yellow); color: #0a0a0a; }
+}
