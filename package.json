@@ -1,6 +1,6 @@
 {
   "name": "looseends",
-  "version": "0.3.0",
+  "version": "0.3.5",
   "private": true,
   "description": "Find the book series you never finished. A Goodreads export, parsed in your browser.",
   "license": "MIT",
