@@ -48,6 +48,8 @@ export default function App() {
   const [leftOut, setLeftOut] = useState<string | null>(null)
   const [choices, updateChoices, forgetChoices] = useChoices()
   // Which lookup the board is showing. Every library opens on Hardcover.
+  // Pattern: lifting state up. The board and the footer both depend on the
+  // open tab, so the state lives here, in their nearest common parent.
   const [source, setSource] = useState<Source>('hardcover')
 
   /** Back to the intake. Leaves any error in place: it explains why we're here. */
@@ -308,6 +310,21 @@ function SeriesBoard({
   /** Series present in the export but never started: not loose ends, still counted. */
   const notStarted = summary.groups.length - started.length
 
+  // Each tab's list, in board order. Worked out here, above the lookups that
+  // read them: the AI lookup asks about series in this order.
+  // Technique: derived state. The lists are never stored; they are computed
+  // from the results, so the two cannot disagree. useMemo keeps the last
+  // answer until `started` or the results change.
+  const hardcoverStates = useMemo(
+    () => sortSeriesStates(started.map((g) => buildSeriesState(g, resolved.get(g.key)))),
+    [started, resolved],
+  )
+  const aiStates = useMemo(
+    () => sortSeriesStates(started.map((g) => buildAiSeriesState(g, aiResolved.get(g.key)))),
+    [started, aiResolved],
+  )
+  const states = ai ? aiStates : hardcoverStates
+
   async function lookUp() {
     setProgress({ done: 0, total: started.length })
     const results = await resolveAllSeries(
@@ -404,16 +421,6 @@ function SeriesBoard({
     setAiRunning(false)
     setAsideAbandoned(results)
   }
-
-  const hardcoverStates = useMemo(
-    () => sortSeriesStates(started.map((g) => buildSeriesState(g, resolved.get(g.key)))),
-    [started, resolved],
-  )
-  const aiStates = useMemo(
-    () => sortSeriesStates(started.map((g) => buildAiSeriesState(g, aiResolved.get(g.key)))),
-    [started, aiResolved],
-  )
-  const states = ai ? aiStates : hardcoverStates
 
   const present = useMemo(() => new Set(started.map((group) => group.key)), [started])
   const dismissed = useMemo(
@@ -1047,15 +1054,15 @@ function VolumeLine({ row, withCover, ai }: { row: VolumeRow; withCover: boolean
   const parts: ReactNode[] = [
     // A book the AI list has, with no date on any page read: say so, rather
     // than nothing, which would look like an oversight.
-    year ?? (ai && row.sourceUrl ? <UnknownDate /> : null),
+    year ?? (ai && row.sourceUrl ? <UnknownDate key="date" /> : null),
     audioWords(row.audioDate),
     side ? 'side story' : null,
     otherTitle,
     // Every book on the AI tab says where it was read.
     ai && row.sourceUrl ? (
-      <>
+      <span key="source">
         from <SourceLink url={row.sourceUrl} />
-      </>
+      </span>
     ) : null,
   ].filter(Boolean)
   const sub =

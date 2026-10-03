@@ -14,6 +14,12 @@
  * src/shared/aiLookup.ts, not a copy of it. Then the same series is resolved
  * through Hardcover and the two lists are compared book by book.
  *
+ * Technique: evaluation against a reference. Hardcover is used as the answer
+ * key, and the two central figures have standard names. Recall is how much
+ * of the reference was found ("All Hardcover entries found"); precision is
+ * how much of what was found is in the reference ("AI books Hardcover also
+ * has"). Either can be raised by giving up the other, so both are shown.
+ *
  * Needs, in the environment or .env.local:
  *   TAVILY_KEY        — tavily.com, free, no card
  *   HARDCOVER_TOKEN   — optional; without it nothing is compared

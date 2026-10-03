@@ -3,6 +3,10 @@
  * trace and no console output on its own, so anything we do not log here is
  * invisible in production — which is how a missing binding looked like
  * silence rather than a problem.
+ *
+ * Technique: structured logging. Each event is an object with named fields,
+ * not a sentence, so the log can be filtered and counted by field later
+ * (every `ai.resolved` where `searches` was 2) instead of searched as text.
  */
 export function log(event: string, fields: Record<string, unknown> = {}): void {
   console.log(JSON.stringify({ event, ...fields }))

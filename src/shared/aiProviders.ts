@@ -3,6 +3,11 @@
  * handed: a web search (Tavily) and a model that reads the results (Workers
  * AI in production, Ollama on a laptop). src/shared/aiLookup.ts knows
  * neither by name, which is what lets the tests run with stubs.
+ *
+ * Pattern: adapter. Each function below wraps one service's own API in the
+ * shape the lookup asks for (SearchFn, ModelFn). Swapping Workers AI for
+ * Ollama is choosing another adapter; the lookup does not change. Everything
+ * specific to a vendor — URLs, status codes, field names — stays in this file.
  */
 
 import { pagesFromTavily, tavilyRequestBody } from './aiLookup.ts'
@@ -11,6 +16,11 @@ import type { ModelFn, SearchFn } from './aiLookup.ts'
 /**
  * Why a lookup could not be made. Never a fact about the series, so never
  * cached: the same question may well work in a minute, or next month.
+ *
+ * Pattern: typed errors. `kind` is one of a small fixed set, so the caller
+ * decides what to do by checking the kind, and the message is free to be
+ * reworded for the log. Each service's failures are translated into these
+ * kinds here, so nothing further in knows what an HTTP 432 is.
  */
 export class LookupError extends Error {
   /**
@@ -31,7 +41,13 @@ export class LookupError extends Error {
 
 const TAVILY = 'https://api.tavily.com/search'
 
-/** Counts what a lookup really sent, for the daily allowance and the log. */
+/**
+ * Counts what a lookup really sent, for the daily allowance and the log.
+ *
+ * Pattern: a collecting parameter. One object is handed down to the code
+ * that does the work and filled in as it goes, so the totals survive even
+ * when the lookup ends by throwing — which a return value would not.
+ */
 export interface AiMeter {
   searches: number
   credits: number
@@ -46,6 +62,14 @@ export function newAiMeter(): AiMeter {
 /**
  * One Tavily search per call, one credit each. A dropped connection or a
  * rate limit is retried once; anything else is reported as it is.
+ *
+ * Pattern: a factory that returns a closure. tavilySearch(key) gives back
+ * the function that searches; the key and the meter stay captured inside
+ * it, so the lookup calls search(text) and never holds a secret.
+ *
+ * Technique: a bounded retry. Only failures that may pass by themselves are
+ * tried again, and only once. A refused key or a spent plan would fail the
+ * same way, so those are thrown at once.
  */
 export function tavilySearch(key: string, meter?: AiMeter, fetcher: typeof fetch = fetch): SearchFn {
   return async (query) => {
@@ -167,6 +191,9 @@ export function ollamaModel(url: string, model: string, meter?: AiMeter): ModelF
       throw new LookupError('busy', `Ollama answered HTTP ${response.status}: ${text.slice(0, 160)}`)
     }
 
+    // Technique: reading a stream line by line. Chunks arrive cut at any
+    // byte, so the last, unfinished line waits in `buffered` until the rest
+    // of it comes; only whole lines are parsed.
     let reply = ''
     let buffered = ''
     const decoder = new TextDecoder()

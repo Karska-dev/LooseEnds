@@ -21,7 +21,13 @@ export interface AiQuery {
   author?: string
 }
 
-/** How the request is sent. The page passes postWithPass; tests pass a stub. */
+/**
+ * How the request is sent. The page passes postWithPass; tests pass a stub.
+ *
+ * Pattern: dependency injection, as in src/shared/aiLookup.ts. The loop
+ * below is given its way of talking to the server, so the tests can play
+ * the server — out of allowance, throttled, down — without one existing.
+ */
 export type Post = (payload: unknown) => Promise<Response>
 
 /** A cache-only request takes the whole library. Matches MAX_AI_CACHED_ONLY in worker/ai.ts. */
@@ -32,13 +38,29 @@ const PREFETCH_SIZE = 200
  * requests a minute (AI_LIMITER in wrangler.jsonc); a lookup usually takes
  * longer than this anyway, and when one comes back at once — a quick miss —
  * the next waits rather than run the reader into the limit.
+ *
+ * Technique: client-side throttling. The server's limit is the real one;
+ * pacing here only means an honest reader never meets it.
  */
 const MIN_GAP_MS = 5500
 
-/** Two unanswered series in a row is the service being down, not bad luck. */
+/**
+ * Two unanswered series in a row is the service being down, not bad luck.
+ *
+ * Pattern: a circuit breaker, in its simplest form. After a run of failures
+ * stop calling, rather than send every remaining series into the same wall.
+ * A full one would also try again by itself after a pause; here the reader
+ * does that with the button.
+ */
 const MAX_FAILURES_IN_A_ROW = 2
 
-/** Answers already heard this visit, so choosing the same file again asks for nothing. */
+/**
+ * Answers already heard this visit, so choosing the same file again asks for nothing.
+ *
+ * Technique: an in-memory cache at module level. It lives as long as the
+ * page is open and is gone on reload: the cheapest of the three layers,
+ * in front of the server's table and the lookup itself.
+ */
 const cache = new Map<string, AiSeriesResult>()
 const cacheKey = (item: { name: string; author?: string }) => `${item.name}|${item.author ?? ''}`
 

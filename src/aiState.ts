@@ -40,6 +40,15 @@ function titleKeys(title: string): string[] {
  *      unless the list's book at that number is, by title, another of the
  *      reader's books. Then its number is not known and it is left out of
  *      the list rather than laid over the wrong book.
+ *
+ * Algorithm: greedy matching in passes, strictest first. Whole titles are
+ * matched before shortened ones, and a book once placed is not reconsidered.
+ * It can be fooled where an optimal matching would not be, but it is easy
+ * to predict, and a series is a few dozen titles at most.
+ *
+ * Pattern: immutability. The reader's group is not changed; a renumbered
+ * copy is returned, so the Hardcover tab, reading the same group, cannot be
+ * affected by anything done here.
  */
 export function alignToAiTitles(group: SeriesGroup, result: AiSeriesResult): SeriesGroup {
   const listed = result.volumes.map((volume) => ({
@@ -84,7 +93,13 @@ export function alignToAiTitles(group: SeriesGroup, result: AiSeriesResult): Ser
   }
 }
 
-/** Why a lookup stopped, or one series failed, in the page's own terms. */
+/**
+ * Why a lookup stopped, or one series failed, in the page's own terms.
+ *
+ * Technique: a union of string literals. The compiler knows every value
+ * this can take, so a misspelt one is an error, and code that handles each
+ * case can be checked for having missed one.
+ */
 export type AiStop =
   /** Today's shared allowance, or the model's own daily limit. */
   | 'budget'
@@ -128,7 +143,14 @@ function missOf(result: AiSeriesResult): AiMiss {
   return 'not_confirmed'
 }
 
-/** One series as the AI tab shows it: looked up, missed, or not asked about yet. */
+/**
+ * One series as the AI tab shows it: looked up, missed, or not asked about yet.
+ *
+ * Pattern: adapt the input, reuse the function. There is no second copy of
+ * the "what comes next" rules for AI results. The reader's books are
+ * renumbered to fit the AI list and handed to the same buildSeriesState the
+ * Hardcover tab uses, so the two tabs cannot drift apart.
+ */
 export function buildAiSeriesState(
   group: SeriesGroup,
   result: AiSeriesResult | undefined,

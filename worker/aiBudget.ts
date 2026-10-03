@@ -12,6 +12,11 @@ import type { D1Database } from './cache.ts'
  * Like the Hardcover budget (worker/budget.ts) it does not matter who is
  * asking: the count is for the whole deployment, per UTC day. Series someone
  * has already looked up are served from the cache and cost nothing.
+ *
+ * Algorithm: a fixed-window counter, the simplest rate limit there is. One
+ * number per window (here a UTC day); a new day is a new row, so nothing
+ * ever has to be reset. It is coarse: a whole day's allowance can go in its
+ * first few minutes.
  */
 
 /** Searches a day. 30 a day is 930 in the longest month, inside the 1,000. */
@@ -38,7 +43,13 @@ async function readSpent(db: D1Database, day: string): Promise<number> {
   return results[0]?.searches ?? 0
 }
 
-/** Searches already made today. Creates the table on first use. */
+/**
+ * Searches already made today. Creates the table on first use.
+ *
+ * Pattern: lazy initialisation. Nothing is set up ahead of time; the first
+ * read that finds the table missing makes it. A deploy then cannot fail
+ * because a migration was forgotten.
+ */
 export async function aiSpentToday(db: D1Database, day: string): Promise<number> {
   try {
     return await readSpent(db, day)
@@ -48,6 +59,12 @@ export async function aiSpentToday(db: D1Database, day: string): Promise<number>
   }
 }
 
+/**
+ * Technique: an upsert (INSERT … ON CONFLICT DO UPDATE). One statement makes
+ * the day's row or adds to it, and the database does the adding. Reading
+ * the number, adding in code and writing it back would let two requests at
+ * once overwrite each other's count (a lost update).
+ */
 export async function aiRecordSpend(db: D1Database, day: string, searches: number): Promise<void> {
   if (searches <= 0) return
   await db

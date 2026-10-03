@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react'
 import type { AiAllowance, AiStop } from './aiResolve.ts'
-import { brief, listNames, word } from './LookupPanel.tsx'
+import { brief, listNames, word } from './lookupWords.ts'
 import type { SeriesState } from './state'
 import { setTurnstileSlot } from './turnstile'
 
@@ -10,6 +10,10 @@ import { setTurnstileSlot } from './turnstile'
  * - during:   looking them up, one at a time
  * - after:    every series has an answer
  * - stopped:  the lookup could not go on; `stop` says why
+ *
+ * Pattern: a finite state machine. The panel is in exactly one named phase
+ * at a time and everything on it follows from that phase. The alternative,
+ * a handful of booleans (loading, failed, done), can contradict each other.
  */
 export type AiPhase = 'checking' | 'before' | 'during' | 'after' | 'stopped'
 
@@ -54,6 +58,10 @@ function heardLine(state: SeriesState): { kind: string; label: string; text: str
  * is everything it has to be honest about: that it is an experiment, where
  * the names go, that there is a small allowance everyone shares, and that
  * what is already known is shown without being asked for.
+ *
+ * Pattern: a presentational component. It is given everything as props and
+ * reports a press through onLookUp; it fetches nothing and keeps no data.
+ * The lookup itself lives in App.tsx, so this file is only about wording.
  */
 export function AiLookupPanel({
   phase,

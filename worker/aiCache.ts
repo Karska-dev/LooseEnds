@@ -11,6 +11,13 @@ import type { D1Database } from './cache.ts'
  * here costs a share of a small daily allowance, so answers are kept longer
  * than Hardcover's — and a miss is kept too, because finding nothing costs
  * exactly as much as finding something.
+ *
+ * Technique: time-to-live (TTL). Each entry is stamped with the moment it
+ * stops being trusted, chosen by how soon that kind of answer may change,
+ * and reads simply ignore rows past it. Nothing has to clean up.
+ *
+ * Technique: negative caching. "Not found" is stored like an answer. Without
+ * it, a series nobody can find would cost a search every time anyone asked.
  */
 
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -49,6 +56,11 @@ interface Row {
   payload: string
 }
 
+/**
+ * Technique: one query for the whole batch (WHERE … IN). Asking once per
+ * series would be a round trip to the database each — the "N+1 queries"
+ * problem — and opening the tab with 80 series would take 80 of them.
+ */
 async function select(db: D1Database, keys: string[], now: number): Promise<Row[]> {
   const placeholders = keys.map(() => '?').join(',')
   const { results } = await db

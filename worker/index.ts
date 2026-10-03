@@ -65,6 +65,12 @@ export default {
  * What stands in front of both lookups, cheapest check first: the method,
  * that the request came from our own page, a live lookup pass, and the
  * per-IP throttle. Returns the refusal, or null to go ahead.
+ *
+ * Pattern: a guard in front of the handlers — what a web framework calls
+ * middleware. Both routes pass through the same checks in the same order,
+ * so a new route cannot forget one. `refuse(…) ?? handle(…)` above reads
+ * as "the refusal, or else the answer": `??` runs the handler only when
+ * the guard returned null.
  */
 async function refuse(
   request: Request,

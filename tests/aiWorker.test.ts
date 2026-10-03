@@ -12,7 +12,13 @@ import type { D1Database } from '../worker/cache.ts'
 
 const DAY = 24 * 60 * 60 * 1000
 
-/** Just enough of D1 for the AI lookup: its cache table and its counter. */
+/**
+ * Just enough of D1 for the AI lookup: its cache table and its counter.
+ *
+ * Pattern: a fake (one kind of test double). It has the real database's
+ * interface and a working, in-memory version of the two tables, so the
+ * route's own code runs unchanged against it, with no database to set up.
+ */
 function fakeDb(start: { searches?: number; tables?: boolean } = {}) {
   const state = {
     tables: start.tables ?? true,

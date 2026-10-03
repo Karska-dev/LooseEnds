@@ -6,6 +6,11 @@ import type { Edition, SeriesResult, Volume } from './shared/hardcover'
  * Extras only the experimental AI lookup fills in (src/shared/aiLookup.ts).
  * Hardcover's results never carry them, so every one is optional here and
  * the Hardcover board reads none of them.
+ *
+ * Technique: structural typing. TypeScript matches types by shape, not by
+ * name, so `Edition & { … }` (an intersection type) accepts both a plain
+ * Hardcover edition and an AI one, and this file does not need to import
+ * anything from the AI lookup to read its extra fields.
  */
 type MaybeAiEdition = Edition & {
   audio?: { year: string | null; publisher: string | null } | null

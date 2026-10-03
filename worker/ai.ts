@@ -20,6 +20,11 @@ import { json, log } from './http.ts'
  * One series per request. A lookup is a web search and a model call — ten
  * seconds or more — so the page asks for them one at a time and shows each
  * as it arrives.
+ *
+ * Pattern: cache-aside. This handler looks in the cache itself, does the
+ * work on a miss, and writes the answer back. The cache is a plain table
+ * that knows nothing about lookups, which keeps it simple; the cost is that
+ * every caller must remember all three steps.
  */
 
 export interface AiEnv {
@@ -43,7 +48,13 @@ export const AI_MONTH_DETAIL = 'AI lookup is out of searches for this month'
 export const AI_UNSET_DETAIL = 'AI lookup is not configured on this server'
 export const AI_UNREACHABLE_DETAIL = 'AI lookup could not be reached'
 
-/** A lookup that could not be made, in the shape of a result. Never cached. */
+/**
+ * A lookup that could not be made, in the shape of a result. Never cached.
+ *
+ * Pattern: errors as values. A failure travels as an ordinary result with
+ * status 'error', not as an HTTP error, so the page handles one shape and a
+ * failed series sits in the list beside the ones that worked.
+ */
 export function aiFailure(query: SeriesQuery, detail: string, today: string): AiSeriesResult {
   return {
     query: query.name,
@@ -62,6 +73,11 @@ export function aiFailure(query: SeriesQuery, detail: string, today: string): Ai
  * What the page is told when a lookup fails. The page reads these exact
  * strings to decide what to say and whether to keep asking, so the dev
  * server (vite.config.ts) uses this too.
+ *
+ * Trade-off: the reason travels as words, and the page matches text to read
+ * it back (aiFailureKind in src/aiState.ts). That mirrors what /api/series
+ * already does, but it is fragile: reword a message here and the page
+ * misreads it. A separate `code` field would be the sturdier design.
  */
 export function failureDetail(error: unknown): string {
   const kind = error instanceof LookupError ? error.kind : 'busy'
@@ -84,7 +100,15 @@ function allowanceOf(spent: number | null, cap: number): AiAllowance | undefined
   return spent === null ? undefined : { left: Math.max(0, cap - spent), cap }
 }
 
-/** Today's count, or null when it cannot be read: the lookup must not depend on it. */
+/**
+ * Today's count, or null when it cannot be read: the lookup must not depend on it.
+ *
+ * Pattern: fail open. When this check cannot be made, the request goes
+ * ahead. That is right here only because the search and the model each stop
+ * themselves when their free allowance is gone. The lookup pass in
+ * worker/index.ts is the opposite, fail closed: it guards against abuse, so
+ * when it cannot be checked nothing is answered.
+ */
 async function spentToday(env: AiEnv, today: string): Promise<number | null> {
   if (!env.DB) return null
   try {
@@ -95,6 +119,11 @@ async function spentToday(env: AiEnv, today: string): Promise<number | null> {
   }
 }
 
+/**
+ * Technique: validate at the boundary. A request body is `unknown` until it
+ * has been checked. This type guard is the one place it becomes
+ * SeriesQuery[]; everything after it can rely on the type.
+ */
 function isSeriesQueryList(value: unknown): value is SeriesQuery[] {
   return (
     Array.isArray(value) &&
@@ -178,6 +207,12 @@ export async function handleAiSeries(request: Request, env: AiEnv): Promise<Resp
     // say so in the log: a broken counter must not take the lookup down, and
     // the search and the model each stop on their own when their free
     // allowance is gone.
+    //
+    // Trade-off: check-then-act. The count is read here and added to only
+    // after the lookup, so two requests arriving together can both pass
+    // and go one or two over. Reserving a place first would be exact, and
+    // would also charge for lookups that then fail. Being slightly over is
+    // harmless here, so the simpler way was chosen.
     const spent = await spentToday(env, today)
     if (spent !== null && spent >= cap) {
       log('ai.budget_exhausted', { status: 200, cap, spent })

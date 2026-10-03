@@ -3101,6 +3101,11 @@ button.ghost {
 
    Quiet first: hairlines and small type, like the rest of it. Soft and
    Bold restyle the same parts at the end.
+
+   Technique: design tokens. No rule below names a colour. Each uses a
+   custom property (--ink, --line, --primary …) that every skin, and dark
+   mode, defines for itself, so these rules were written once and work in
+   all six looks. color-mix() derives the cover tints from the same tokens.
    ================================================================== */
 
 .source-tabs {

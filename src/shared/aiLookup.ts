@@ -13,6 +13,16 @@
  * Shared by the benchmark script today, and by the Worker and the Vite
  * middleware later, so the model call and the search call are passed in:
  * Workers AI in production, Ollama on a laptop, a stub in tests.
+ *
+ * Architecture: retrieval-augmented generation (RAG). The model is not asked
+ * what it remembers; a search retrieves pages and the model is asked to read
+ * them. That still lets it invent, so the third step is grounding: every
+ * claim is checked against the retrieved text by ordinary code.
+ *
+ * Pattern: dependency injection. The search and the model arrive as
+ * parameters (SearchFn, ModelFn below) instead of being imported here, so
+ * this file needs no network and no key, and whoever calls it chooses what
+ * stands behind them.
  */
 
 import type { Edition, SeriesQuery, SeriesResult, Volume } from './hardcover.ts'
@@ -137,6 +147,12 @@ export interface ModelRequest {
 /** Returns the model's reply as text; it is parsed and checked here. */
 export type ModelFn = (request: ModelRequest) => Promise<string>
 
+/**
+ * Technique: a context budget. A model is billed by how much it reads and
+ * reads worse the more it is given, so what it sees is rationed up front:
+ * so many pages, so many characters of each.
+ */
+
 /** Pages the model reads in full. More cost more and rarely add books. */
 const MAX_PAGES = 4
 /** Characters of each full page the model sees. */
@@ -149,6 +165,12 @@ const MIN_BOOKS = 2
 /** Never read these: Goodreads' terms forbid it, and shop pages are noise. */
 export const BLOCKED_HOSTS = ['goodreads.com', 'amazon.']
 
+/**
+ * Technique: structured output. The model is handed this JSON Schema and
+ * must answer in its shape, so the reply is parsed by code rather than read
+ * as prose. A schema fixes the shape only: whether the values are true is
+ * still verifyAgainstPages' job.
+ */
 export const DRAFT_SCHEMA = {
   type: 'object',
   properties: {
@@ -204,6 +226,11 @@ Reply with JSON only.`
  * Lower case, letters and digits only, single spaces. One thing survives:
  * the point in "8.5", written "8_5", because a novella's place in a series
  * is a number the pages give and must not fall apart into "8 5".
+ *
+ * Technique: canonicalisation. Every spelling of the same text is reduced to
+ * one form before anything is compared, so comparing is plain equality.
+ * NFKD splits "é" into "e" and a separate accent mark, which the next line
+ * removes: "Déjà" and "Deja" come out the same.
  */
 export function normalise(value: string): string {
   return value
@@ -268,6 +295,9 @@ export function searchQueryFor(query: SeriesQuery): string {
  * A second way to ask, for when the first comes back with pages about
  * something else. An unusual word in a series name can pull the search
  * towards dictionaries or a brand; leading with the author keeps it on books.
+ *
+ * Technique: query reformulation. A retry that asks the same question the
+ * same way mostly gets the same answer; this one asks it differently.
  */
 export function fallbackQueryFor(query: SeriesQuery): string {
   return `${query.author ?? ''} ${query.name} series books in order`.replace(/\s+/g, ' ').trim()
@@ -295,6 +325,10 @@ const MIN_SCORE = 0.3
  * Whether the search understood the question: one source names the series,
  * and the search does not rate everything it found as irrelevant. "Trilogy"
  * and the like are left out of the name, since pages say "series" as often.
+ *
+ * Pattern: a guard in front of the expensive step (fail fast). This check
+ * costs microseconds; the model call it can prevent costs seconds and part
+ * of a daily allowance, and would produce a confident list of the wrong books.
  */
 export function mentionsSeries(pages: Page[], seriesName: string): boolean {
   const name = normalise(seriesName)
@@ -329,7 +363,14 @@ export function buildUserPrompt(query: SeriesQuery, pages: Page[]): string {
   )
 }
 
-/** Models wrap JSON in prose or code fences often enough to plan for it. */
+/**
+ * Models wrap JSON in prose or code fences often enough to plan for it.
+ *
+ * Technique: tolerant parsing. Take what is usable (the outermost braces,
+ * the books that have a title) and return null for the rest, never throw.
+ * `book is DraftBook` in the filter is a type guard: it tells TypeScript
+ * that what passes the test has that type.
+ */
 export function parseDraft(reply: string): Draft | null {
   const start = reply.indexOf('{')
   const end = reply.lastIndexOf('}')
@@ -469,6 +510,10 @@ interface PageNumber {
  * Bonds" or "Savage Bonds #2" — and a number sitting between two titles
  * could belong to either, so each page is read both ways and the reading
  * that numbers more of its titles wins.
+ *
+ * Algorithm: competing hypotheses. Instead of guessing which convention a
+ * page uses, both are tried in full and scored by how much of the page each
+ * one explains. It costs two passes and needs no rule about page layouts.
  */
 function numbersOnPage(text: string, where: Map<string, number[]>, seriesName: string): Map<string, PageNumber> {
   const seriesTokens = new Set(seriesName.split(' ').filter(Boolean))
@@ -484,6 +529,9 @@ function numbersOnPage(text: string, where: Map<string, number[]>, seriesName: s
 
   // The series name is looked for outside the titles themselves: in a series
   // called "Villain", "Kiss the Villain 34." is not "Villain #34".
+  // Technique: masking. Each title is overwritten with "~" of the same
+  // length, so a search of the masked text cannot match inside a title, and
+  // every position still lines up with the original text.
   const pieces: string[] = []
   let upTo = 0
   for (const { needle, at } of starts) {
@@ -563,7 +611,13 @@ function numbersOnPage(text: string, where: Map<string, number[]>, seriesName: s
   return result
 }
 
-/** The most common value; on a tie, the preferred one if it is among them, else the first seen. */
+/**
+ * The most common value; on a tie, the preferred one if it is among them, else the first seen.
+ *
+ * Algorithm: majority vote (the statistical mode), counted with a Map in one
+ * pass. A tie-break has to be chosen deliberately: without one, the winner
+ * would depend on the order the pages happened to come back in.
+ */
 function majority<T>(values: T[], preferred?: T | null): T | null {
   if (values.length === 0) return null
   const counts = new Map<T, number>()
@@ -576,6 +630,11 @@ function majority<T>(values: T[], preferred?: T | null): T | null {
 /**
  * Keeps what the pages say and drops the rest. Pure: pages and a draft in,
  * verified books out, with a reason for everything that was dropped.
+ *
+ * Pattern: a pure function. The same inputs always give the same output and
+ * nothing outside is read or changed: no network, no clock, no model. That
+ * is why its rules can be tested with a few lines of made-up page text, and
+ * why the benchmark can re-score saved pages in seconds.
  *
  * The model decides only which titles to put forward. Whether a title is on
  * a page, which number the pages give it, and which date sits next to it are
@@ -605,6 +664,10 @@ export function verifyAgainstPages(
   }
   const needles = [...drafted.keys()]
   // Where each title stands on each page, found once: everything below asks.
+  // Technique: precompute, then look up. Searching every page for every
+  // title is the expensive part; done once here and kept in a Map, each
+  // later question is a lookup. On a 26-book series this took the function
+  // from about 15 ms to 3, and the Worker's free plan allows 10.
   const where = texts.map((text) => new Map(needles.map((needle) => [needle, occurrences(text, needle)])))
   const starts = where.map((places) =>
     [...places.entries()].flatMap(([needle, list]) => list.map((at) => ({ needle, at }))).sort((a, b) => a.at - b.at),
@@ -629,6 +692,9 @@ export function verifyAgainstPages(
 
     // The number the pages give it; the model's own only if no page has one.
     const claimed = typeof book.position === 'number' && Number.isFinite(book.position) && book.position >= 0 ? book.position : null
+    // Algorithm: weighted voting. Each source is a voter and stronger
+    // evidence gets a heavier vote, so one wrong page is outvoted instead
+    // of believed, and no single source has to be trusted.
     // Every page that numbers the title has a say, and so does the model,
     // which has read them all. A number the page ties to the series by name
     // counts double: a bare one may be counting something else. When the
@@ -758,6 +824,9 @@ export function verifyAgainstPages(
 
   // A series runs 1, 2, 3 … A jump of more than one missing book means the
   // rest was numbered by some other scheme — a whole shared world, say.
+  // Technique: a heuristic. Not provably right, only right for nearly every
+  // real series; the price is a series that truly skips numbers, which
+  // loses its tail. Each drop is recorded with its reason so that is visible.
   let books = [...byPosition.values()].sort((a, b) => a.position - b.position || a.title.localeCompare(b.title))
   const whole = books.filter((item) => Number.isInteger(item.position) && item.position >= 1).map((item) => item.position)
   const jump = whole.find((value, index) => index > 0 && value - whole[index - 1] > 2)
@@ -794,6 +863,10 @@ export function verifyAgainstPages(
 /**
  * A book with no date counts as out when a later book in the series has a
  * confirmed date in the past: nobody publishes book 5 before book 4.
+ *
+ * Algorithm: one backward pass carrying a flag. Walking from the last book
+ * to the first, "is a later book already out?" is known at every step, so
+ * the list is read once (linear time) instead of looking ahead from each book.
  */
 export function markReleasedInferred(books: VerifiedBook[], today: string): Set<number> {
   const inferred = new Set<number>()
@@ -865,7 +938,13 @@ function notFound(query: SeriesQuery, today: string, detail: string): AiSeriesRe
   }
 }
 
-/** One series, start to finish. Throws only what `search` or `runModel` throw. */
+/**
+ * One series, start to finish. Throws only what `search` or `runModel` throw.
+ *
+ * Pattern: an orchestrator. This function does none of the work itself; it
+ * calls the steps in order and decides what happens between them (search
+ * again? stop before the model?). Each step stays small and testable alone.
+ */
 export async function aiLookupSeries(
   query: SeriesQuery,
   deps: { search: SearchFn; runModel: ModelFn; today: string },
@@ -1000,6 +1079,10 @@ export function plainText(markdown: string): string {
  * characters, and the median page is nine thousand; the rare page past this
  * is something else entirely (one search returned a whole novel as a PDF),
  * and cleaning it would spend the Worker's CPU time on nothing.
+ *
+ * Technique: bound your inputs. Anything that arrives from outside gets a
+ * size limit before any work is done on it; without one, the slowest
+ * request is as slow as the largest thing a stranger's server can send.
  */
 const MAX_RAW_CHARS = 100_000
 

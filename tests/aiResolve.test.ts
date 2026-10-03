@@ -26,7 +26,13 @@ function answer(name: string, status: AiSeriesResult['status'] = 'ok', detail?: 
   }
 }
 
-/** A server that answers each request with whatever `reply` makes of it. */
+/**
+ * A server that answers each request with whatever `reply` makes of it.
+ *
+ * Pattern: a stub that also records (a spy). It gives canned answers and
+ * keeps a list of what it was asked, so a test can check both what the
+ * loop did with an answer and which requests it never sent.
+ */
 function server(reply: (names: string[], cachedOnly: boolean) => Response | Promise<Response>) {
   const asked: { names: string[]; cachedOnly: boolean }[] = []
   const post: Post = async (payload) => {

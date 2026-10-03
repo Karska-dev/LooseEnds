@@ -132,6 +132,9 @@ function saveJson(path: string, value: unknown): void {
  * free plan is 1,000 searches a month and dev would spend them on reloads.
  * The files are the ones scripts/ai-explain.mjs writes and reads, under the
  * same names, so a series the benchmark has searched costs nothing here.
+ *
+ * Technique: record and replay. The first call goes to the real service and
+ * its answer is written to disk; every later call reads the file.
  */
 function savedSearch(query: SeriesQuery, key: string, meter: ReturnType<typeof newAiMeter>): SearchFn {
   const slug = normalise(`${query.name} ${query.author ?? ''}`).replace(/ /g, '-').slice(0, 120)
@@ -145,6 +148,9 @@ function savedSearch(query: SeriesQuery, key: string, meter: ReturnType<typeof n
     if (saved && JSON.stringify(saved._request) === asked) return pagesFromTavily(saved)
 
     if (!key) throw new LookupError('key', 'TAVILY_KEY is not set in .env.local')
+    // Pattern: a decorator. `keeping` has fetch's shape and does fetch's
+    // job, and saves a copy on the way through; tavilySearch cannot tell.
+    // clone() is needed because a response body can be read only once.
     const keeping: typeof fetch = async (input, init) => {
       const response = await fetch(input, init)
       if (response.ok) saveJson(path, { ...((await response.clone().json()) as object), _request: JSON.parse(asked) })
@@ -159,6 +165,10 @@ function savedSearch(query: SeriesQuery, key: string, meter: ReturnType<typeof n
  * the same model asked the same thing answers the same, and a local model
  * takes most of a minute to say it. Again the files are the ones
  * scripts/ai-explain.mjs keeps, so what the benchmark has read is instant.
+ *
+ * Technique: a content-addressed cache. The file name is a hash of the
+ * model and the whole prompt, so nothing has to decide when an entry is out
+ * of date: change the prompt at all and it is simply a different file.
  */
 function savedModel(run: ModelFn, model: string, replayed: { count: number }): ModelFn {
   return async (request) => {

@@ -15,6 +15,11 @@ const TINTS = ['var(--primary)', 'var(--ok)', 'var(--warn)', 'var(--accent)', 'v
  * failure. So a looked-up series gets a made-up cover: its initial on a tint
  * picked from its name (the same series is always the same colour), with a
  * small spark that says where the list came from.
+ *
+ * Algorithm: a polynomial rolling hash (hash = hash × 31 + next letter), the
+ * classic cheap way to turn a string into a number. It is deterministic,
+ * which is the point: no colour has to be stored anywhere. `>>> 0` keeps
+ * the number an unsigned 32-bit integer as it grows.
  */
 export function AiCover({ name }: { name: string }) {
   let hash = 0
@@ -43,6 +48,10 @@ export function NoCover() {
  * "author.example": enough to judge a source at a glance. Null for anything
  * that is not an ordinary web address — these come off the open web, and a
  * link is only made from one a browser would open as a page.
+ *
+ * Security: an allow-list. Only http and https are accepted, everything
+ * else is refused, rather than a list of bad schemes being blocked. A
+ * `javascript:` address put in an href would run as code when clicked.
  */
 function hostOf(url: string): string | null {
   try {
@@ -96,6 +105,11 @@ function Headphones() {
  * small note: on hover with a mouse, on focus with a keyboard, on a tap on a
  * phone. Otherwise it is just the mark. Never a link: the lookup does not go
  * looking for audiobooks, it only repeats what the page said.
+ *
+ * Pattern: a disclosure. A real button that says whether it is open
+ * (aria-expanded) and which element it opens (aria-controls), so a keyboard
+ * and a screen reader get what a mouse gets. The function returned from
+ * useEffect is its cleanup: it removes the listeners when the note closes.
  */
 export function AiAudioMark({ audio }: { audio?: { year: string | null; publisher: string | null } | null }) {
   const [open, setOpen] = useState(false)
