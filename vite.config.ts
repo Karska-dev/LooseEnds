@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import react from '@vitejs/plugin-react'
@@ -10,11 +11,11 @@ import {
   searchQueryFor,
   tavilyRequestBody,
 } from './src/shared/aiLookup.ts'
-import type { AiSeriesResult, SearchFn } from './src/shared/aiLookup.ts'
+import type { AiSeriesResult, ModelFn, SearchFn } from './src/shared/aiLookup.ts'
 import { LookupError, newAiMeter, ollamaModel, tavilySearch } from './src/shared/aiProviders.ts'
 import { resolveSeriesNames } from './src/shared/hardcover.ts'
 import type { SeriesQuery } from './src/shared/hardcover.ts'
-import { aiFailure, failureDetail } from './worker/ai.ts'
+import { aiFailure, failureDetail, withRetryDay } from './worker/ai.ts'
 import { cacheKey } from './worker/cache.ts'
 
 /** Matches MAX_SERIES in worker/index.ts, so dev refuses what production refuses. */
@@ -154,13 +155,35 @@ function savedSearch(query: SeriesQuery, key: string, meter: ReturnType<typeof n
 }
 
 /**
+ * The local model, with every reply saved to .dev-cache/model and replayed:
+ * the same model asked the same thing answers the same, and a local model
+ * takes most of a minute to say it. Again the files are the ones
+ * scripts/ai-explain.mjs keeps, so what the benchmark has read is instant.
+ */
+function savedModel(run: ModelFn, model: string, replayed: { count: number }): ModelFn {
+  return async (request) => {
+    const key = createHash('sha1').update(`${model}\n${request.system}\n${request.user}`).digest('hex').slice(0, 16)
+    const path = join(DEV_CACHE, 'model', `${model.replace(/[^a-z0-9.]+/gi, '-')}-${key}.json`)
+    const saved = readJson<{ reply?: string }>(path)
+    if (saved?.reply) {
+      replayed.count += 1
+      return saved.reply
+    }
+    const reply = await run(request)
+    saveJson(path, { reply })
+    return reply
+  }
+}
+
+/**
  * In production /api/ai-series is worker/ai.ts: Tavily, Workers AI, a D1
  * cache and a daily allowance. Dev runs the same lookup (src/shared/
  * aiLookup.ts) with a local model through Ollama in place of Workers AI,
  * files in .dev-cache in place of D1, and no allowance and no lookup pass.
  * As with /api/series above, what the Worker learns has to be taught here.
  *
- * To look a series up again, delete its file in .dev-cache/ai-series.
+ * To look a series up again, delete its file in .dev-cache/ai-series (and,
+ * to make the model read the pages afresh, its reply in .dev-cache/model).
  */
 function aiSeriesApi(env: Record<string, string>): Plugin {
   const tavilyKey = env.TAVILY_KEY ?? ''
@@ -216,14 +239,15 @@ function aiSeriesApi(env: Record<string, string>): Plugin {
           const started = Date.now()
           const today = new Date().toISOString().slice(0, 10)
           const meter = newAiMeter()
+          const replayed = { count: 0 }
           let result: AiSeriesResult
           try {
             const outcome = await aiLookupSeries(query, {
               today,
               search: savedSearch(query, tavilyKey, meter),
-              runModel: ollamaModel(ollamaUrl, model, meter),
+              runModel: savedModel(ollamaModel(ollamaUrl, model, meter), model, replayed),
             })
-            result = outcome.result
+            result = withRetryDay(outcome.result, Date.now(), today)
             // A failure is not a fact about the series; everything else is kept.
             saveJson(saved(query), result)
             console.log(
@@ -231,7 +255,8 @@ function aiSeriesApi(env: Record<string, string>): Plugin {
                 (result.status === 'ok' ? `, ${outcome.report.kept} books` : ` (${result.detail ?? ''})`) +
                 `, ${Math.round((Date.now() - started) / 1000)}s, ${model},` +
                 ` ${meter.credits} Tavily credit${meter.credits === 1 ? '' : 's'}` +
-                (meter.searches === 0 ? ' (search replayed from .dev-cache)' : ''),
+                (meter.searches === 0 ? ' (search replayed from .dev-cache)' : '') +
+                (replayed.count > 0 ? ' (model reply replayed)' : ''),
             )
           } catch (error) {
             console.log(`[ai-series] ${query.name} failed:`, error instanceof Error ? error.message : error)

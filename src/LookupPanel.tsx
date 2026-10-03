@@ -10,13 +10,13 @@ type BadgeKind = 'go' | 'soon' | 'wait' | 'done'
 
 const WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten']
 
-function word(n: number, capital = false): string {
+export function word(n: number, capital = false): string {
   const text = n < WORDS.length ? WORDS[n] : String(n)
   return capital ? text : text.toLowerCase()
 }
 
 /** "A", "A and B", "A, B and C", then "A, B, C and 2 more". */
-function listNames(names: string[]): string {
+export function listNames(names: string[]): string {
   if (names.length === 0) return ''
   const shown = names.length > 3 ? names.slice(0, 3) : names
   const rest = names.length - shown.length
@@ -31,7 +31,7 @@ function sentence(parts: string[]): string {
 }
 
 /** One line per series that came back: the same verdict the row shows, shorter. */
-function brief(state: SeriesState): { kind: BadgeKind; label: string; text: string } {
+export function brief(state: SeriesState): { kind: BadgeKind; label: string; text: string } {
   const next = state.next
   if (state.inProgress) {
     return {

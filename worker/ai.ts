@@ -1,10 +1,10 @@
 import { aiLookupSeries } from '../src/shared/aiLookup.ts'
-import type { AiSeriesResult } from '../src/shared/aiLookup.ts'
+import type { AiAllowance, AiSeriesResult } from '../src/shared/aiLookup.ts'
 import { DEFAULT_AI_MODEL, LookupError, newAiMeter, tavilySearch, workersAiModel } from '../src/shared/aiProviders.ts'
 import type { AiBinding } from '../src/shared/aiProviders.ts'
 import type { SeriesQuery } from '../src/shared/hardcover.ts'
 import { AI_BUDGET_DETAIL, aiBudgetFrom, aiRecordSpend, aiSpentToday } from './aiBudget.ts'
-import { readAiCache, writeAiCache } from './aiCache.ts'
+import { maxAgeFor, readAiCache, writeAiCache } from './aiCache.ts'
 import { cacheKey } from './cache.ts'
 import type { D1Database } from './cache.ts'
 import { json, log } from './http.ts'
@@ -71,6 +71,30 @@ export function failureDetail(error: unknown): string {
   return AI_UNREACHABLE_DETAIL
 }
 
+/**
+ * A miss says when it will be looked up again, so the page can: the day its
+ * place in the cache runs out.
+ */
+export function withRetryDay(result: AiSeriesResult, now: number, today: string): AiSeriesResult {
+  if (result.status !== 'not_found') return result
+  return { ...result, retryAfter: new Date(now + maxAgeFor(result, today)).toISOString().slice(0, 10) }
+}
+
+function allowanceOf(spent: number | null, cap: number): AiAllowance | undefined {
+  return spent === null ? undefined : { left: Math.max(0, cap - spent), cap }
+}
+
+/** Today's count, or null when it cannot be read: the lookup must not depend on it. */
+async function spentToday(env: AiEnv, today: string): Promise<number | null> {
+  if (!env.DB) return null
+  try {
+    return await aiSpentToday(env.DB, today)
+  } catch (error) {
+    log('ai.budget_unavailable', { message: error instanceof Error ? error.message : String(error) })
+    return null
+  }
+}
+
 function isSeriesQueryList(value: unknown): value is SeriesQuery[] {
   return (
     Array.isArray(value) &&
@@ -127,10 +151,15 @@ export async function handleAiSeries(request: Request, env: AiEnv): Promise<Resp
       return hit ? { ...hit, query: series[index].name } : null
     }
 
+    const cap = aiBudgetFrom(env.AI_DAILY_BUDGET)
+
     if (cachedOnly) {
       const results = series.flatMap((_, index) => fromCache(index) ?? [])
+      // The page opens with this request, and says how much is left before
+      // anyone presses anything.
+      const allowance = allowanceOf(await spentToday(env, today), cap)
       log('ai.resolved', { status: 200, cachedOnly, requested: series.length, cacheHits: results.length, ms: Date.now() - started })
-      return json({ results })
+      return json({ results, allowance })
     }
 
     const query = series[0]
@@ -149,18 +178,10 @@ export async function handleAiSeries(request: Request, env: AiEnv): Promise<Resp
     // say so in the log: a broken counter must not take the lookup down, and
     // the search and the model each stop on their own when their free
     // allowance is gone.
-    const cap = aiBudgetFrom(env.AI_DAILY_BUDGET)
-    let spent: number | null = null
-    if (env.DB) {
-      try {
-        spent = await aiSpentToday(env.DB, today)
-      } catch (error) {
-        log('ai.budget_unavailable', { message: error instanceof Error ? error.message : String(error) })
-      }
-    }
+    const spent = await spentToday(env, today)
     if (spent !== null && spent >= cap) {
       log('ai.budget_exhausted', { status: 200, cap, spent })
-      return json({ results: [aiFailure(query, AI_BUDGET_DETAIL, today)] })
+      return json({ results: [aiFailure(query, AI_BUDGET_DETAIL, today)], allowance: allowanceOf(spent, cap) })
     }
 
     const meter = newAiMeter()
@@ -174,7 +195,7 @@ export async function handleAiSeries(request: Request, env: AiEnv): Promise<Resp
         search: tavilySearch(env.TAVILY_KEY, meter),
         runModel: workersAiModel(env.AI, model, meter),
       })
-      result = outcome.result
+      result = withRetryDay(outcome.result, now, today)
       kept = outcome.report.kept
       dropped = outcome.report.dropped.length
     } catch (error) {
@@ -214,7 +235,7 @@ export async function handleAiSeries(request: Request, env: AiEnv): Promise<Resp
       sampleKey: keys[0],
       ms: Date.now() - started,
     })
-    return json({ results: [result] })
+    return json({ results: [result], allowance: allowanceOf(spent === null ? null : spent + meter.searches, cap) })
   } catch (error) {
     log('ai.unhandled', {
       status: 500,

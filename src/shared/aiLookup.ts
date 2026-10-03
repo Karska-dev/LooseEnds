@@ -95,6 +95,18 @@ export interface AiSeriesResult extends SeriesResult {
   checkedAt: string
   volumes: AiVolume[]
   readingOrder?: { note: string; url: string } | null
+  /**
+   * For a series that was not found: the first day it will be looked up
+   * again, "YYYY-MM-DD". Set by whoever keeps the answer (the Worker's
+   * cache), since that is who knows how long it keeps it.
+   */
+  retryAfter?: string
+}
+
+/** What is left of the day's shared allowance, when the server can say. */
+export interface AiAllowance {
+  left: number
+  cap: number
 }
 
 /** What a run cost and why books were dropped; for logs and the benchmark. */

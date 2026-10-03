@@ -282,6 +282,26 @@ describe('POST /api/ai-series', () => {
     assert.equal(asked.length, 1, 'only the first, real lookup searched')
   })
 
+  test('says how much of the day\'s allowance is left, before and after a lookup', async () => {
+    const { db } = fakeDb({ searches: 4 })
+    searchReturns(pages(AUTHOR_PAGE))
+    const allowanceOf = async (response: Response) => ((await response.json()) as { allowance?: unknown }).allowance
+
+    assert.deepEqual(await allowanceOf(await ask(db, { series: [QUERY], cachedOnly: true })), { left: 26, cap: 30 })
+    assert.deepEqual(await allowanceOf(await ask(db, { series: [QUERY] })), { left: 25, cap: 30 })
+    assert.equal(await allowanceOf(await ask(undefined, { series: [QUERY] })), undefined, 'no database, nothing to say')
+  })
+
+  test('a miss says which day it will be looked up again', async () => {
+    const { db } = fakeDb()
+    searchReturns(pages(UNRELATED))
+    const [result] = await resultsOf(await ask(db, { series: [QUERY] }))
+    const tomorrow = new Date(Date.now() + DAY).toISOString().slice(0, 10)
+    assert.equal(result.retryAfter, tomorrow)
+    const [cached] = await resultsOf(await ask(db, { series: [QUERY], cachedOnly: true }))
+    assert.equal(cached.retryAfter, tomorrow, 'and it is remembered with the miss')
+  })
+
   test('one series at a time', async () => {
     const { db } = fakeDb()
     const response = await ask(db, { series: [QUERY, { name: 'Another' }] })

@@ -15,13 +15,13 @@ const PREFETCH_SIZE = 200
 const cache = new Map<string, SeriesResult>()
 
 /**
- * POST to /api/series with a lookup pass. If the server says the pass is
- * no good (it expired mid-lookup, or the secret was rotated), get a fresh one
- * and try that request exactly once more.
+ * POST to a lookup endpoint with a lookup pass. If the server says the pass
+ * is no good (it expired mid-lookup, or the secret was rotated), get a fresh
+ * one and try that request exactly once more.
  */
-async function postSeries(payload: unknown): Promise<Response> {
+export async function postWithPass(path: string, payload: unknown): Promise<Response> {
   const send = async () =>
-    fetch('/api/series', {
+    fetch(path, {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-lookup-pass': await lookupPass() },
       body: JSON.stringify(payload),
@@ -31,6 +31,8 @@ async function postSeries(payload: unknown): Promise<Response> {
   forgetPass()
   return send()
 }
+
+const postSeries = (payload: unknown) => postWithPass('/api/series', payload)
 
 /**
  * Asks only for what the server already has. A failure here is not worth
