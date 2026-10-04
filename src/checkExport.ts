@@ -1,5 +1,6 @@
 import Papa from 'papaparse'
 import type { ParseResult } from './goodreads'
+import type { Messages } from './i18n/index.ts'
 
 /**
  * Why a file cannot be used, in the terms the reader needs to fix it — not the
@@ -12,6 +13,13 @@ export type FileProblem =
   | { kind: 'columns'; missing: string[]; found: string[] }
   | { kind: 'no-books' }
   | { kind: 'damaged'; line: number; text: string }
+
+/** Everything the intake can refuse, including the checks that need no parsing. */
+export type IntakeProblem =
+  | FileProblem
+  | { kind: 'too-big'; bytes: number }
+  | { kind: 'unreadable' }
+  | { kind: 'sample' }
 
 /** Every Goodreads export has these; without them there is nothing to read. */
 export const REQUIRED_COLUMNS = ['Title', 'Author', 'Exclusive Shelf'] as const
@@ -71,22 +79,20 @@ export function checkParsed(result: ParseResult): FileProblem | null {
 /**
  * Rows left out of a file that otherwise loaded, in one sentence — or null
  * when nothing was. Loading the rest beats refusing the whole library.
+ *
+ * The counting is done here and the wording in the catalogue (`t`), so the
+ * sentence can be said again in another language without parsing twice.
  */
-export function leftOutNote(result: ParseResult): string | null {
+export function leftOutNote(result: ParseResult, t: Messages): string | null {
   const broken = result.rowProblems
   const untitled = result.skipped
   const total = broken.length + untitled
   if (total === 0) return null
 
-  const parts: string[] = []
-  if (broken.length > 0) {
-    const lines = broken.slice(0, 5).map((problem) => problem.line)
-    const more = broken.length > lines.length ? ` and ${broken.length - lines.length} more` : ''
-    parts.push(
-      `${broken.length} with the wrong number of columns (line${broken.length === 1 ? '' : 's'} ${lines.join(', ')}${more})`,
-    )
-  }
-  if (untitled > 0) parts.push(`${untitled} with no title`)
-
-  return `${total} row${total === 1 ? '' : 's'} left out: ${parts.join(', ')}.`
+  return t.shelf.leftOut({
+    total,
+    broken: broken.length,
+    lines: broken.slice(0, 5).map((problem) => problem.line),
+    untitled,
+  })
 }

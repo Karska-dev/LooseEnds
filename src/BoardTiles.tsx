@@ -1,13 +1,6 @@
+import { useLanguage } from './language.ts'
 import { TILES } from './state'
 import type { Tile } from './state'
-
-const LABEL: Record<Tile, string> = {
-  ready: 'Ready to read',
-  reading: 'Reading now',
-  waiting: 'Waiting on author',
-  finished: 'Finished',
-  aside: 'Set aside',
-}
 
 /* The class names predate the switches; the skins still key off them. */
 const CLASS: Record<Tile, string> = {
@@ -42,8 +35,9 @@ export function BoardTiles({
   visible: Readonly<Record<Tile, boolean>>
   onToggle: (tile: Tile) => void
 }) {
+  const { t } = useLanguage()
   return (
-    <div className="tiles" role="group" aria-label="Show in the list">
+    <div className="tiles" role="group" aria-label={t.tiles.group}>
       {TILES.map((tile) => {
         const on = visible[tile]
         const n = counts[tile]
@@ -53,13 +47,13 @@ export function BoardTiles({
             type="button"
             className={`tile ${CLASS[tile]}`}
             aria-pressed={on}
-            aria-label={`${LABEL[tile]}, ${n} series, ${on ? 'shown in' : 'hidden from'} the list`}
+            aria-label={t.tiles.aria(t.tiles.label[tile], n, on)}
             onClick={() => onToggle(tile)}
           >
             <span className="tile-n">{n}</span>
             <span className="tile-label">
               <span className="tile-dot" aria-hidden="true" />
-              {LABEL[tile]}
+              {t.tiles.label[tile]}
             </span>
             <Eye open={on} />
           </button>
@@ -67,11 +61,6 @@ export function BoardTiles({
       })}
     </div>
   )
-}
-
-function listNames(names: string[]): string {
-  if (names.length <= 1) return names.join('')
-  return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
 }
 
 /** "Showing 6 series", and what is hidden with a way back when anything is. */
@@ -86,18 +75,19 @@ export function ListHead({
   counts: Record<Tile, number>
   onShowAll: () => void
 }) {
+  const { t } = useLanguage()
   // Only groups that actually hold series are worth naming as hidden.
-  const hidden = TILES.filter((tile) => !visible[tile] && counts[tile] > 0).map((tile) => LABEL[tile])
+  const hidden = TILES.filter((tile) => !visible[tile] && counts[tile] > 0).map((tile) => t.tiles.label[tile])
   return (
     <div className="list-head">
       <span className="list-count" aria-live="polite">
-        Showing {shown} series
+        {t.tiles.showing(shown)}
       </span>
       {hidden.length > 0 && (
         <>
-          <span className="list-hidden">{listNames(hidden)} hidden</span>
+          <span className="list-hidden">{t.tiles.hidden(hidden)}</span>
           <button type="button" className="ghost list-show-all" onClick={onShowAll}>
-            Show all
+            {t.tiles.showAll}
           </button>
         </>
       )}

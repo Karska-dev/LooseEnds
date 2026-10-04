@@ -1,6 +1,9 @@
 import type { CSSProperties } from 'react'
 import type { AiAllowance, AiStop } from './aiResolve.ts'
-import { brief, listNames, word } from './lookupWords.ts'
+import type { Messages } from './i18n/index.ts'
+import { useLanguage } from './language.ts'
+import { brief } from './lookupWords.ts'
+import { Rich } from './Rich.tsx'
 import type { SeriesState } from './state'
 import { setTurnstileSlot } from './turnstile'
 
@@ -21,14 +24,12 @@ export type AiPhase = 'checking' | 'before' | 'during' | 'after' | 'stopped'
  * When the shared allowance starts again, in the reader's own clock. It is
  * counted per UTC day, which nobody thinks in.
  */
-function resetTime(now = new Date()): string {
-  const reset = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1))
-  return reset.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+function nextReset(now = new Date()): Date {
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1))
 }
 
-const plural = (n: number, one: string, many: string) => (n === 1 ? one : many)
-
 function Allowance({ allowance, note }: { allowance: AiAllowance | null; note?: string | null }) {
+  const { t } = useLanguage()
   if (!allowance) return null
   const share = allowance.cap > 0 ? Math.min(1, allowance.left / allowance.cap) : 0
   return (
@@ -37,7 +38,7 @@ function Allowance({ allowance, note }: { allowance: AiAllowance | null; note?: 
         <i style={{ width: `${share * 100}%` }} />
       </span>
       <span>
-        <b>{allowance.left}</b> of {allowance.cap} shared AI lookups left today
+        <Rich text={t.ai.allowance(allowance.left, allowance.cap)} tags={{ b: (n) => <b>{n}</b> }} />
       </span>
       {note && <small>{note}</small>}
     </div>
@@ -45,11 +46,11 @@ function Allowance({ allowance, note }: { allowance: AiAllowance | null; note?: 
 }
 
 /** One line per series that came back, as in the Hardcover panel, plus the misses. */
-function heardLine(state: SeriesState): { kind: string; label: string; text: string } {
+function heardLine(state: SeriesState, t: Messages): { kind: string; label: string; text: string } {
   const miss = state.ai?.miss
-  if (miss === 'not_confirmed') return { kind: 'wait', label: 'Not confirmed', text: 'the pages didn’t agree' }
-  if (miss) return { kind: 'wait', label: 'Not found', text: 'nothing about it today' }
-  return brief(state)
+  if (miss === 'not_confirmed') return { kind: 'wait', label: t.brief.notConfirmed, text: t.brief.pagesDisagreed }
+  if (miss) return { kind: 'wait', label: t.brief.notFound, text: t.brief.nothingToday }
+  return brief(state, t)
 }
 
 /**
@@ -61,7 +62,8 @@ function heardLine(state: SeriesState): { kind: string; label: string; text: str
  *
  * Pattern: a presentational component. It is given everything as props and
  * reports a press through onLookUp; it fetches nothing and keeps no data.
- * The lookup itself lives in App.tsx, so this file is only about wording.
+ * The lookup itself lives in App.tsx and the sentences in the catalogue
+ * (`ai` in src/i18n), so this file only decides which sentence applies.
  */
 export function AiLookupPanel({
   phase,
@@ -98,101 +100,72 @@ export function AiLookupPanel({
   allowance: AiAllowance | null
   onLookUp: () => void
 }) {
+  const { t } = useLanguage()
+  const words = t.ai
   const answered = total - pendingCount
-  const others = pendingCount === total ? '' : 'other '
-  const lookUpLabel =
-    pendingCount === total
-      ? `Look up ${total} series with AI`
-      : `Look up ${pendingCount} more with AI`
 
   // An allowance already at nothing is the same stop, known before pressing.
   const spent = allowance !== null && allowance.left <= 0 && pendingCount > 0
   const shown: AiPhase = phase === 'before' && spent ? 'stopped' : phase
   const why: AiStop | null = shown === 'stopped' ? (stop ?? 'budget') : null
 
-  const knownLine =
-    knownNames.length > 0 && pendingCount > 0
-      ? `${listNames(knownNames)} ${plural(knownNames.length, 'was', 'were')} looked up before, so ${plural(knownNames.length, 'it’s', 'they’re')} already below.`
-      : null
+  const knownLine = knownNames.length > 0 && pendingCount > 0 ? words.known(knownNames) : null
 
   let title: string
   let body: string | null = null
   let fine: string | null = null
   let stamp: string | null = null
   let canPress = false
-  let buttonLabel = lookUpLabel
+  let buttonLabel = words.go(total, pendingCount)
 
   if (shown === 'checking') {
-    title = `Look up your ${total} series with AI`
-    body = 'Checking which of them have been looked up before…'
+    title = words.checkingTitle(total)
+    body = words.checkingBody
   } else if (shown === 'before') {
-    title = `Look up your ${others}${pendingCount} series with AI`
-    body =
-      'An experiment. For each series, AI searches the web, reads the author’s and publisher’s pages it finds, and lists the books. It can get things wrong, so every book links to the page it came from.'
-    fine =
-      'Series names and authors are sent to a search service (Tavily) and to Cloudflare’s AI. Your books and ratings stay in this browser. Results are separate from Hardcover’s and never replace them.'
+    title = words.beforeTitle(total, pendingCount)
+    body = words.beforeBody
+    fine = words.fine
     canPress = true
   } else if (shown === 'during') {
-    title = 'Searching the web for'
-    body = `Heard back about ${answered} of ${total} so far. Each one takes a little while: a search, then AI reads what it found.`
+    title = words.duringTitle
+    body = words.duringBody(answered, total)
   } else if (shown === 'after') {
-    title =
-      foundCount === 0
-        ? `AI couldn’t find ${total === 1 ? 'your series' : 'any of your series'}`
-        : foundCount === total
-          ? total === 1
-            ? 'AI found your series'
-            : `AI found all ${word(total)} of your series`
-          : `AI found ${word(foundCount)} of your ${word(total)} series`
-    const parts: string[] = []
-    if (ready > 0) parts.push(`${word(ready, true)} ${plural(ready, 'has', 'have')} a next book waiting.`)
-    if (missedNames.length > 0) {
-      parts.push(`${listNames(missedNames)} couldn’t be confirmed from the pages found.`)
-    }
-    body = parts.length > 0 ? parts.join(' ') : null
-    if (foundCount > 0) stamp = 'Found by AI. It can be wrong: check the linked page before you buy.'
+    title = words.afterTitle(foundCount, total)
+    body = words.afterBody(ready, missedNames)
+    if (foundCount > 0) stamp = words.stamp
   } else if (why === 'budget') {
-    title = 'Today’s AI lookups are used up'
-    const when = resetTime()
-    body =
-      `Everyone using Loose Ends shares ${allowance ? allowance.cap : 'a small number of'} new AI lookups a day. They start again at ${when} your time. ` +
-      (answered > 0
-        ? `${word(answered, true)} of your series ${plural(answered, 'is', 'are')} already below. The other ${word(pendingCount)} can be looked up after ${when}.`
-        : `Your ${word(total)} series can be looked up after ${when}.`)
+    title = words.budgetTitle
+    body = words.budgetBody({
+      cap: allowance ? allowance.cap : null,
+      when: t.clock(nextReset()),
+      answered,
+      pending: pendingCount,
+      total,
+    })
   } else if (why === 'month') {
-    title = 'This month’s AI lookups are used up'
-    body =
-      'The search this experiment runs on gives a fixed number of free searches a month, and they are gone. ' +
-      (answered > 0
-        ? `What was looked up before is below; the other ${word(pendingCount)} can be looked up next month.`
-        : 'Your series can be looked up next month.')
+    title = words.monthTitle
+    body = words.monthBody(answered, pendingCount)
   } else if (why === 'unset') {
-    title = 'AI lookup isn’t set up here'
-    body = 'This server isn’t configured for it yet, so nothing new can be looked up.'
+    title = words.unsetTitle
+    body = words.unsetBody
   } else if (why === 'check') {
-    title = 'Couldn’t confirm you’re a person'
-    body =
-      'Cloudflare’s quick check didn’t go through, so nothing was looked up. Try again — if a box appears, tick it.'
+    title = words.checkTitle
+    body = words.checkBody
     canPress = true
-    buttonLabel = 'Try again'
+    buttonLabel = words.tryAgain
   } else if (why === 'busy') {
-    title = 'Too many lookups at once'
-    body = `We heard back about ${answered} of your ${total} series. Give it a minute, then carry on.`
+    title = words.busyTitle
+    body = words.busyBody(answered, total)
     canPress = true
   } else {
-    title = 'Couldn’t reach the AI lookup'
-    body =
-      (answered > 0 ? `We heard back about ${answered} of your ${total} series. ` : `None of your ${total} series came back. `) +
-      'Try again — it is usually temporary.'
+    title = words.unreachableTitle
+    body = words.unreachableBody(answered, total)
     canPress = true
-    buttonLabel = 'Try again now'
+    buttonLabel = words.tryAgainNow
   }
 
   const shownHeard = heard.slice(-3)
-  const spoken =
-    shown === 'during'
-      ? `Looking up series with AI: ${answered} of ${total} done.`
-      : title
+  const spoken = shown === 'during' ? words.spoken(answered, total) : title
   // The same three looks as the Hardcover panel: indigo while working, green
   // when done, the accent when it could not go on.
   const dataPhase = shown === 'stopped' ? 'failed' : shown === 'checking' ? 'before' : shown
@@ -242,7 +215,7 @@ export function AiLookupPanel({
         {shown === 'during' && shownHeard.length > 0 && (
           <ul className="lookup-heard">
             {shownHeard.map((state) => {
-              const line = heardLine(state)
+              const line = heardLine(state, t)
               return (
                 <li key={state.key}>
                   <span className={`badge badge-${line.kind}`}>{line.label}</span>

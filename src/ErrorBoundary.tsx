@@ -1,5 +1,8 @@
 import { Component } from 'react'
 import type { ErrorInfo, ReactNode } from 'react'
+import { LanguageContext } from './language.ts'
+import type { Language } from './language.ts'
+import { Rich } from './Rich.tsx'
 
 /**
  * Without this, one thrown render leaves a blank white page: React unmounts
@@ -13,6 +16,12 @@ export class ErrorBoundary extends Component<
 > {
   state = { failed: false }
 
+  // An error boundary has to be a class, and a class cannot call the
+  // useLanguage() hook. `contextType` is the class way to read a context:
+  // React fills in this.context from the nearest provider.
+  static contextType = LanguageContext
+  declare context: Language
+
   static getDerivedStateFromError() {
     return { failed: true }
   }
@@ -25,6 +34,7 @@ export class ErrorBoundary extends Component<
 
   render() {
     if (!this.state.failed) return this.props.children
+    const words = this.context.t.crash
 
     return (
       <main className="page">
@@ -32,27 +42,23 @@ export class ErrorBoundary extends Component<
           <h1>Loose Ends</h1>
         </header>
         <section className="intake">
-          <h2>Something went wrong</h2>
+          <h2>{words.heading}</h2>
+          <p className="note">{words.what}</p>
           <p className="note">
-            The page hit an error it could not recover from. Nothing was sent
-            anywhere and nothing was saved &mdash; reloading starts fresh.
-          </p>
-          <p className="note">
-            If it happens again with the same export, that file is probably the
-            cause, and it would be useful to know about:{' '}
-            <a
-              href="https://github.com/Karska-dev/LooseEnds/issues"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              open an issue
-            </a>
-            . Please don&rsquo;t attach the export itself &mdash; it is your
-            whole reading history.
+            <Rich
+              text={words.report}
+              tags={{
+                a: (label) => (
+                  <a href="https://github.com/Karska-dev/LooseEnds/issues" target="_blank" rel="noopener noreferrer">
+                    {label}
+                  </a>
+                ),
+              }}
+            />
           </p>
           <div className="actions">
             <button type="button" onClick={() => window.location.reload()}>
-              Reload
+              {words.reload}
             </button>
           </div>
         </section>

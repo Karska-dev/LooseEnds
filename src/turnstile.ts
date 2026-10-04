@@ -16,6 +16,7 @@ interface TurnstileApi {
       sitekey: string
       action?: string
       appearance?: 'always' | 'execute' | 'interaction-only'
+      language?: string
       callback?: (token: string) => void
       'error-callback'?: (code: string) => void
       'expired-callback'?: () => void
@@ -98,6 +99,8 @@ function solve(api: TurnstileApi, key: string): Promise<string> {
       sitekey: key,
       action: 'lookup',
       appearance: 'interaction-only',
+      // If Cloudflare does ask for a click, it asks in the page's language.
+      language: document.documentElement.lang || 'auto',
       callback: (token) => {
         done()
         resolve(token)

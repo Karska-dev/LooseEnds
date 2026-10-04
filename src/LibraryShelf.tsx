@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { Book, Shelf } from './goodreads'
+import { useLanguage } from './language.ts'
 
 /**
  * Past this many books a spine per book would not fit the shelf, so the
@@ -10,13 +11,6 @@ import type { Book, Shelf } from './goodreads'
 const MAX_SPINES = 36
 
 const ORDER: Shelf[] = ['read', 'reading', 'to_read', 'dnf']
-
-const LABEL: Record<Shelf, string> = {
-  read: 'read',
-  reading: 'reading',
-  to_read: 'to read',
-  dnf: 'did not finish',
-}
 
 /* A fixed rhythm, not random: the same library always draws the same shelf. */
 const HEIGHTS = [91, 78, 97, 72, 86, 94, 75, 81, 100, 70, 89]
@@ -68,6 +62,7 @@ export function LibraryShelf({
   remembered: boolean
   onForget: () => void
 }) {
+  const { t } = useLanguage()
   const [forgotten, setForgotten] = useState(false)
 
   const total = books.length
@@ -87,9 +82,7 @@ export function LibraryShelf({
       <div className="library-main">
         <p className="library-head">
           <b className="library-name">{name}</b>
-          <span className="library-count">
-            {total} book{total === 1 ? '' : 's'}
-          </span>
+          <span className="library-count">{t.shelf.books(total)}</span>
         </p>
 
         {/* Decoration: the legend below says the same thing in words. */}
@@ -107,7 +100,7 @@ export function LibraryShelf({
           {ORDER.filter((shelf) => counts[shelf] > 0).map((shelf) => (
             <li key={shelf}>
               <span className={`swatch spine-${shelf}`} aria-hidden="true" />
-              <b>{counts[shelf]}</b> {LABEL[shelf]}
+              <b>{counts[shelf]}</b> {t.shelf.legend[shelf]}
             </li>
           ))}
         </ul>
@@ -118,7 +111,7 @@ export function LibraryShelf({
       <div className="library-side">
         <div className="library-actions">
           <button type="button" className="change-file" onClick={onReset}>
-            Use a different file
+            {t.shelf.change}
           </button>
           {remembered ? (
             <button
@@ -129,12 +122,12 @@ export function LibraryShelf({
                 setForgotten(true)
               }}
             >
-              Forget my choices
+              {t.shelf.forget}
             </button>
           ) : (
             forgotten && (
               <span className="forget-done" role="status">
-                Choices forgotten
+                {t.shelf.forgotten}
               </span>
             )
           )}
@@ -142,14 +135,8 @@ export function LibraryShelf({
 
         <p className="series-count">
           <span className="series-count-n">{inSeries}</span>
-          <span className="series-count-label">
-            {inSeries === 1 ? 'book belongs' : 'books belong'} to a series
-          </span>
-          {standalone > 0 && (
-            <span className="series-count-rest">
-              {standalone} more {standalone === 1 ? 'stands' : 'stand'} alone
-            </span>
-          )}
+          <span className="series-count-label">{t.shelf.inSeries(inSeries)}</span>
+          {standalone > 0 && <span className="series-count-rest">{t.shelf.standalone(standalone)}</span>}
         </p>
       </div>
     </div>

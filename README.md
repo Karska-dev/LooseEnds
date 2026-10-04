@@ -37,6 +37,10 @@ a person, usually invisible. It sees your browser, not your books; it keeps
 the lookup for readers rather than scripts, since every lookup is answered
 with this site's own access to those services.
 
+The page comes in English and Ukrainian. It opens in the one your browser
+asks for, and **EN / УКР** at the top switches it. Book titles, series and
+author names are shown as they are; only the page around them is translated.
+
 Heart up to five series to keep them at the top, and set aside the ones you've
 walked away from. Those choices — series names only, not your books — are
 remembered in this browser's local storage, never sent anywhere, and
