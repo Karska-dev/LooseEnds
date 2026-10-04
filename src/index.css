@@ -930,14 +930,13 @@ button.ghost {
 /* One corner block for both, so neither has to know how wide the other is
    in the current language and look.
 
-   Absolute, not fixed: it sits in the window's top corner and scrolls away
-   with the page. The look pill alone used to stay fixed there. Two pills
-   are wide enough to cover the board's right edge in any window narrower
-   than about 1500px, and a setting changed once a visit is not worth
-   covering the list for. It is positioned against the window because none
-   of its ancestors is positioned at this width (see .masthead below). */
+   Fixed: it stays in the window's top corner while the page scrolls, so the
+   language and the look can be changed from anywhere on the page.
+   Trade-off: the two pills together are about 300px wide, so in a window
+   narrower than about 1500px they lie over the right edge of the board
+   while it scrolls under them. */
 .prefs {
-  position: absolute;
+  position: fixed;
   top: 12px;
   right: 12px;
   z-index: 10;
@@ -1078,9 +1077,10 @@ button.ghost {
 
 @media (max-width: 899px) {
   .skins { display: none; }
-  /* Positioned here only, so the buttons sit in the masthead's own corner. */
+  /* The round buttons are not fixed: they sit in the masthead's own corner
+     and scroll away with it. */
   .masthead { position: relative; }
-  .prefs { top: 0; right: 0; z-index: 20; }
+  .prefs { position: absolute; top: 0; right: 0; z-index: 20; }
   /* Relative, so the dial's circles drop from their own button. */
   .skin-dial { display: block; position: relative; }
   .masthead h1,
