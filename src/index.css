@@ -27,13 +27,6 @@
   --body: "Golos Text", system-ui, -apple-system, "Segoe UI", sans-serif;
   --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  /* Playfair Display draws old-style figures unless asked: a zero the size
-     of an "o", so "0/8" reads as "o/8". Lining figures are the ones that
-     stand as tall as capitals. The other fonts have only those, so for them
-     this changes nothing. A rule that sets tabular-nums has to repeat
-     lining-nums beside it: the property is replaced whole, not added to. */
-  font-variant-numeric: lining-nums;
-
   color-scheme: light dark;
 }
 
@@ -73,6 +66,18 @@ body {
   background: var(--ground);
   color: var(--ink);
   font: 16px/1.6 var(--body);
+  /* Playfair Display draws old-style figures unless asked: a zero the size
+     of an "o", so "0/8" reads as "o/8", and a "3" that hangs below the line.
+     Lining figures are the ones that stand as tall as capitals. The other
+     fonts have only those, so for them this changes nothing.
+
+     It has to come after `font` and on the same element. `font` is a
+     shorthand: it sets every font property it does not mention back to its
+     default, this one included. Set on :root, it was wiped out here and
+     never reached the page. For the same reason a rule that sets
+     tabular-nums repeats lining-nums beside it: the property is replaced
+     whole, not added to. */
+  font-variant-numeric: lining-nums;
 }
 
 .page {
