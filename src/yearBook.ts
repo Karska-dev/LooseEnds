@@ -120,6 +120,19 @@ export interface MonthState {
   needsPick: boolean
 }
 
+/**
+ * A book that lost a duel, and how far it got. A tier, not a rank: the
+ * tournament only orders the top places, so the picture says "Q1 pick" or
+ * "March", never "No. 6".
+ */
+export interface Placing {
+  book: Book
+  /** Lost the final; lost to the other half's pick as a quarter's pick; or a month's favourite. */
+  tier: 'runnerUp' | 'quarter' | 'month'
+  /** Quarter 1..4 for a quarter pick, month 1..12 for a month favourite, else 0. */
+  at: number
+}
+
 export interface Bracket {
   months: MonthState[]
   /** Q1..Q4. Null while undecided, or when the whole quarter was empty. */
@@ -128,6 +141,13 @@ export interface Bracket {
   halves: (Book | null)[]
   /** Null while undecided; also null when the year has no books at all. */
   winner: Book | null
+  /** Who lost the final duel. Null while undecided, or when the winner won by default. */
+  runnerUp: Book | null
+  /**
+   * Every book that lost a duel, the furthest first (calendar order within a
+   * tier). With the winner on top, this is the list Top 5 and Top 10 cut.
+   */
+  placings: Placing[]
   /** The next question, or null when everything is decided. */
   next: Question | null
   /**
@@ -154,15 +174,19 @@ export function bracket(months: readonly (readonly Book[])[], decisions: YearDec
   const monthQuestions: Question[] = []
   const duelQuestions: Question[] = []
   let answered = 0
+  const losers: { book: Book; round: number }[] = []
 
-  function meet(a: Slot, b: Slot, stage: Stage, index: number): Slot {
+  /** `round`: 1 and 2 are a quarter's first and second duel, 3 the half, 4 the final. */
+  function meet(a: Slot, b: Slot, stage: Stage, index: number, round: number): Slot {
     if (a === PENDING || b === PENDING) return PENDING
     if (!a) return b
     if (!b) return a
     const saved = decisions.duels[pairKey(a, b)]
     if (saved === bookKey(a) || saved === bookKey(b)) {
       answered++
-      return saved === bookKey(a) ? a : b
+      const won = saved === bookKey(a) ? a : b
+      losers.push({ book: won === a ? b : a, round })
+      return won
     }
     duelQuestions.push({ kind: 'duel', stage, index, a, b })
     return PENDING
@@ -182,19 +206,33 @@ export function bracket(months: readonly (readonly Book[])[], decisions: YearDec
   // Winner stays on: month 1 vs month 2, the winner vs month 3.
   const quarterSlots: Slot[] = [0, 1, 2, 3].map((q) => {
     const [m1, m2, m3] = slots.slice(q * 3, q * 3 + 3) as [Slot, Slot, Slot]
-    return meet(meet(m1, m2, 'quarter', q), m3, 'quarter', q)
+    return meet(meet(m1, m2, 'quarter', q, 1), m3, 'quarter', q, 2)
   })
   const halfSlots: Slot[] = [0, 1].map((h) =>
-    meet(quarterSlots[h * 2]!, quarterSlots[h * 2 + 1]!, 'half', h),
+    meet(quarterSlots[h * 2]!, quarterSlots[h * 2 + 1]!, 'half', h, 3),
   )
-  const winnerSlot = meet(halfSlots[0]!, halfSlots[1]!, 'year', 0)
+  const winnerSlot = meet(halfSlots[0]!, halfSlots[1]!, 'year', 0, 4)
 
   const known = (slot: Slot) => (slot === PENDING ? null : slot)
+  // The final was a real duel only when both halves had a book.
+  const [h1, h2] = halfSlots.map(known)
+  const runnerUp =
+    winnerSlot !== PENDING && winnerSlot && h1 && h2 ? (winnerSlot === h1 ? h2 : h1) : null
+  // Furthest first; the sort is stable, so calendar order holds inside a round.
+  const placings: Placing[] = [...losers]
+    .sort((x, y) => y.round - x.round)
+    .map(({ book, round }): Placing => {
+      if (round === 4) return { book, tier: 'runnerUp', at: 0 }
+      if (round === 3) return { book, tier: 'quarter', at: quarterSlots.indexOf(book) + 1 }
+      return { book, tier: 'month', at: slots.indexOf(book) + 1 }
+    })
   return {
     months: states,
     quarters: quarterSlots.map(known),
     halves: halfSlots.map(known),
     winner: known(winnerSlot),
+    runnerUp,
+    placings,
     next: monthQuestions[0] ?? duelQuestions[0] ?? null,
     duels: { answered, total: Math.max(0, months.filter((list) => list.length > 0).length - 1) },
   }

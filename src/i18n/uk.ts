@@ -520,6 +520,23 @@ export const uk: Messages = {
     choose: (title) => `Обрати ${quoted(title)}`,
     resultLabel: (year) => `найкраще за ${year}`,
     change: 'Змінити вибір',
+    download: 'Завантажити',
+    pictureAlt: (title) => `Картинка, щоб поділитися: ${title}`,
+    format: { label: 'Картинка', winner: 'Переможець', quarters: 'Квартали', full: 'Весь рік', top5: 'Топ 5', top10: 'Топ 10' },
+    shape: { label: 'Формат', story: 'Історія', post: 'Допис', square: 'Квадрат' },
+    card: {
+      quartersStat: (quarters, months, count) =>
+        `${count} ${forms(count, 'книга', 'книги', 'книг')} · ${months} ${forms(months, 'місяць', 'місяці', 'місяців')} · ${quarters} ${forms(quarters, 'квартал', 'квартали', 'кварталів')}`,
+      fullStat: (months, count) =>
+        `${months} ${forms(months, 'улюблена', 'улюблені', 'улюблених')} · ${count} ${forms(count, 'книга', 'книги', 'книг')}`,
+      runnerUp: 'Друге місце',
+      quarterPick: (quarter) => `Вибір: ${quarter}`,
+      label: (year) => `Найкраще за ${year}`,
+      stat: (n, year) =>
+        n === 1
+          ? `Єдина книга, прочитана у ${year} році`
+          : `Одна з ${n} ${forms(n, 'книги', 'книг', 'книг')}, прочитаних у ${year} році`,
+    },
     emptyTitle: 'Немає прочитаних книг із датою',
     emptyBody:
       'Потрібні книги на полиці «прочитано» з датою прочитання. Додайте дати на Goodreads, експортуйте знову — і ваш рік з’явиться тут.',

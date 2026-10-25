@@ -292,6 +292,47 @@ describe('bracket: finishing', () => {
     const { result } = playFirst(months)
     assert.ok(months.flat().some((b) => bookKey(b) === bookKey(result.winner!)))
   })
+
+  test('the runner-up is the loser of the final, never the winner', () => {
+    const months = year({ 1: ['a'], 4: ['b'], 8: ['c'], 12: ['d'] })
+    const { result } = playFirst(months)
+    assert.ok(result.runnerUp)
+    assert.notEqual(bookKey(result.runnerUp!), bookKey(result.winner!))
+    assert.equal(result.runnerUp!.title, 'c')
+  })
+
+  test('placings: runner-up first, then quarter picks, then month favourites', () => {
+    const months = year({ 1: ['a'], 2: ['b'], 3: ['c'], 4: ['d'], 7: ['e'], 8: ['f'], 12: ['g'] })
+    const { result } = playFirst(months)
+    // First answer always wins: a takes Q1 and the half; e takes Q3 and the final.
+    assert.equal(titleOf(result.winner), 'a')
+    assert.deepEqual(
+      result.placings.map((p) => [p.book.title, p.tier, p.at]),
+      [
+        ['e', 'runnerUp', 0],
+        ['d', 'quarter', 2],
+        ['g', 'quarter', 4],
+        ['c', 'month', 3], // lost the second duel of its quarter: got further than b
+        ['b', 'month', 2],
+        ['f', 'month', 8],
+      ],
+    )
+  })
+
+  test('placings never contain the winner, and count n − 1 once finished', () => {
+    const months = year({ 1: ['a', 'b'], 2: ['c'], 6: ['d'], 9: ['e', 'f'], 10: ['g'] })
+    const { result } = playFirst(months)
+    assert.equal(result.placings.length, result.duels.total)
+    assert.ok(result.placings.every((p) => bookKey(p.book) !== bookKey(result.winner!)))
+  })
+
+  test('no runner-up while the final is open, or when the winner won by default', () => {
+    const months = year({ 1: ['a'], 4: ['b'] })
+    assert.equal(bracket(months, NO_DECISIONS).runnerUp, null)
+    const lone = year({ 3: ['a', 'b'] })
+    assert.equal(playFirst(lone).result.runnerUp, null)
+    assert.equal(bracket(year({}), NO_DECISIONS).runnerUp, null)
+  })
 })
 
 describe('storage', () => {

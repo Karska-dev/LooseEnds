@@ -490,6 +490,20 @@ export const en = {
     choose: (title: string) => `Choose ${title}`,
     resultLabel: (year: number) => `best of ${year}`,
     change: 'Change a pick',
+    download: 'Download',
+    pictureAlt: (title: string) => `Picture to share: ${title}`,
+    /** Printed on the share picture itself (src/shareCard.ts). */
+    format: { label: 'Picture', winner: 'Winner', quarters: 'Quarters', full: 'Full year', top5: 'Top 5', top10: 'Top 10' },
+    shape: { label: 'Shape', story: 'Story', post: 'Post', square: 'Square' },
+    card: {
+      quartersStat: (quarters: number, months: number, books: number) =>
+        `${books} book${s(books)} · ${months} month${s(months)} · ${quarters} quarter${s(quarters)}`,
+      fullStat: (months: number, books: number) => `${months} favourite${s(months)} · ${books} book${s(books)}`,
+      runnerUp: 'Runner-up',
+      quarterPick: (quarter: string) => `${quarter} pick`,
+      label: (year: number) => `Best of ${year}`,
+      stat: (n: number, year: number) => (n === 1 ? `The only book I read in ${year}` : `1 of ${n} books I read in ${year}`),
+    },
     emptyTitle: 'No finished books with a date',
     emptyBody:
       'This needs books on your read shelf with a Date Read. Add the dates on Goodreads, export again, and your year will appear here.',

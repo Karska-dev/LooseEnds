@@ -3425,7 +3425,7 @@ button.ghost {
   outline: 2px solid var(--primary);
   outline-offset: 3px;
 }
-@media (hover: hover) { .yb-btn:hover { background: var(--ink); color: var(--ground); } }
+@media (hover: hover) { .yb-btn:hover:not(:disabled) { background: var(--ink); color: var(--ground); } }
 
 /* A made-up cover: 14 % of the tint in the ground, a hairline at 40 %. */
 .yb-cover {
@@ -3525,7 +3525,15 @@ button.yb-month { cursor: pointer; }
 .yb-or { grid-column: 2; grid-row: 1; align-self: center; justify-self: center; font: italic 400 20px/1 var(--display); color: var(--ink-soft); }
 .yb-foot { display: flex; align-items: center; gap: 22px; min-height: 40px; padding-top: 14px; border-top: 1px solid var(--line); }
 
-.yb-result { display: flex; flex-direction: column; gap: 10px; }
+.yb-result { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 28px 56px; }
+.yb-result-book { display: flex; flex-direction: column; gap: 10px; }
+.yb-card { display: flex; flex-direction: column; align-items: flex-start; gap: 16px; width: 240px; max-width: 100%; }
+/* A hairline round the picture so its edge shows against the page. */
+.yb-card-img { width: 100%; border: 1px solid var(--line); }
+.yb-chips { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.yb-chips .ghost[aria-pressed='true'] { border-bottom-color: var(--ink); font-weight: 600; }
+.yb-card-img canvas { display: block; width: 100%; height: 100%; }
+.yb-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .yb-champ { width: 240px; max-width: 100%; padding: 18px; font-size: 28px; }
 
 .yb-empty { padding-top: 6px; }

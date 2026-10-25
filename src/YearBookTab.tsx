@@ -1,8 +1,11 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 import type { Book } from './goodreads'
 import { useLanguage } from './language.ts'
-import { tintFor } from './tint.ts'
+import { tintFor, tintIndex } from './tint.ts'
+import { QUIET_LIGHT, SIZES } from './shareCard'
+import type { CardBook, Format, Shape } from './shareCard'
+import { canvasToPng, renderCard } from './drawShareCard'
 import { useYearBook } from './useYearBook'
 import { bookKey, booksByMonth, bracket, pickDuel, pickMonth, undoDuel } from './yearBook'
 import type { Bracket, MonthState } from './yearBook'
@@ -122,7 +125,7 @@ export function YearBookTab({
 
   if (view.kind === 'play') {
     const next = state.next
-    if (next === null) return <Result state={state} year={year} onBack={() => setView({ kind: 'timeline' })} />
+    if (next === null) return <Result state={state} year={year} count={total} onBack={() => setView({ kind: 'timeline' })} />
     if (next.kind === 'month') {
       // A month lost its pick (a new export): back to the timeline to choose.
       return <Back onBack={() => setView({ kind: 'timeline' })} year={year} />
@@ -291,7 +294,7 @@ function Back({ onBack, year }: { onBack: () => void; year: number }) {
   )
 }
 
-function Result({ state, year, onBack }: { state: Bracket; year: number; onBack: () => void }) {
+function Result({ state, year, count, onBack }: { state: Bracket; year: number; count: number; onBack: () => void }) {
   const { t } = useLanguage()
   const winner = state.winner
   return (
@@ -300,13 +303,16 @@ function Result({ state, year, onBack }: { state: Bracket; year: number; onBack:
       <h3 className="list-label yb-label">{t.yearBook.resultLabel(year)}</h3>
       {winner && (
         <div className="yb-result">
-          <Cover book={winner} className="yb-champ is-pick">
-            <Crown />
-          </Cover>
-          <p className="yb-author">
-            <span className="yb-sr">{winner.title} — </span>
-            {winner.author}
-          </p>
+          <div className="yb-result-book">
+            <Cover book={winner} className="yb-champ is-pick">
+              <Crown />
+            </Cover>
+            <p className="yb-author">
+              <span className="yb-sr">{winner.title} — </span>
+              {winner.author}
+            </p>
+          </div>
+          <ShareCard state={state} winner={winner} year={year} count={count} />
         </div>
       )}
       <div className="yb-foot">
@@ -314,6 +320,117 @@ function Result({ state, year, onBack }: { state: Bracket; year: number; onBack:
           {t.yearBook.change}
         </button>
       </div>
+    </div>
+  )
+}
+
+const cardBook = (book: Book): CardBook => ({ title: book.title, author: book.author, tint: tintIndex(bookKey(book)) })
+
+/**
+ * The picture to share, drawn here in the browser (nothing is uploaded),
+ * with a Download button. Two choices, both with a default: what to show
+ * and what shape. The Share button and the backgrounds come later.
+ */
+function ShareCard({ state, winner, year, count }: { state: Bracket; winner: Book; year: number; count: number }) {
+  const { t } = useLanguage()
+  const y = t.yearBook
+  const host = useRef<HTMLDivElement>(null)
+  const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null)
+  const [format, setFormat] = useState<Format>('winner')
+  const [shape, setShape] = useState<Shape>('story')
+
+  const quarters = state.quarters.filter((q) => q !== null).length
+  const months = state.months.filter((m) => m.books.length > 0).length
+  // A path through the year needs more than one quarter to be a path.
+  // Each picture is offered only when it has something to show.
+  const placed = state.placings.length
+  const formats: Format[] = [
+    'winner',
+    ...(quarters > 1 ? (['quarters'] as const) : []),
+    ...(months > 1 ? (['full'] as const) : []),
+    ...(placed > 0 ? (['top5'] as const) : []),
+    ...(placed > 4 ? (['top10'] as const) : []),
+  ]
+  const shown: Format = formats.includes(format) ? format : 'winner'
+
+  const label = y.card.label(year)
+  const stat =
+    shown === 'quarters'
+      ? y.card.quartersStat(quarters, months, count)
+      : shown === 'full'
+        ? y.card.fullStat(months, count)
+        : y.card.stat(count, year)
+
+  useEffect(() => {
+    let current = true
+    const quarterNames = [0, 1, 2, 3].map((i) => t.yearBook.stage.quarter(i))
+    renderCard({
+      format: shown,
+      shape,
+      palette: QUIET_LIGHT,
+      label,
+      stat,
+      winner: cardBook(winner),
+      quarters: state.quarters.map((q) => (q ? cardBook(q) : null)),
+      halves: state.halves.map((h) => (h ? cardBook(h) : null)),
+      quarterNames,
+      months: state.months.map((m) => (m.pick ? cardBook(m.pick) : null)),
+      monthLetters: t.months.map((m) => [...m][0]!.toLocaleUpperCase()),
+      placings: state.placings.map((p) => ({
+        book: cardBook(p.book),
+        label:
+          p.tier === 'runnerUp'
+            ? y.card.runnerUp
+            : p.tier === 'quarter'
+              ? y.card.quarterPick(y.stage.quarter(p.at - 1))
+              : y.monthNames[p.at - 1]!,
+      })),
+    })
+      .then((drawn) => {
+        // A newer draw (another shape, another language) may have started.
+        if (!current) return
+        drawn.setAttribute('role', 'img')
+        drawn.setAttribute('aria-label', y.pictureAlt(winner.title))
+        host.current?.replaceChildren(drawn)
+        setCanvas(drawn)
+      })
+      .catch(() => setCanvas(null))
+    return () => {
+      current = false
+    }
+  }, [state, winner, shown, shape, label, stat, t])
+
+  async function download() {
+    if (!canvas) return
+    const url = URL.createObjectURL(await canvasToPng(canvas))
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `best-of-${year}-${shown}-${shape}.png`
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const { width, height } = SIZES[shape]
+  return (
+    <div className="yb-card">
+      <div className="yb-chips" role="group" aria-label={y.format.label}>
+        {formats.map((f) => (
+          <button key={f} type="button" className="ghost" aria-pressed={f === shown} onClick={() => setFormat(f)}>
+            {y.format[f]}
+          </button>
+        ))}
+      </div>
+      <div className="yb-chips" role="group" aria-label={y.shape.label}>
+        {(['story', 'post', 'square'] as const).map((s) => (
+          <button key={s} type="button" className="ghost" aria-pressed={s === shape} onClick={() => setShape(s)}>
+            {y.shape[s]}
+          </button>
+        ))}
+      </div>
+      <div className="yb-card-img" ref={host} style={{ aspectRatio: `${width} / ${height}` }} />
+      <button type="button" className="yb-btn" disabled={!canvas} onClick={download}>
+        {y.download}
+      </button>
     </div>
   )
 }
