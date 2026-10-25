@@ -3536,6 +3536,12 @@ button.yb-month { cursor: pointer; }
 .yb-back { flex: none; width: 36px; height: 64px; padding: 0; border: 1px solid var(--line); background: var(--ground); cursor: pointer; display: block; }
 .yb-back img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .yb-back[aria-pressed='true'] { outline: 2px solid var(--ink); outline-offset: 1px; }
+.yb-credits { font-size: 13px; color: var(--ink-soft); max-width: 100%; }
+.yb-credits summary { cursor: pointer; }
+.yb-credits p { margin: 8px 0; }
+.yb-credits ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.yb-credits li { display: flex; align-items: center; gap: 8px; }
+.yb-credits img { display: block; object-fit: cover; border: 1px solid var(--line); }
 .yb-card-img canvas { display: block; width: 100%; height: 100%; }
 .yb-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .yb-champ { width: 240px; max-width: 100%; padding: 18px; font-size: 28px; }

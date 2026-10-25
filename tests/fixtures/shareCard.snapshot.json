@@ -1,0 +1,542 @@
+{
+ "en/story/winner/plain": {
+  "hash": "29c0adee6564ec5f",
+  "steps": 10,
+  "covers": 1,
+  "texts": 6
+ },
+ "en/story/winner/photo-light": {
+  "hash": "d6a36cfe745c840a",
+  "steps": 13,
+  "covers": 1,
+  "texts": 7
+ },
+ "en/story/winner/photo-dark": {
+  "hash": "02a2c1f03de8250b",
+  "steps": 13,
+  "covers": 1,
+  "texts": 7
+ },
+ "en/story/quarters/plain": {
+  "hash": "107a9a64738e3ffe",
+  "steps": 32,
+  "covers": 7,
+  "texts": 16
+ },
+ "en/story/quarters/photo-light": {
+  "hash": "d58eab08c14e3ccb",
+  "steps": 35,
+  "covers": 7,
+  "texts": 17
+ },
+ "en/story/quarters/photo-dark": {
+  "hash": "dfe323f0b71a8051",
+  "steps": 35,
+  "covers": 7,
+  "texts": 17
+ },
+ "en/story/full/plain": {
+  "hash": "33fbf4af03ce8fa9",
+  "steps": 64,
+  "covers": 19,
+  "texts": 24
+ },
+ "en/story/full/photo-light": {
+  "hash": "8b5ce6088e5e9068",
+  "steps": 67,
+  "covers": 19,
+  "texts": 25
+ },
+ "en/story/full/photo-dark": {
+  "hash": "1b9c3531fd11a5fe",
+  "steps": 67,
+  "covers": 19,
+  "texts": 25
+ },
+ "en/story/top5/plain": {
+  "hash": "3f90cd6c67fc3eab",
+  "steps": 26,
+  "covers": 5,
+  "texts": 14
+ },
+ "en/story/top5/photo-light": {
+  "hash": "a240a7e45092767a",
+  "steps": 29,
+  "covers": 5,
+  "texts": 15
+ },
+ "en/story/top5/photo-dark": {
+  "hash": "d691b6767f8ba270",
+  "steps": 29,
+  "covers": 5,
+  "texts": 15
+ },
+ "en/story/top10/plain": {
+  "hash": "b4a4b7912cba0624",
+  "steps": 42,
+  "covers": 9,
+  "texts": 22
+ },
+ "en/story/top10/photo-light": {
+  "hash": "be57bee6501b2980",
+  "steps": 45,
+  "covers": 9,
+  "texts": 23
+ },
+ "en/story/top10/photo-dark": {
+  "hash": "92df79750bb85172",
+  "steps": 45,
+  "covers": 9,
+  "texts": 23
+ },
+ "en/post/winner/plain": {
+  "hash": "d91113f1aac27baf",
+  "steps": 10,
+  "covers": 1,
+  "texts": 6
+ },
+ "en/post/winner/photo-light": {
+  "hash": "0481163ae20c73f4",
+  "steps": 13,
+  "covers": 1,
+  "texts": 7
+ },
+ "en/post/winner/photo-dark": {
+  "hash": "fee7222fd85cb641",
+  "steps": 13,
+  "covers": 1,
+  "texts": 7
+ },
+ "en/post/quarters/plain": {
+  "hash": "61d0a84fb279ba71",
+  "steps": 32,
+  "covers": 7,
+  "texts": 16
+ },
+ "en/post/quarters/photo-light": {
+  "hash": "d7bc05ea78ad5ddb",
+  "steps": 35,
+  "covers": 7,
+  "texts": 17
+ },
+ "en/post/quarters/photo-dark": {
+  "hash": "7c3eda5ecd7a76e0",
+  "steps": 35,
+  "covers": 7,
+  "texts": 17
+ },
+ "en/post/full/plain": {
+  "hash": "39ed1bed92735f58",
+  "steps": 64,
+  "covers": 19,
+  "texts": 24
+ },
+ "en/post/full/photo-light": {
+  "hash": "c47c9f6a30e22967",
+  "steps": 67,
+  "covers": 19,
+  "texts": 25
+ },
+ "en/post/full/photo-dark": {
+  "hash": "bf58f38290ad2b1b",
+  "steps": 67,
+  "covers": 19,
+  "texts": 25
+ },
+ "en/post/top5/plain": {
+  "hash": "7f1ad8ad25cc86ff",
+  "steps": 32,
+  "covers": 5,
+  "texts": 20
+ },
+ "en/post/top5/photo-light": {
+  "hash": "8b1ceade480e7175",
+  "steps": 35,
+  "covers": 5,
+  "texts": 21
+ },
+ "en/post/top5/photo-dark": {
+  "hash": "d01c61a815ac24e8",
+  "steps": 35,
+  "covers": 5,
+  "texts": 21
+ },
+ "en/post/top10/plain": {
+  "hash": "9de76446c4479d94",
+  "steps": 42,
+  "covers": 9,
+  "texts": 22
+ },
+ "en/post/top10/photo-light": {
+  "hash": "27dfa7972cf7416f",
+  "steps": 45,
+  "covers": 9,
+  "texts": 23
+ },
+ "en/post/top10/photo-dark": {
+  "hash": "7476b6f47327e426",
+  "steps": 45,
+  "covers": 9,
+  "texts": 23
+ },
+ "en/square/winner/plain": {
+  "hash": "bae6b0717f84ed62",
+  "steps": 10,
+  "covers": 1,
+  "texts": 6
+ },
+ "en/square/winner/photo-light": {
+  "hash": "06602330bb791a4f",
+  "steps": 13,
+  "covers": 1,
+  "texts": 7
+ },
+ "en/square/winner/photo-dark": {
+  "hash": "97f7785ec5b22da7",
+  "steps": 13,
+  "covers": 1,
+  "texts": 7
+ },
+ "en/square/quarters/plain": {
+  "hash": "a3bb479eb04ff943",
+  "steps": 32,
+  "covers": 7,
+  "texts": 16
+ },
+ "en/square/quarters/photo-light": {
+  "hash": "11ff883a584a5141",
+  "steps": 35,
+  "covers": 7,
+  "texts": 17
+ },
+ "en/square/quarters/photo-dark": {
+  "hash": "ba8c6858078af70d",
+  "steps": 35,
+  "covers": 7,
+  "texts": 17
+ },
+ "en/square/full/plain": {
+  "hash": "6bf02923d95a96ab",
+  "steps": 64,
+  "covers": 19,
+  "texts": 24
+ },
+ "en/square/full/photo-light": {
+  "hash": "fd4e41fe9e70f0db",
+  "steps": 67,
+  "covers": 19,
+  "texts": 25
+ },
+ "en/square/full/photo-dark": {
+  "hash": "fb8569563151a3ab",
+  "steps": 67,
+  "covers": 19,
+  "texts": 25
+ },
+ "en/square/top5/plain": {
+  "hash": "56df099d8bacc4bf",
+  "steps": 26,
+  "covers": 5,
+  "texts": 14
+ },
+ "en/square/top5/photo-light": {
+  "hash": "720b14d1c16ed54d",
+  "steps": 29,
+  "covers": 5,
+  "texts": 15
+ },
+ "en/square/top5/photo-dark": {
+  "hash": "bb62560133e468bf",
+  "steps": 29,
+  "covers": 5,
+  "texts": 15
+ },
+ "en/square/top10/plain": {
+  "hash": "4988a6bae1564cfd",
+  "steps": 42,
+  "covers": 9,
+  "texts": 22
+ },
+ "en/square/top10/photo-light": {
+  "hash": "899157395be572c5",
+  "steps": 45,
+  "covers": 9,
+  "texts": 23
+ },
+ "en/square/top10/photo-dark": {
+  "hash": "41179ecc9d71e33c",
+  "steps": 45,
+  "covers": 9,
+  "texts": 23
+ },
+ "uk/story/winner/plain": {
+  "hash": "21c34899104a3009",
+  "steps": 12,
+  "covers": 1,
+  "texts": 8
+ },
+ "uk/story/winner/photo-light": {
+  "hash": "e52a5ffccb40594f",
+  "steps": 15,
+  "covers": 1,
+  "texts": 9
+ },
+ "uk/story/winner/photo-dark": {
+  "hash": "af989572e43755db",
+  "steps": 15,
+  "covers": 1,
+  "texts": 9
+ },
+ "uk/story/quarters/plain": {
+  "hash": "e35eba0bf93b8058",
+  "steps": 42,
+  "covers": 7,
+  "texts": 26
+ },
+ "uk/story/quarters/photo-light": {
+  "hash": "a6bba0b75d98b0a5",
+  "steps": 45,
+  "covers": 7,
+  "texts": 27
+ },
+ "uk/story/quarters/photo-dark": {
+  "hash": "cbbc900bbc088b77",
+  "steps": 45,
+  "covers": 7,
+  "texts": 27
+ },
+ "uk/story/full/plain": {
+  "hash": "d4abbcb38e1e89fe",
+  "steps": 74,
+  "covers": 19,
+  "texts": 34
+ },
+ "uk/story/full/photo-light": {
+  "hash": "f420616c655ebd64",
+  "steps": 77,
+  "covers": 19,
+  "texts": 35
+ },
+ "uk/story/full/photo-dark": {
+  "hash": "df790e9b1fc0e85c",
+  "steps": 77,
+  "covers": 19,
+  "texts": 35
+ },
+ "uk/story/top5/plain": {
+  "hash": "5235dba9db3c6c0a",
+  "steps": 28,
+  "covers": 5,
+  "texts": 16
+ },
+ "uk/story/top5/photo-light": {
+  "hash": "5f78da6728e595de",
+  "steps": 31,
+  "covers": 5,
+  "texts": 17
+ },
+ "uk/story/top5/photo-dark": {
+  "hash": "4462881c6d4bb272",
+  "steps": 31,
+  "covers": 5,
+  "texts": 17
+ },
+ "uk/story/top10/plain": {
+  "hash": "4f5321418229bf68",
+  "steps": 44,
+  "covers": 9,
+  "texts": 24
+ },
+ "uk/story/top10/photo-light": {
+  "hash": "b1ef65f4eb15ffdf",
+  "steps": 47,
+  "covers": 9,
+  "texts": 25
+ },
+ "uk/story/top10/photo-dark": {
+  "hash": "122bcdb193064f3d",
+  "steps": 47,
+  "covers": 9,
+  "texts": 25
+ },
+ "uk/post/winner/plain": {
+  "hash": "51b87e902b10cecc",
+  "steps": 12,
+  "covers": 1,
+  "texts": 8
+ },
+ "uk/post/winner/photo-light": {
+  "hash": "1e6c500922fbd3a1",
+  "steps": 15,
+  "covers": 1,
+  "texts": 9
+ },
+ "uk/post/winner/photo-dark": {
+  "hash": "4239b34e17fc08af",
+  "steps": 15,
+  "covers": 1,
+  "texts": 9
+ },
+ "uk/post/quarters/plain": {
+  "hash": "327f9e11f8324b4f",
+  "steps": 42,
+  "covers": 7,
+  "texts": 26
+ },
+ "uk/post/quarters/photo-light": {
+  "hash": "4408341ae60e9aee",
+  "steps": 45,
+  "covers": 7,
+  "texts": 27
+ },
+ "uk/post/quarters/photo-dark": {
+  "hash": "81938a864629aa33",
+  "steps": 45,
+  "covers": 7,
+  "texts": 27
+ },
+ "uk/post/full/plain": {
+  "hash": "082e65d96fc5f0e9",
+  "steps": 74,
+  "covers": 19,
+  "texts": 34
+ },
+ "uk/post/full/photo-light": {
+  "hash": "6826ad6848956aad",
+  "steps": 77,
+  "covers": 19,
+  "texts": 35
+ },
+ "uk/post/full/photo-dark": {
+  "hash": "c4c788acda898339",
+  "steps": 77,
+  "covers": 19,
+  "texts": 35
+ },
+ "uk/post/top5/plain": {
+  "hash": "495c9a88c640f0c3",
+  "steps": 39,
+  "covers": 5,
+  "texts": 27
+ },
+ "uk/post/top5/photo-light": {
+  "hash": "725523a2b205e1b6",
+  "steps": 42,
+  "covers": 5,
+  "texts": 28
+ },
+ "uk/post/top5/photo-dark": {
+  "hash": "96ceaec6039988d6",
+  "steps": 42,
+  "covers": 5,
+  "texts": 28
+ },
+ "uk/post/top10/plain": {
+  "hash": "a6c83b752001db41",
+  "steps": 45,
+  "covers": 9,
+  "texts": 25
+ },
+ "uk/post/top10/photo-light": {
+  "hash": "e5678fb8293b6a30",
+  "steps": 48,
+  "covers": 9,
+  "texts": 26
+ },
+ "uk/post/top10/photo-dark": {
+  "hash": "fc0e5a8b21592cce",
+  "steps": 48,
+  "covers": 9,
+  "texts": 26
+ },
+ "uk/square/winner/plain": {
+  "hash": "45dba12ebfc0d07b",
+  "steps": 12,
+  "covers": 1,
+  "texts": 8
+ },
+ "uk/square/winner/photo-light": {
+  "hash": "3f9fa1e97d0f7b7a",
+  "steps": 15,
+  "covers": 1,
+  "texts": 9
+ },
+ "uk/square/winner/photo-dark": {
+  "hash": "891113cc9fb912c8",
+  "steps": 15,
+  "covers": 1,
+  "texts": 9
+ },
+ "uk/square/quarters/plain": {
+  "hash": "bad41360e2baa53c",
+  "steps": 42,
+  "covers": 7,
+  "texts": 26
+ },
+ "uk/square/quarters/photo-light": {
+  "hash": "3440b51bc7aa5bab",
+  "steps": 45,
+  "covers": 7,
+  "texts": 27
+ },
+ "uk/square/quarters/photo-dark": {
+  "hash": "266c5d3199de2b1a",
+  "steps": 45,
+  "covers": 7,
+  "texts": 27
+ },
+ "uk/square/full/plain": {
+  "hash": "ddba83bdba5187f9",
+  "steps": 74,
+  "covers": 19,
+  "texts": 34
+ },
+ "uk/square/full/photo-light": {
+  "hash": "ea1973a7ba8010e0",
+  "steps": 77,
+  "covers": 19,
+  "texts": 35
+ },
+ "uk/square/full/photo-dark": {
+  "hash": "263d511ff0df0486",
+  "steps": 77,
+  "covers": 19,
+  "texts": 35
+ },
+ "uk/square/top5/plain": {
+  "hash": "ce9b6ad70db216fa",
+  "steps": 29,
+  "covers": 5,
+  "texts": 17
+ },
+ "uk/square/top5/photo-light": {
+  "hash": "80851710e89f0d53",
+  "steps": 32,
+  "covers": 5,
+  "texts": 18
+ },
+ "uk/square/top5/photo-dark": {
+  "hash": "af2bde97eb9cb9ea",
+  "steps": 32,
+  "covers": 5,
+  "texts": 18
+ },
+ "uk/square/top10/plain": {
+  "hash": "7aebfcdec9a03bef",
+  "steps": 45,
+  "covers": 9,
+  "texts": 25
+ },
+ "uk/square/top10/photo-light": {
+  "hash": "091e6b708ddd6482",
+  "steps": 48,
+  "covers": 9,
+  "texts": 26
+ },
+ "uk/square/top10/photo-dark": {
+  "hash": "ba0b962f2c69fcfc",
+  "steps": 48,
+  "covers": 9,
+  "texts": 26
+ }
+}

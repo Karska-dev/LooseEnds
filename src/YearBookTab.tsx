@@ -343,6 +343,7 @@ function ShareCard({ state, winner, year, count }: { state: Bracket; winner: Boo
   const backgrounds = useBackgrounds()
   const [backgroundId, setBackgroundId] = useState<string | null>(null)
   const photo = backgrounds.find((b) => b.id === backgroundId) ?? null
+  const credited = backgrounds.filter((b) => b.photographer)
 
   const quarters = state.quarters.filter((q) => q !== null).length
   const months = state.months.filter((m) => m.books.length > 0).length
@@ -461,6 +462,20 @@ function ShareCard({ state, winner, year, count }: { state: Bracket; winner: Boo
             </button>
           ))}
         </div>
+      )}
+      {credited.length > 0 && (
+        <details className="yb-credits">
+          <summary>{y.credits.title}</summary>
+          <p>{y.credits.intro}</p>
+          <ul>
+            {credited.map((b) => (
+              <li key={b.id}>
+                <img src={`/${b.file}`} alt="" loading="lazy" width="18" height="32" />
+                {b.photographer}
+              </li>
+            ))}
+          </ul>
+        </details>
       )}
       <div className="yb-card-img" ref={host} style={{ aspectRatio: `${width} / ${height}` }} />
       <button type="button" className="yb-btn" disabled={!canvas} onClick={download}>

@@ -496,11 +496,17 @@ export const en = {
     format: { label: 'Picture', winner: 'Winner', quarters: 'Quarters', full: 'Full year', top5: 'Top 5', top10: 'Top 10' },
     shape: { label: 'Shape', story: 'Story', post: 'Post', square: 'Square' },
     background: { label: 'Background', plain: 'Plain', option: (n: number) => `Background ${n}` },
+    credits: {
+      title: 'Photo credits',
+      intro: 'The background photographs are from Unsplash and free to use. Thank you to:',
+    },
     card: {
       quartersStat: (quarters: number, months: number, books: number) =>
         `${books} book${s(books)} · ${months} month${s(months)} · ${quarters} quarter${s(quarters)}`,
       fullStat: (months: number, books: number) => `${months} favourite${s(months)} · ${books} book${s(books)}`,
       credit: (name: string) => `Photo by ${name} on Unsplash`,
+      caption: (title: string, author: string, year: number) =>
+        `My favourite book of ${year}: ${title}${author ? ` by ${author}` : ''}.`,
       runnerUp: 'Runner-up',
       quarterPick: (quarter: string) => `${quarter} pick`,
       label: (year: number) => `Best of ${year}`,
