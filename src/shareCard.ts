@@ -34,6 +34,17 @@ export const QUIET_LIGHT: Palette = {
   tints: ['#3b4a9e', '#2f6b5f', '#8a5a1f', '#a34a33', '#525d6c'],
 }
 
+/** Quiet, dark: for the dark photographs (the design file's dark variables). */
+export const QUIET_DARK: Palette = {
+  ground: '#0f131a',
+  ink: '#e9edf4',
+  inkSoft: '#8b95a4',
+  inkFaint: '#6b7483',
+  line: '#232b36',
+  primary: '#8f9cff',
+  tints: ['#8f9cff', '#57b394', '#d2a05e', '#e08a6f', '#8b95a4'],
+}
+
 export type Shape = 'story' | 'post' | 'square'
 
 /** Pixels of each picture: 9:16 (a story), 4:5 (a feed post), 1:1. */
@@ -58,6 +69,12 @@ export type Measure = (text: string, font: FontSpec) => number
 export type Op =
   | { kind: 'fill'; x: number; y: number; w: number; h: number; color: string }
   | { kind: 'cover'; x: number; y: number; w: number; h: number; fill: string; stroke: string; lineWidth: number }
+  /** A photograph, scaled to cover the box and cropped to it (the shell does the cropping). */
+  | { kind: 'image'; src: string; x: number; y: number; w: number; h: number }
+  /** A top-to-bottom gradient; stops are [0..1, colour with alpha]. */
+  | { kind: 'gradient'; x: number; y: number; w: number; h: number; stops: [number, string][] }
+  /** Frosted glass: what is already drawn under the box, blurred, then tinted, with a hairline border. */
+  | { kind: 'glass'; x: number; y: number; w: number; h: number; blur: number; fill: string; border: string; lineWidth: number }
   | { kind: 'frame'; x: number; y: number; w: number; h: number; color: string; lineWidth: number }
   | { kind: 'line'; points: [number, number][]; color: string; lineWidth: number }
   | { kind: 'crown'; x: number; y: number; size: number; iconSize: number; bg: string; fg: string }
@@ -113,6 +130,12 @@ function fromOklab([L, a, b]: [number, number, number]): string {
     -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s,
   ]
   return `#${channels.map((c) => toSrgb(c).toString(16).padStart(2, '0')).join('')}`
+}
+
+/** `color` at `opacity` (0..1) as a CSS colour: the same as color-mix(in srgb, color N%, transparent). */
+export function alpha(color: string, opacity: number): string {
+  const [r, g, b] = parseHex(color)
+  return `rgba(${r}, ${g}, ${b}, ${opacity})`
 }
 
 /**
@@ -214,6 +237,12 @@ export interface CardSpec {
   /** The line top right: "1 of 198 books I read in 2026". */
   stat: string
   winner: CardBook
+  /** A photograph behind the picture. Without one, the plain ground. */
+  background?: {
+    src: string
+    /** The credit as it is printed, already in the reader's language ("Photo by A on Unsplash"). Absent for generated backgrounds. */
+    credit?: string
+  }
   /** Q1..Q4 and Jan–Jun, Jul–Dec; null where nobody was picked. Quarters picture only. */
   quarters?: readonly (CardBook | null)[]
   halves?: readonly (CardBook | null)[]
@@ -244,6 +273,8 @@ interface ShapeNumbers {
   brand: number
   brandRise: number
   winner: { w: number; y: number; titleSize: number; gap: number; authorSize: number }
+  /** Gradient: where the solid band at the top and bottom ends, and where the light middle begins. */
+  scrim: [number, number]
   /** Quarters tree, bottom row first: the quarter picks, the halves, the winner. */
   tree: [Box, Box, Box]
   /** Full path, bottom row first: the months, the quarters, the halves, the winner. */
@@ -268,6 +299,7 @@ const NUMBERS: Record<Shape, ShapeNumbers> = {
   story: {
     H: 960, edgeTop: 26, edgeBottom: 26, brand: 16, brandRise: 20,
     winner: { w: 280, y: 240, titleSize: 32, gap: 26, authorSize: 14 },
+    scrim: [62, 160],
     tree: [{ w: 84, y: 660 }, { w: 100, y: 450 }, { w: 150, y: 170 }],
     full: [{ w: 30, y: 705 }, { w: 70, y: 555 }, { w: 80, y: 390 }, { w: 120, y: 165 }],
     list: {
@@ -279,6 +311,7 @@ const NUMBERS: Record<Shape, ShapeNumbers> = {
   post: {
     H: 675, edgeTop: 14, edgeBottom: 18, brand: 14, brandRise: 8,
     winner: { w: 230, y: 66, titleSize: 28, gap: 26, authorSize: 14 },
+    scrim: [46, 110],
     tree: [{ w: 80, y: 470 }, { w: 90, y: 292 }, { w: 130, y: 52 }],
     full: [{ w: 30, y: 552 }, { w: 70, y: 410 }, { w: 80, y: 255 }, { w: 110, y: 52 }],
     list: {
@@ -290,6 +323,7 @@ const NUMBERS: Record<Shape, ShapeNumbers> = {
   square: {
     H: 540, edgeTop: 14, edgeBottom: 18, brand: 14, brandRise: 8,
     winner: { w: 190, y: 60, titleSize: 26, gap: 22, authorSize: 13 },
+    scrim: [46, 110],
     tree: [{ w: 60, y: 365 }, { w: 70, y: 225 }, { w: 100, y: 40 }],
     // Not drawn in the design file: the post's, scaled to fit 540 tall.
     full: [{ w: 28, y: 424 }, { w: 56, y: 316 }, { w: 64, y: 196 }, { w: 88, y: 40 }],
@@ -359,7 +393,20 @@ function cover(
  * in the plan, which each shape's `edgeTop` / `edgeBottom` makes a one-line
  * change.
  */
-export function layoutCard(spec: CardSpec, measure: Measure): Op[] {
+export function layoutCard(card: CardSpec, measure: Measure): Op[] {
+  // Over a photograph the two greys are not enough: even under a scrim or
+  // glass the small print has less contrast than on a flat ground. Move
+  // them toward the main ink; the type sizes still keep the hierarchy.
+  const spec: CardSpec = card.background
+    ? {
+        ...card,
+        palette: {
+          ...card.palette,
+          inkSoft: mix(card.palette.ink, 78, card.palette.ground),
+          inkFaint: mix(card.palette.ink, 62, card.palette.ground),
+        },
+      }
+    : card
   const p = spec.palette
   const { width: W, height: H } = SIZES[spec.shape]
   const n = NUMBERS[spec.shape]
@@ -369,6 +416,10 @@ export function layoutCard(spec: CardSpec, measure: Measure): Op[] {
   const side = u(30)
 
   ops.push({ kind: 'fill', x: 0, y: 0, w: W, h: H, color: p.ground })
+  if (spec.background) {
+    ops.push({ kind: 'image', src: spec.background.src, x: 0, y: 0, w: W, h: H })
+    veil(ops, spec, n, W, H)
+  }
 
   // Small print at the edges.
   ops.push({
@@ -405,6 +456,24 @@ export function layoutCard(spec: CardSpec, measure: Measure): Op[] {
     align: 'left',
     tracking: 0,
   })
+
+  if (spec.background?.credit) {
+    const credit = fitText(widthOf('sans', 400), spec.background.credit, {
+      maxWidth: W / 2 - side, maxLines: 1, size: u(8.5), minSize: u(6), step: 1,
+    })
+    ops.push({
+      kind: 'text',
+      x: W - side,
+      // Level with the brand name's baseline row, a little lower as it is smaller.
+      top: H - u(n.edgeBottom) - u(n.brandRise) + u((n.brand - 8.5) * 0.75),
+      lineHeight: credit.size * 1.25,
+      text: credit.lines[0]!,
+      font: SANS(credit.size),
+      color: p.inkSoft,
+      align: 'right',
+      tracking: 0,
+    })
+  }
 
   if (spec.format === 'quarters') quartersTree(ops, spec, n, W, widthOf)
   else if (spec.format === 'full') fullTree(ops, spec, n, W, widthOf)
@@ -463,6 +532,41 @@ function winnerBlock(
     color: p.inkSoft,
     align: 'center',
     tracking: 0,
+  })
+}
+
+/**
+ * The readability layer between the photograph and the content. The reader
+ * never chooses it: text needs a calm area behind it (figure–ground
+ * contrast), and what is needed depends on the picture.
+ *
+ * - Winner, quarters, top 5: little small text in the middle, so a gradient
+ *   that is nearly solid in a band at each edge (where the small print is)
+ *   and lets 75 % of the photograph show in the middle.
+ * - Full path and top 10: lots of small text and lines everywhere, so a
+ *   frosted panel over nearly the whole picture: an even surface.
+ */
+function veil(ops: Op[], spec: CardSpec, n: ShapeNumbers, W: number, H: number) {
+  const p = spec.palette
+  if (spec.format === 'full' || spec.format === 'top10') {
+    ops.push({
+      kind: 'glass', x: u(14), y: u(10), w: W - u(28), h: H - u(20),
+      blur: u(7), fill: alpha(p.ground, 0.52), border: p.line, lineWidth: S,
+    })
+    return
+  }
+  const [band, ease] = n.scrim
+  const at = (designY: number) => u(designY) / H
+  ops.push({
+    kind: 'gradient', x: 0, y: 0, w: W, h: H,
+    stops: [
+      [0, alpha(p.ground, 0.96)],
+      [at(band), alpha(p.ground, 0.96)],
+      [at(ease), alpha(p.ground, 0.25)],
+      [1 - at(ease), alpha(p.ground, 0.25)],
+      [1 - at(band), alpha(p.ground, 0.96)],
+      [1, alpha(p.ground, 0.96)],
+    ],
   })
 }
 

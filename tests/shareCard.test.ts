@@ -1,7 +1,7 @@
 import { test, describe } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { QUIET_LIGHT, SIZES, fitText, layoutCard, mix } from '../src/shareCard.ts'
+import { QUIET_DARK, QUIET_LIGHT, SIZES, alpha, fitText, layoutCard, mix } from '../src/shareCard.ts'
 import type { CardBook, CardSpec, FontSpec, Op, Shape } from '../src/shareCard.ts'
 import { TINTS, tintFor, tintIndex } from '../src/tint.ts'
 
@@ -337,5 +337,114 @@ describe('layoutCard: top 5 and top 10', () => {
   test('no rank numbers are drawn: tiers, not a ranking', () => {
     const ops = layoutCard(tiersSpec('top10'), ruler)
     assert.ok(!texts(ops).some((t) => /^\d+\.?$|^#\d+$|^No\. ?\d+$/.test(t.text)))
+  })
+})
+
+describe('layoutCard: backgrounds', () => {
+  const photo = { src: '/backgrounds/library.jpg', credit: 'Photo by Enrico Bet on Unsplash' }
+  const kinds = (ops: Op[]) => ops.map((op) => op.kind)
+
+  test('no background, no image and no layer: the plain ground is all there is', () => {
+    for (const format of ['winner', 'quarters', 'full', 'top5', 'top10'] as const) {
+      const ops = layoutCard(spec({ format, placings: PLACINGS, months: MONTH_BOOKS, quarters: QUARTERS, halves: HALVES }), ruler)
+      assert.ok(!kinds(ops).some((k) => k === 'image' || k === 'gradient' || k === 'glass'), format)
+    }
+  })
+
+  test('the photograph comes right after the ground, then the layer, then everything else', () => {
+    for (const shape of SHAPES) {
+      const ops = layoutCard(spec({ shape, background: photo }), ruler)
+      const { width, height } = SIZES[shape]
+      assert.deepEqual(kinds(ops).slice(0, 3), ['fill', 'image', 'gradient'])
+      assert.deepEqual(ops[1], { kind: 'image', src: photo.src, x: 0, y: 0, w: width, h: height })
+    }
+  })
+
+  test('the layer is picked by the picture, never by the reader: gradient for the few, glass for the many', () => {
+    const full = { months: MONTH_BOOKS, quarters: QUARTERS, halves: HALVES, placings: PLACINGS }
+    for (const format of ['winner', 'quarters', 'top5'] as const) {
+      assert.deepEqual(kinds(layoutCard(spec({ format, background: photo, ...full }), ruler)).slice(2, 3), ['gradient'], format)
+    }
+    for (const format of ['full', 'top10'] as const) {
+      assert.deepEqual(kinds(layoutCard(spec({ format, background: photo, ...full }), ruler)).slice(2, 3), ['glass'], format)
+    }
+  })
+
+  test('the gradient is nearly solid at both edges and lets the photograph show in the middle', () => {
+    for (const shape of SHAPES) {
+      const grad = layoutCard(spec({ shape, background: photo }), ruler).find((op) => op.kind === 'gradient')!
+      assert.ok(grad.kind === 'gradient')
+      const offsets = grad.stops.map(([at]) => at)
+      assert.deepEqual(offsets, [...offsets].sort((a, b) => a - b), 'stops go top to bottom')
+      assert.equal(offsets[0], 0)
+      assert.equal(offsets.at(-1), 1)
+      const ground = QUIET_LIGHT.ground
+      assert.equal(grad.stops[0]![1], alpha(ground, 0.96))
+      assert.equal(grad.stops.at(-1)![1], alpha(ground, 0.96))
+      assert.equal(grad.stops[2]![1], alpha(ground, 0.25))
+      // Symmetric: the band at the bottom is as thick as the one at the top.
+      assert.ok(Math.abs(grad.stops[1]![0] - (1 - grad.stops[4]![0])) < 1e-9)
+    }
+  })
+
+  test('the glass panel sits inside the edges, tinted with the ground, with a hairline', () => {
+    for (const shape of SHAPES) {
+      const { width, height } = SIZES[shape]
+      const glass = layoutCard(spec({ shape, format: 'full', background: photo, months: MONTH_BOOKS }), ruler).find((op) => op.kind === 'glass')!
+      assert.ok(glass.kind === 'glass')
+      assert.ok(glass.x > 0 && glass.y > 0 && glass.x + glass.w < width && glass.y + glass.h < height)
+      assert.equal(glass.fill, alpha(QUIET_LIGHT.ground, 0.52))
+      assert.equal(glass.border, QUIET_LIGHT.line)
+    }
+  })
+
+  test('the credit is printed at the bottom right, inside the picture, only when there is one', () => {
+    for (const shape of SHAPES) {
+      const { width, height } = SIZES[shape]
+      const ops = layoutCard(spec({ shape, background: photo }), ruler)
+      const credit = texts(ops).find((t) => t.text === photo.credit)!
+      assert.equal(credit.align, 'right')
+      assert.ok(credit.top > height * 0.9, shape)
+      const b = bounds(ops).find((x) => x.op === credit)!
+      assert.ok(b.left >= width / 2 - 1 && b.right <= width && b.bottom <= height)
+      const none = layoutCard(spec({ shape, background: { src: photo.src } }), ruler)
+      assert.ok(!texts(none).some((t) => t.text.includes('Photo')))
+    }
+  })
+
+  test('a very long credit is shortened, not drawn off the picture', () => {
+    const long = { src: photo.src, credit: `Photo by ${'Very Long Name '.repeat(20)} on Unsplash` }
+    for (const shape of SHAPES) {
+      const ops = layoutCard(spec({ shape, background: long }), ruler)
+      for (const b of bounds(ops)) assert.ok(b.left >= 0 && b.right <= SIZES[shape].width)
+    }
+  })
+
+  test('the dark palette is a different, dark look; the tints stay five', () => {
+    assert.notEqual(QUIET_DARK.ground, QUIET_LIGHT.ground)
+    assert.equal(QUIET_DARK.tints.length, QUIET_LIGHT.tints.length)
+    const ops = layoutCard(spec({ palette: QUIET_DARK, background: photo }), ruler)
+    assert.equal(texts(ops).find((t) => t.text === 'Loose Ends')!.color, QUIET_DARK.ink)
+  })
+
+  test('over a photograph the small greys are darker (lighter on dark), on a plain ground they are the palette’s', () => {
+    const faint = (ops: Op[]) => texts(ops).find((t) => t.tracking > 0)!.color
+    assert.equal(faint(layoutCard(spec(), ruler)), QUIET_LIGHT.inkFaint)
+    assert.equal(faint(layoutCard(spec({ background: photo }), ruler)), mix(QUIET_LIGHT.ink, 62, QUIET_LIGHT.ground))
+    assert.notEqual(faint(layoutCard(spec({ background: photo }), ruler)), QUIET_LIGHT.inkFaint)
+  })
+
+  test('alpha is color-mix in srgb with transparent', () => {
+    assert.equal(alpha('#f1f3f7', 0.25), 'rgba(241, 243, 247, 0.25)')
+  })
+
+  test('all text stays inside the picture over a photograph, for every format and shape', () => {
+    for (const shape of SHAPES) {
+      const { width, height } = SIZES[shape]
+      for (const format of ['winner', 'quarters', 'full', 'top5', 'top10'] as const) {
+        const ops = layoutCard(spec({ shape, format, background: photo, months: MONTH_BOOKS, quarters: QUARTERS, halves: HALVES, placings: PLACINGS, monthLetters: [...'JFMAMJJASOND'], quarterNames: ['Q1', 'Q2', 'Q3', 'Q4'] }), ruler)
+        for (const b of bounds(ops)) assert.ok(b.left >= 0 && b.right <= width && b.bottom <= height, `${shape}/${format}`)
+      }
+    }
   })
 })

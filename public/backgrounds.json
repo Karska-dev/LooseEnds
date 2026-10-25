@@ -1,0 +1,98 @@
+{
+  "backgrounds": [
+    {
+      "id": "dusk-clouds",
+      "file": "backgrounds/dusk-clouds.svg",
+      "dark": true
+    },
+    {
+      "id": "pastel-clouds",
+      "file": "backgrounds/pastel-clouds.svg",
+      "dark": false
+    },
+    {
+      "id": "reading-forest",
+      "file": "backgrounds/reading-forest.jpg",
+      "dark": true,
+      "photographer": "Kourosh Qaffari"
+    },
+    {
+      "id": "library",
+      "file": "backgrounds/library.jpg",
+      "dark": true,
+      "photographer": "Enrico Bet"
+    },
+    {
+      "id": "open-books",
+      "file": "backgrounds/open-books.jpg",
+      "dark": false,
+      "photographer": "Hale Burus"
+    },
+    {
+      "id": "night-sky",
+      "file": "backgrounds/night-sky.jpg",
+      "dark": true,
+      "photographer": "Aron Visuals"
+    },
+    {
+      "id": "pink-garden",
+      "file": "backgrounds/pink-garden.jpg",
+      "dark": false,
+      "photographer": "Rohit Choudhari"
+    },
+    {
+      "id": "castle-fog",
+      "file": "backgrounds/castle-fog.jpg",
+      "dark": true,
+      "photographer": "Tim Rebkavets"
+    },
+    {
+      "id": "bubble",
+      "file": "backgrounds/bubble.jpg",
+      "dark": true,
+      "photographer": "Daniel Olah"
+    },
+    {
+      "id": "green-hills",
+      "file": "backgrounds/green-hills.jpg",
+      "dark": true,
+      "photographer": "Qingbao Meng"
+    },
+    {
+      "id": "soft-orb",
+      "file": "backgrounds/soft-orb.jpg",
+      "dark": false,
+      "photographer": "Milad Fakurian"
+    },
+    {
+      "id": "autumn-leaves",
+      "file": "backgrounds/autumn-leaves.jpg",
+      "dark": false,
+      "photographer": "Aaron Burden"
+    },
+    {
+      "id": "pumpkins",
+      "file": "backgrounds/pumpkins.jpg",
+      "dark": false,
+      "photographer": "Kerstin Wrba"
+    },
+    {
+      "id": "stars-on-concrete",
+      "file": "backgrounds/stars-on-concrete.jpg",
+      "dark": false,
+      "photographer": "Annie Spratt"
+    },
+    {
+      "id": "wreath",
+      "file": "backgrounds/wreath.jpg",
+      "dark": true,
+      "photographer": "Toni Cuenca"
+    },
+    {
+      "id": "bokeh",
+      "file": "backgrounds/bokeh.jpg",
+      "dark": false,
+      "photographer": "Alexander Grey"
+    }
+  ]
+}

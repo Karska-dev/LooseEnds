@@ -41,6 +41,73 @@ async function loadFonts(ops: Op[]) {
   }
 }
 
+/**
+ * Loads the photographs. A picture that fails to load is simply missing: the
+ * plain ground is still a readable picture, better than none. Same-origin
+ * files only, so the canvas stays exportable (a cross-origin image would
+ * taint it and `toBlob` would refuse).
+ */
+async function loadImages(ops: Op[]): Promise<Map<string, HTMLImageElement>> {
+  const images = new Map<string, HTMLImageElement>()
+  await Promise.all(
+    ops.map(async (op) => {
+      if (op.kind !== 'image' || images.has(op.src)) return
+      const image = new Image()
+      image.src = op.src
+      try {
+        await image.decode()
+        images.set(op.src, image)
+      } catch {
+        // Leave it out.
+      }
+    }),
+  )
+  return images
+}
+
+/** Scaled to cover the box, centred, the overflow cropped: like CSS background-size: cover. */
+function drawCover(ctx: CanvasRenderingContext2D, image: HTMLImageElement, box: { x: number; y: number; w: number; h: number }) {
+  const scale = Math.max(box.w / image.naturalWidth, box.h / image.naturalHeight)
+  const sw = box.w / scale
+  const sh = box.h / scale
+  ctx.drawImage(image, (image.naturalWidth - sw) / 2, (image.naturalHeight - sh) / 2, sw, sh, box.x, box.y, box.w, box.h)
+}
+
+/**
+ * Frosted glass: what is under the box, blurred. The canvas `filter` does it
+ * where it exists; Safari has none, so there the picture is shrunk and drawn
+ * back up smoothed, which is a blur too, only blockier.
+ */
+function drawGlass(ctx: CanvasRenderingContext2D, op: Extract<Op, { kind: 'glass' }>) {
+  ctx.save()
+  ctx.beginPath()
+  ctx.rect(op.x, op.y, op.w, op.h)
+  ctx.clip()
+  if ('filter' in ctx) {
+    ctx.filter = `blur(${op.blur}px)`
+    ctx.drawImage(ctx.canvas, 0, 0)
+    ctx.filter = 'none'
+  } else {
+    const small = document.createElement('canvas')
+    const k = Math.max(2, Math.round(op.blur / 2))
+    small.width = Math.ceil(ctx.canvas.width / k)
+    small.height = Math.ceil(ctx.canvas.height / k)
+    const sctx = small.getContext('2d')
+    if (sctx) {
+      sctx.imageSmoothingQuality = 'high'
+      sctx.drawImage(ctx.canvas, 0, 0, small.width, small.height)
+      ctx.imageSmoothingQuality = 'high'
+      ctx.drawImage(small, 0, 0, small.width, small.height, 0, 0, ctx.canvas.width, ctx.canvas.height)
+    }
+  }
+  ctx.restore()
+  ctx.fillStyle = op.fill
+  ctx.fillRect(op.x, op.y, op.w, op.h)
+  ctx.strokeStyle = op.border
+  ctx.lineWidth = op.lineWidth
+  ctx.strokeRect(op.x + op.lineWidth / 2, op.y + op.lineWidth / 2, op.w - op.lineWidth, op.h - op.lineWidth)
+}
+
 /** Draws `text` letter by letter when it has extra spacing (letterSpacing on a canvas is not everywhere yet). */
 function drawText(ctx: CanvasRenderingContext2D, op: Extract<Op, { kind: 'text' }>) {
   ctx.font = css(op.font)
@@ -72,12 +139,27 @@ function drawText(ctx: CanvasRenderingContext2D, op: Extract<Op, { kind: 'text' 
 
 const CROWN = new Path2D('M3 16 1.5 6l5 4L10 3l3.5 7 5-4L17 16z')
 
-function draw(ctx: CanvasRenderingContext2D, ops: Op[]) {
+function draw(ctx: CanvasRenderingContext2D, ops: Op[], images: Map<string, HTMLImageElement>) {
   for (const op of ops) {
     switch (op.kind) {
       case 'fill':
         ctx.fillStyle = op.color
         ctx.fillRect(op.x, op.y, op.w, op.h)
+        break
+      case 'image': {
+        const image = images.get(op.src)
+        if (image) drawCover(ctx, image, op)
+        break
+      }
+      case 'gradient': {
+        const gradient = ctx.createLinearGradient(0, op.y, 0, op.y + op.h)
+        for (const [at, color] of op.stops) gradient.addColorStop(at, color)
+        ctx.fillStyle = gradient
+        ctx.fillRect(op.x, op.y, op.w, op.h)
+        break
+      }
+      case 'glass':
+        drawGlass(ctx, op)
         break
       case 'cover':
         ctx.fillStyle = op.fill
@@ -131,8 +213,9 @@ export async function renderCard(spec: CardSpec): Promise<HTMLCanvasElement> {
     ctx.font = css(font)
     return ctx.measureText(text).width
   }
-  await loadFonts(layoutCard(spec, ruler))
-  draw(ctx, layoutCard(spec, ruler))
+  const first = layoutCard(spec, ruler)
+  const [, images] = await Promise.all([loadFonts(first), loadImages(first)])
+  draw(ctx, layoutCard(spec, ruler), images)
   return canvas
 }
 

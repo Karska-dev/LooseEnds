@@ -524,11 +524,13 @@ export const uk: Messages = {
     pictureAlt: (title) => `Картинка, щоб поділитися: ${title}`,
     format: { label: 'Картинка', winner: 'Переможець', quarters: 'Квартали', full: 'Весь рік', top5: 'Топ 5', top10: 'Топ 10' },
     shape: { label: 'Формат', story: 'Історія', post: 'Допис', square: 'Квадрат' },
+    background: { label: 'Тло', plain: 'Без фото', option: (n) => `Тло ${n}` },
     card: {
       quartersStat: (quarters, months, count) =>
         `${count} ${forms(count, 'книга', 'книги', 'книг')} · ${months} ${forms(months, 'місяць', 'місяці', 'місяців')} · ${quarters} ${forms(quarters, 'квартал', 'квартали', 'кварталів')}`,
       fullStat: (months, count) =>
         `${months} ${forms(months, 'улюблена', 'улюблені', 'улюблених')} · ${count} ${forms(count, 'книга', 'книги', 'книг')}`,
+      credit: (name) => `Фото: ${name}, Unsplash`,
       runnerUp: 'Друге місце',
       quarterPick: (quarter) => `Вибір: ${quarter}`,
       label: (year) => `Найкраще за ${year}`,

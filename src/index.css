@@ -3532,6 +3532,10 @@ button.yb-month { cursor: pointer; }
 .yb-card-img { width: 100%; border: 1px solid var(--line); }
 .yb-chips { display: flex; flex-wrap: wrap; gap: 4px 16px; }
 .yb-chips .ghost[aria-pressed='true'] { border-bottom-color: var(--ink); font-weight: 600; }
+.yb-backs { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 6px; min-width: 0; max-width: 100%; }
+.yb-back { flex: none; width: 36px; height: 64px; padding: 0; border: 1px solid var(--line); background: var(--ground); cursor: pointer; display: block; }
+.yb-back img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.yb-back[aria-pressed='true'] { outline: 2px solid var(--ink); outline-offset: 1px; }
 .yb-card-img canvas { display: block; width: 100%; height: 100%; }
 .yb-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .yb-champ { width: 240px; max-width: 100%; padding: 18px; font-size: 28px; }

@@ -3,9 +3,10 @@ import type { CSSProperties, ReactNode } from 'react'
 import type { Book } from './goodreads'
 import { useLanguage } from './language.ts'
 import { tintFor, tintIndex } from './tint.ts'
-import { QUIET_LIGHT, SIZES } from './shareCard'
+import { QUIET_DARK, QUIET_LIGHT, SIZES } from './shareCard'
 import type { CardBook, Format, Shape } from './shareCard'
 import { canvasToPng, renderCard } from './drawShareCard'
+import { useBackgrounds } from './useBackgrounds'
 import { useYearBook } from './useYearBook'
 import { bookKey, booksByMonth, bracket, pickDuel, pickMonth, undoDuel } from './yearBook'
 import type { Bracket, MonthState } from './yearBook'
@@ -338,6 +339,10 @@ function ShareCard({ state, winner, year, count }: { state: Bracket; winner: Boo
   const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null)
   const [format, setFormat] = useState<Format>('winner')
   const [shape, setShape] = useState<Shape>('story')
+  // The picker starts on plain: no photograph, so no credit to carry.
+  const backgrounds = useBackgrounds()
+  const [backgroundId, setBackgroundId] = useState<string | null>(null)
+  const photo = backgrounds.find((b) => b.id === backgroundId) ?? null
 
   const quarters = state.quarters.filter((q) => q !== null).length
   const months = state.months.filter((m) => m.books.length > 0).length
@@ -367,7 +372,13 @@ function ShareCard({ state, winner, year, count }: { state: Bracket; winner: Boo
     renderCard({
       format: shown,
       shape,
-      palette: QUIET_LIGHT,
+      palette: photo?.dark ? QUIET_DARK : QUIET_LIGHT,
+      background: photo
+        ? {
+            src: `/${photo.file}`,
+            ...(photo.photographer ? { credit: t.yearBook.card.credit(photo.photographer) } : {}),
+          }
+        : undefined,
       label,
       stat,
       winner: cardBook(winner),
@@ -398,14 +409,14 @@ function ShareCard({ state, winner, year, count }: { state: Bracket; winner: Boo
     return () => {
       current = false
     }
-  }, [state, winner, shown, shape, label, stat, t])
+  }, [state, winner, shown, shape, photo, label, stat, t])
 
   async function download() {
     if (!canvas) return
     const url = URL.createObjectURL(await canvasToPng(canvas))
     const link = document.createElement('a')
     link.href = url
-    link.download = `best-of-${year}-${shown}-${shape}.png`
+    link.download = `best-of-${year}-${shown}-${shape}${photo ? `-${photo.id}` : ''}.png`
     link.click()
     URL.revokeObjectURL(url)
   }
@@ -427,6 +438,30 @@ function ShareCard({ state, winner, year, count }: { state: Bracket; winner: Boo
           </button>
         ))}
       </div>
+      {backgrounds.length > 0 && (
+        <div className="yb-backs" role="group" aria-label={y.background.label}>
+          <button
+            type="button"
+            className="yb-back yb-back-plain"
+            aria-pressed={photo === null}
+            aria-label={y.background.plain}
+            title={y.background.plain}
+            onClick={() => setBackgroundId(null)}
+          />
+          {backgrounds.map((b, i) => (
+            <button
+              key={b.id}
+              type="button"
+              className="yb-back"
+              aria-pressed={b.id === photo?.id}
+              aria-label={y.background.option(i + 1)}
+              onClick={() => setBackgroundId(b.id)}
+            >
+              <img src={`/${b.file}`} alt="" loading="lazy" width="36" height="64" />
+            </button>
+          ))}
+        </div>
+      )}
       <div className="yb-card-img" ref={host} style={{ aspectRatio: `${width} / ${height}` }} />
       <button type="button" className="yb-btn" disabled={!canvas} onClick={download}>
         {y.download}
