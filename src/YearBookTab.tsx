@@ -380,17 +380,17 @@ function ShareCard({ state, winner, year, count }: { state: Bracket; winner: Boo
         book: cardBook(p.book),
         label:
           p.tier === 'runnerUp'
-            ? y.card.runnerUp
+            ? t.yearBook.card.runnerUp
             : p.tier === 'quarter'
-              ? y.card.quarterPick(y.stage.quarter(p.at - 1))
-              : y.monthNames[p.at - 1]!,
+              ? t.yearBook.card.quarterPick(t.yearBook.stage.quarter(p.at - 1))
+              : t.yearBook.monthNames[p.at - 1]!,
       })),
     })
       .then((drawn) => {
         // A newer draw (another shape, another language) may have started.
         if (!current) return
         drawn.setAttribute('role', 'img')
-        drawn.setAttribute('aria-label', y.pictureAlt(winner.title))
+        drawn.setAttribute('aria-label', t.yearBook.pictureAlt(winner.title))
         host.current?.replaceChildren(drawn)
         setCanvas(drawn)
       })
