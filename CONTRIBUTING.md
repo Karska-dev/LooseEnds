@@ -42,7 +42,7 @@ the code.
 | | |
 |---|---|
 | `npm run dev` | Vite, with `/api/series` served locally |
-| `npm test` | 47 tests on Node's own runner, no framework |
+| `npm test` | The whole suite, on Node's own runner, no framework |
 | `npm run lint` | oxlint |
 | `npm run build` | typecheck, then build |
 
