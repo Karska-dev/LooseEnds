@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { useLanguage } from './language.ts'
+import { tintFor } from './tint.ts'
 
 /**
  * The small things only the AI tab draws: a stand-in cover, the link to the
@@ -8,28 +9,18 @@ import { useLanguage } from './language.ts'
  * no page gave.
  */
 
-/* The five state colours every skin defines, so a cover is at home in each. */
-const TINTS = ['var(--primary)', 'var(--ok)', 'var(--warn)', 'var(--accent)', 'var(--ink-soft)']
-
 /**
  * The AI lookup finds no cover art, and an empty slot would read as a
  * failure. So a looked-up series gets a made-up cover: its initial on a tint
  * picked from its name (the same series is always the same colour), with a
  * small spark that says where the list came from.
- *
- * Algorithm: a polynomial rolling hash (hash = hash × 31 + next letter), the
- * classic cheap way to turn a string into a number. It is deterministic,
- * which is the point: no colour has to be stored anywhere. `>>> 0` keeps
- * the number an unsigned 32-bit integer as it grows.
  */
 export function AiCover({ name }: { name: string }) {
-  let hash = 0
-  for (const letter of name) hash = (hash * 31 + (letter.codePointAt(0) ?? 0)) >>> 0
   const initial = Array.from(name.replace(/^(?:the|an?)\s+/i, ''))[0]?.toUpperCase() ?? ''
   return (
     <span
       className="cover cover-lg ai-cover"
-      style={{ '--tint': TINTS[hash % TINTS.length] } as CSSProperties}
+      style={{ '--tint': tintFor(name) } as CSSProperties}
       aria-hidden="true"
     >
       <span className="ai-initial">{initial}</span>

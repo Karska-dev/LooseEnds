@@ -12,6 +12,7 @@ import {
   pickDuel,
   pickMonth,
   readYears,
+  undoDuel,
   serializeYearBook,
   withDecisions,
 } from '../src/yearBook.ts'
@@ -243,6 +244,38 @@ describe('bracket: changing an earlier pick', () => {
     const bad: YearDecisions = { months: {}, duels: { [pairKey(a, m)]: 'isbn:nobody' } }
     const stray = bracket(year({ 2: ['F'], 3: ['M'] }), bad)
     assert.equal(stray.next?.kind, 'duel')
+  })
+})
+
+describe('bracket: progress and undo', () => {
+  const months = year({ 1: ['a'], 2: ['b'], 3: ['c'], 7: ['d'] })
+
+  test('a year takes one duel fewer than it has months with books', () => {
+    assert.deepEqual(bracket(months, NO_DECISIONS).duels, { answered: 0, total: 3 })
+    assert.deepEqual(bracket(year({ 5: ['x', 'y'] }), NO_DECISIONS).duels, { answered: 0, total: 0 })
+    assert.deepEqual(bracket(year({}), NO_DECISIONS).duels, { answered: 0, total: 0 })
+  })
+
+  test('answered counts up to the total, one per answer', () => {
+    let d = NO_DECISIONS
+    for (let step = 0; step < 3; step++) {
+      const b = bracket(months, d)
+      assert.equal(b.duels.answered, step)
+      assert.ok(b.next?.kind === 'duel')
+      d = pickDuel(d, b.next.a, b.next.b, b.next.a)
+    }
+    const end = bracket(months, d)
+    assert.deepEqual(end.duels, { answered: 3, total: 3 })
+    assert.equal(end.next, null)
+  })
+
+  test('undoing an answer asks that pair again', () => {
+    const a = find(months, 'a')
+    const b = find(months, 'b')
+    const answered = pickDuel(NO_DECISIONS, a, b, b)
+    const back = undoDuel(answered, b, a)
+    assert.deepEqual(back, NO_DECISIONS)
+    assert.equal(undoDuel(back, a, b), back)
   })
 })
 

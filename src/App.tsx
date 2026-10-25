@@ -31,6 +31,8 @@ import { Rich } from './Rich.tsx'
 import { MAX_FAVOURITES, addFavourite, asideKeys, bringBack, hasChoices, isFull, presentFavourites, removeFavourite, setAside } from './choices'
 import type { Choices } from './choices'
 import { useChoices } from './useChoices'
+import { YearBookTab } from './YearBookTab.tsx'
+import { readYears } from './yearBook'
 
 /**
  * A Goodreads export of 5,000 books is about 2 MB. Ten times that is not a
@@ -219,13 +221,16 @@ export default function App() {
           summary={summary}
           choices={choices}
           onChoices={updateChoices}
+          books={parsed?.books ?? []}
           source={source}
           onSource={setSource}
         />
       )}
 
       <footer className="colophon">
-        {summary && source === 'ai' ? (
+        {summary && source === 'best' ? (
+          t.footer.best
+        ) : summary && source === 'ai' ? (
           <Rich text={t.footer.ai} tags={{ a: linkTo('https://tavily.com') }} />
         ) : (
           <Rich text={t.footer.hardcover} tags={{ a: linkTo('https://hardcover.app') }} />
@@ -235,19 +240,21 @@ export default function App() {
   )
 }
 
-/** Where the board's series data comes from. Two lookups, never mixed. */
-type Source = 'hardcover' | 'ai'
+/** Where the board's series data comes from. Two lookups, never mixed; the third tab is the reader's own year, with no lookup. */
+type Source = 'hardcover' | 'ai' | 'best'
 
 const postAi = (payload: unknown) => postWithPass('/api/ai-series', payload)
 
 function SeriesBoard({
   summary,
+  books,
   choices,
   onChoices,
   source,
   onSource,
 }: {
   summary: SeriesSummary
+  books: readonly Book[]
   choices: Choices
   onChoices: (update: (current: Choices) => Choices) => void
   source: Source
@@ -282,6 +289,11 @@ function SeriesBoard({
   const [aiKnown, setAiKnown] = useState<Set<string>>(new Set())
   const [aiAutoAside, setAiAutoAside] = useState<Set<string>>(new Set())
   const ai = source === 'ai'
+  const best = source === 'best'
+  // The year the third tab shows: the newest with finished books, until the reader picks another.
+  const years = useMemo(() => readYears(books), [books])
+  const [pickedYear, setPickedYear] = useState<number | null>(null)
+  const year = pickedYear !== null && years.includes(pickedYear) ? pickedYear : (years[0] ?? new Date().getFullYear())
 
   /**
    * Books whose Goodreads title carried no series. Mostly genuine
@@ -538,15 +550,28 @@ function SeriesBoard({
         >
           {t.board.aiTab} <span className="exp">{t.board.experimental}</span>
         </button>
+        <button
+          type="button"
+          role="tab"
+          id="tab-best"
+          className="source-tab"
+          aria-selected={best}
+          aria-controls="series-panel"
+          onClick={() => onSource('best')}
+        >
+          {t.yearBook.tab(year)}
+        </button>
       </div>
 
       <div
         className="tab-panel"
         id="series-panel"
         role="tabpanel"
-        aria-labelledby={ai ? 'tab-ai' : 'tab-hardcover'}
+        aria-labelledby={best ? 'tab-best' : ai ? 'tab-ai' : 'tab-hardcover'}
       >
-      {ai ? (
+      {best ? (
+        <YearBookTab books={books} year={year} years={years} onYear={setPickedYear} />
+      ) : ai ? (
         <AiLookupPanel
           phase={aiPhase}
           total={started.length}
@@ -588,7 +613,7 @@ function SeriesBoard({
       />
       )}
 
-      {hasResults && (
+      {!best && hasResults && (
         <>
           <BoardTiles counts={tileCounts} visible={visibleTiles} onToggle={toggleTile} />
           <ListHead
@@ -600,6 +625,7 @@ function SeriesBoard({
         </>
       )}
 
+      {!best && (
       <div className="series-lists" id="series-list">
         {pinned.length === 0 ? (
           visible.length > 0 && (
@@ -625,9 +651,10 @@ function SeriesBoard({
         )}
         {rest.length > 0 && <ul className="series-list">{rest.map(row)}</ul>}
       </div>
+      )}
       </div>
 
-      {standalone.length > 0 && (
+      {!best && standalone.length > 0 && (
         <StandaloneDrawer
           books={standalone}
           open={standaloneOpen}
@@ -635,7 +662,7 @@ function SeriesBoard({
         />
       )}
 
-      {notStarted > 0 && <p className="note">{t.board.notStarted(notStarted)}</p>}
+      {!best && notStarted > 0 && <p className="note">{t.board.notStarted(notStarted)}</p>}
     </section>
   )
 }

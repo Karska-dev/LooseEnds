@@ -130,6 +130,12 @@ export interface Bracket {
   winner: Book | null
   /** The next question, or null when everything is decided. */
   next: Question | null
+  /**
+   * Duels answered so far, and in all. Every duel removes one book from the
+   * running, so a year with books in N months always takes N − 1 of them:
+   * the total is known before the first answer, for a progress bar.
+   */
+  duels: { answered: number; total: number }
 }
 
 /** Not decided yet, as against null, which means nobody is there. */
@@ -147,14 +153,17 @@ type Slot = Book | null | typeof PENDING
 export function bracket(months: readonly (readonly Book[])[], decisions: YearDecisions): Bracket {
   const monthQuestions: Question[] = []
   const duelQuestions: Question[] = []
+  let answered = 0
 
   function meet(a: Slot, b: Slot, stage: Stage, index: number): Slot {
     if (a === PENDING || b === PENDING) return PENDING
     if (!a) return b
     if (!b) return a
     const saved = decisions.duels[pairKey(a, b)]
-    if (saved === bookKey(a)) return a
-    if (saved === bookKey(b)) return b
+    if (saved === bookKey(a) || saved === bookKey(b)) {
+      answered++
+      return saved === bookKey(a) ? a : b
+    }
     duelQuestions.push({ kind: 'duel', stage, index, a, b })
     return PENDING
   }
@@ -187,6 +196,7 @@ export function bracket(months: readonly (readonly Book[])[], decisions: YearDec
     halves: halfSlots.map(known),
     winner: known(winnerSlot),
     next: monthQuestions[0] ?? duelQuestions[0] ?? null,
+    duels: { answered, total: Math.max(0, months.filter((list) => list.length > 0).length - 1) },
   }
 }
 
@@ -198,6 +208,15 @@ export function pickMonth(decisions: YearDecisions, month: number, book: Book): 
 
 export function pickDuel(decisions: YearDecisions, a: Book, b: Book, winner: Book): YearDecisions {
   return { ...decisions, duels: { ...decisions.duels, [pairKey(a, b)]: bookKey(winner) } }
+}
+
+/** Takes one duel answer back, so the pair is asked again. */
+export function undoDuel(decisions: YearDecisions, a: Book, b: Book): YearDecisions {
+  const key = pairKey(a, b)
+  if (!(key in decisions.duels)) return decisions
+  const duels = { ...decisions.duels }
+  delete duels[key]
+  return { ...decisions, duels }
 }
 
 export function hasDecisions(decisions: YearDecisions): boolean {

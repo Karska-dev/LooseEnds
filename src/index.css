@@ -3388,3 +3388,172 @@ button.ghost {
   [data-skin='soft'] .source-tab[aria-selected='false']:hover { color: var(--ink); transform: translateY(-1px); box-shadow: var(--lift-up); }
   [data-skin='brutal'] .source-tab[aria-selected='false']:hover { background: var(--yellow); color: #0a0a0a; }
 }
+
+/* ==================================================================
+   Best of the year (src/YearBookTab.tsx)
+
+   Quiet first: hairlines, square corners, no fills but the covers.
+   Technique: design tokens again. Nothing below names a colour; the cover
+   tint is derived from the five state colours with color-mix(), so the tab
+   is at home in every look and in dark mode.
+   ================================================================== */
+
+.yb { display: flex; flex-direction: column; gap: 18px; }
+.yb p { margin: 0; }
+.yb ul, .yb ol { margin: 0; padding: 0; list-style: none; }
+.yb button { font: inherit; }
+
+.yb-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+.yb-label { margin: 0; }
+.yb-years { display: flex; gap: 18px; }
+.yb-years .ghost[aria-pressed='true'] { border-bottom-color: var(--ink); font-weight: 600; }
+
+.yb-hintrow { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px 20px; }
+
+.yb-btn {
+  padding: 13px 24px;
+  background: none;
+  border: 1px solid var(--ink);
+  border-radius: 0;
+  color: var(--ink);
+  font: 500 14px/1.2 var(--body);
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+.yb-btn:focus-visible, .yb-month:focus-visible, .yb-choice:focus-visible, .yb-back:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+}
+@media (hover: hover) { .yb-btn:hover { background: var(--ink); color: var(--ground); } }
+
+/* A made-up cover: 14 % of the tint in the ground, a hairline at 40 %. */
+.yb-cover {
+  position: relative;
+  display: block;
+  box-sizing: border-box;
+  overflow: hidden;
+  background: color-mix(in oklab, var(--tint) 14%, var(--ground));
+  border: 1px solid color-mix(in oklab, var(--tint) 40%, var(--ground));
+  color: color-mix(in oklab, var(--tint) 85%, var(--ink));
+  font: 500 10px/1.15 var(--display);
+  text-align: left;
+  aspect-ratio: 2 / 3;
+}
+.yb-cover.is-pick { outline: 2px solid var(--primary); outline-offset: 2px; }
+.yb-cover.is-muted { filter: grayscale(1); opacity: 0.6; }
+
+/* The crown on a favourite: a square in the primary colour. */
+.yb-mark {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  background: var(--primary);
+}
+.yb-mark svg { width: 11px; height: 11px; fill: var(--ground); }
+
+/* ---------- the timeline: one pile per month ---------- */
+
+.yb-months { --cw: 50px; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); }
+.yb-month {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+  padding: 0;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  color: inherit;
+  text-align: center;
+}
+button.yb-month { cursor: pointer; }
+.yb-pile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  height: var(--pile-h);
+  padding: 0 3px;
+  border-bottom: 1px solid var(--ink);
+}
+.yb-pile .yb-cover {
+  flex: none;
+  width: var(--cw);
+  padding: 3px 4px;
+  margin-top: calc(11px - var(--cw) * 1.5);
+  font-size: 8px;
+}
+.yb-pile .yb-cover:first-child { margin-top: 0; }
+.yb-pile .yb-cover.is-pick { width: calc(var(--cw) + 12px); margin-top: calc(11px - var(--cw) * 1.5); padding: 6px; font-size: 10px; z-index: 2; }
+.yb-mname { padding-top: 6px; font: 400 16px/1.3 var(--display); }
+.yb-mcount { font-size: 12.5px; color: var(--ink-muted); }
+@media (hover: hover) { button.yb-month:hover .yb-mname { text-decoration: underline; text-underline-offset: 3px; } }
+
+.yb-quarters { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px 24px; margin-top: 6px; }
+.yb-quarters li { display: flex; justify-content: space-between; align-items: baseline; padding-top: 10px; border-top: 1px solid var(--line); }
+.yb-q { font: 500 22px/1.2 var(--display); }
+.yb-qstate { font-size: 13px; font-weight: 500; color: var(--ink-muted); }
+.yb-qstate.is-ready { color: var(--primary); }
+
+/* ---------- picking from a month, and the duel ---------- */
+
+.yb-back { align-self: flex-start; background: none; border-radius: 0; cursor: pointer; }
+.yb-head { display: flex; align-items: baseline; gap: 16px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+.yb-head-duel { justify-content: space-between; align-items: flex-end; }
+.yb-head-text { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+.yb-title { margin: 0; font: 400 40px/1 var(--display); letter-spacing: -0.015em; }
+
+.yb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 26px 22px; }
+.yb-choice { display: flex; flex-direction: column; gap: 6px; width: 100%; padding: 0; background: none; border: 0; border-radius: 0; color: inherit; text-align: left; cursor: pointer; }
+.yb-author { font-size: 12.5px; color: var(--ink-muted); }
+.yb-big { width: 100%; padding: 10px; font-size: 14px; }
+
+.yb-segs { display: flex; gap: 3px; align-items: center; padding-bottom: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.yb-segs i { width: 18px; height: 3px; background: var(--line); }
+.yb-segs i.is-done { background: var(--ink); }
+.yb-segs i.is-now { background: var(--primary); }
+
+.yb-duel { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 40px minmax(0, 1fr); align-items: start; max-width: 640px; }
+.yb-side { min-width: 0; }
+.yb-huge { width: 100%; max-width: 260px; padding: 16px; font-size: 21px; }
+.yb-or { grid-column: 2; grid-row: 1; align-self: center; justify-self: center; font: italic 400 20px/1 var(--display); color: var(--ink-soft); }
+.yb-foot { display: flex; align-items: center; gap: 22px; min-height: 40px; padding-top: 14px; border-top: 1px solid var(--line); }
+
+.yb-result { display: flex; flex-direction: column; gap: 10px; }
+.yb-champ { width: 240px; max-width: 100%; padding: 18px; font-size: 28px; }
+
+.yb-empty { padding-top: 6px; }
+.yb-empty h3 { margin: 0 0 8px; font: 400 24px/1.2 var(--display); }
+
+@media (max-width: 700px) {
+  .yb-months { --cw: 40px; grid-template-columns: repeat(6, minmax(0, 1fr)); row-gap: 18px; }
+  .yb-quarters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .yb-title { font-size: 32px; }
+  .yb-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 22px 16px; }
+  .yb-huge { padding: 12px; font-size: 17px; }
+  .yb-head-duel { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .yb-segs { justify-content: flex-start; padding-bottom: 0; }
+}
+
+/* The piles and covers are the picture, not buttons: Bold and Soft restyle
+   every <button> (a thick frame, a raised pill), so this undoes that for the
+   ones that only hold a drawing. Specificity: the [data-skin] prefix makes
+   these rules win over theirs without !important. */
+[data-skin] .yb button.yb-month,
+[data-skin] .yb button.yb-choice {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  transform: none;
+  color: inherit;
+  letter-spacing: inherit;
+  text-transform: none;
+}

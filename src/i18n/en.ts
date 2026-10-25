@@ -461,7 +461,42 @@ export const en = {
     tryAgainNow: 'Try again now',
   },
 
+  /** The "Best of the year" tab (src/YearBookTab.tsx). */
+  yearBook: {
+    tab: (year: number) => `Best of ${year}`,
+    yearLabel: (year: number) => `your ${year}`,
+    yearsLabel: 'Year',
+    monthNames: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
+    books: (n: number) => `${n} book${s(n)}`,
+    hintStart: 'Tap a month to choose its favourite.',
+    hintLeft: (n: number) => `${n} month${s(n)} still to choose.`,
+    hintChosen: 'All favourites chosen.',
+    hintDone: 'Your book of the year is chosen.',
+    nextDuel: 'Next duel',
+    seeResult: 'See the result',
+    ready: 'Ready',
+    ofThree: (n: number) => `${n} of 3`,
+    back: (year: number) => `‹ ${year}`,
+    monthAria: (month: string, count: number) => `${month}, ${count} book${s(count)}`,
+    pickHint: 'Tap your favourite.',
+    stage: {
+      quarter: (index: number) => `Q${index + 1}`,
+      half: (index: number) => `Half ${index + 1}`,
+      year: 'Year',
+    },
+    duelCount: (n: number, total: number) => `Duel ${n} of ${total}`,
+    or: 'or',
+    undo: 'Undo',
+    choose: (title: string) => `Choose ${title}`,
+    resultLabel: (year: number) => `best of ${year}`,
+    change: 'Change a pick',
+    emptyTitle: 'No finished books with a date',
+    emptyBody:
+      'This needs books on your read shelf with a Date Read. Add the dates on Goodreads, export again, and your year will appear here.',
+  },
+
   footer: {
+    best: 'Your library is read in this browser and never uploaded. Your picks stay here too.',
     hardcover:
       'Series data and covers from <a>Hardcover</a>. Only series names and authors are sent, to look them up; your books and ratings stay in this browser, and so do your favourites and set-asides. Pressing Look up runs Cloudflare Turnstile, a quick check that you’re a person; it sees your browser, not your books.',
     ai: 'AI lookup is an experiment. Series names and authors are sent to <a>Tavily</a> to search the web, and to Cloudflare Workers AI to read what it finds. Book lists come from the linked pages and may be wrong. Your books and ratings stay in this browser, and so do your favourites and set-asides. Opening this tab runs Cloudflare Turnstile, a quick check that you’re a person; it sees your browser, not your books.',
