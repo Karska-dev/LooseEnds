@@ -3503,7 +3503,7 @@ button.yb-month { cursor: pointer; }
 
 /* ---------- picking from a month, and the duel ---------- */
 
-.yb-back { align-self: flex-start; background: none; border-radius: 0; cursor: pointer; }
+.yb-back { align-self: flex-start; background: none; border-radius: 0; cursor: pointer; white-space: nowrap; }
 .yb-head { display: flex; align-items: baseline; gap: 16px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
 .yb-head-duel { justify-content: space-between; align-items: flex-end; }
 .yb-head-text { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
@@ -3520,23 +3520,40 @@ button.yb-month { cursor: pointer; }
 .yb-segs i.is-now { background: var(--primary); }
 
 .yb-duel { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 40px minmax(0, 1fr); align-items: start; max-width: 640px; }
+.yb-duel-row { display: flex; gap: 48px; align-items: flex-start; }
+.yb-duel-row .yb-duel { flex: 1; min-width: 0; }
+.yb-tree { flex: none; width: 270px; height: auto; margin-top: 2px; }
+.yb-tb { fill: none; stroke: var(--ink-faint); stroke-dasharray: 3 3; }
+.yb-tb.is-set { fill: color-mix(in oklab, var(--tint) 14%, var(--ground)); stroke: color-mix(in oklab, var(--tint) 40%, var(--ground)); stroke-dasharray: none; }
+.yb-tb.is-now { stroke: var(--primary); stroke-width: 1.5; stroke-dasharray: none; }
+.yb-tline { stroke: var(--ink-faint); stroke-width: 1; }
+.yb-tl { font: 400 14px var(--display); fill: var(--ink); }
+.yb-tcrown { fill: var(--primary); }
 .yb-side { min-width: 0; }
 .yb-huge { width: 100%; max-width: 260px; padding: 16px; font-size: 21px; }
 .yb-or { grid-column: 2; grid-row: 1; align-self: center; justify-self: center; font: italic 400 20px/1 var(--display); color: var(--ink-soft); }
 .yb-foot { display: flex; align-items: center; gap: 22px; min-height: 40px; padding-top: 14px; border-top: 1px solid var(--line); }
 
-.yb-result { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 28px 56px; }
-.yb-result-book { display: flex; flex-direction: column; gap: 10px; }
-.yb-card { display: flex; flex-direction: column; align-items: flex-start; gap: 16px; width: 240px; max-width: 100%; }
 /* A hairline round the picture so its edge shows against the page. */
+.yb-share { display: flex; gap: 48px; align-items: flex-start; }
+.yb-share-pic { flex: none; width: 324px; }
+.yb-share-controls { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 26px; }
+.yb-lab { margin: 0 0 10px; font-size: 10.5px; font-weight: 500; letter-spacing: 0.24em; text-transform: lowercase; color: var(--ink-faint); }
+.yb-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.yb-chip { display: inline-flex; align-items: center; gap: 10px; padding: 9px 14px; background: none; border: 1px solid var(--line); border-radius: 0; color: var(--ink-soft); font: 500 13.5px/1.2 var(--body); cursor: pointer; white-space: nowrap; }
+.yb-chip[aria-pressed='true'] { border-color: var(--ink); color: var(--ink); }
+.yb-chip:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
+.yb-actions { display: flex; align-items: center; gap: 22px; padding-top: 20px; border-top: 1px solid var(--line); }
+.yb-actions .ghost:disabled { opacity: 0.45; cursor: not-allowed; }
 .yb-card-img { width: 100%; border: 1px solid var(--line); }
-.yb-chips { display: flex; flex-wrap: wrap; gap: 4px 16px; }
-.yb-chips .ghost[aria-pressed='true'] { border-bottom-color: var(--ink); font-weight: 600; }
-.yb-backs { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 6px; min-width: 0; max-width: 100%; }
-.yb-back { flex: none; width: 36px; height: 64px; padding: 0; border: 1px solid var(--line); background: var(--ground); cursor: pointer; display: block; }
-.yb-back img { display: block; width: 100%; height: 100%; object-fit: cover; }
-.yb-back[aria-pressed='true'] { outline: 2px solid var(--ink); outline-offset: 1px; }
-.yb-credits { font-size: 13px; color: var(--ink-soft); max-width: 100%; }
+.yb-bgs { display: flex; flex-wrap: wrap; gap: 10px; padding: 3px; }
+.yb-bg { flex: none; position: relative; width: 54px; height: 96px; padding: 0; border: 1px solid var(--line); border-radius: 0; background: var(--ground); cursor: pointer; display: block; overflow: hidden; }
+.yb-bg img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.yb-bg-plain span { position: absolute; inset: auto 0 6px; text-align: center; font-size: 9px; letter-spacing: 0.1em; color: var(--ink-soft); }
+.yb-bg[aria-pressed='true'] { outline: 2px solid var(--primary); outline-offset: 3px; }
+.yb-bg:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
+.yb-credit { margin: 12px 0 0; font-size: 12.5px; color: var(--ink-muted); }
+.yb-credits { margin-top: 10px; font-size: 13px; color: var(--ink-soft); max-width: 100%; }
 .yb-credits summary { cursor: pointer; }
 .yb-credits p { margin: 8px 0; }
 .yb-credits ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
@@ -3544,7 +3561,6 @@ button.yb-month { cursor: pointer; }
 .yb-credits img { display: block; object-fit: cover; border: 1px solid var(--line); }
 .yb-card-img canvas { display: block; width: 100%; height: 100%; }
 .yb-btn:disabled { opacity: 0.45; cursor: not-allowed; }
-.yb-champ { width: 240px; max-width: 100%; padding: 18px; font-size: 28px; }
 
 .yb-empty { padding-top: 6px; }
 .yb-empty h3 { margin: 0 0 8px; font: 400 24px/1.2 var(--display); }
@@ -3557,6 +3573,11 @@ button.yb-month { cursor: pointer; }
   .yb-huge { padding: 12px; font-size: 17px; }
   .yb-head-duel { flex-direction: column; align-items: flex-start; gap: 10px; }
   .yb-segs { justify-content: flex-start; padding-bottom: 0; }
+  .yb-tree { display: none; }
+  .yb-share { flex-direction: column; align-items: stretch; gap: 24px; }
+  .yb-share-pic { width: 270px; align-self: center; }
+  .yb-chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .yb-actions .yb-btn { flex: 1; }
 }
 
 /* The piles and covers are the picture, not buttons: Bold and Soft restyle

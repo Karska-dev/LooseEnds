@@ -78,12 +78,15 @@ function drawCover(ctx: CanvasRenderingContext2D, image: HTMLImageElement, box: 
  * where it exists; Safari has none, so there the picture is shrunk and drawn
  * back up smoothed, which is a blur too, only blockier.
  */
+/** Safari has no ctx.filter. A plain function, so the else branch keeps its type. */
+const canBlur = (ctx: object): boolean => 'filter' in ctx
+
 function drawGlass(ctx: CanvasRenderingContext2D, op: Extract<Op, { kind: 'glass' }>) {
   ctx.save()
   ctx.beginPath()
   ctx.rect(op.x, op.y, op.w, op.h)
   ctx.clip()
-  if ('filter' in ctx) {
+  if (canBlur(ctx)) {
     ctx.filter = `blur(${op.blur}px)`
     ctx.drawImage(ctx.canvas, 0, 0)
     ctx.filter = 'none'

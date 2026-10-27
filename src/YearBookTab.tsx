@@ -7,6 +7,7 @@ import { QUIET_DARK, QUIET_LIGHT, SIZES } from './shareCard'
 import type { CardBook, Format, Shape } from './shareCard'
 import { canvasToPng, renderCard } from './drawShareCard'
 import { useBackgrounds } from './useBackgrounds'
+import { shareText } from './shareText'
 import { useYearBook } from './useYearBook'
 import { bookKey, booksByMonth, bracket, pickDuel, pickMonth, undoDuel } from './yearBook'
 import type { Bracket, MonthState } from './yearBook'
@@ -153,6 +154,7 @@ export function YearBookTab({
             ))}
           </span>
         </header>
+        <div className="yb-duel-row">
         <div className="yb-duel">
           {[a, b].map((book, side) => (
             <div key={bookKey(book)} className="yb-side" style={{ gridColumn: side === 0 ? 1 : 3 }}>
@@ -165,6 +167,8 @@ export function YearBookTab({
           <span className="yb-or" aria-hidden="true">
             {y.or}
           </span>
+        </div>
+        <BracketTree state={state} now={next.stage === 'year' ? { stage: 'year', index: 0 } : { stage: next.stage, index: next.index }} />
         </div>
         <div className="yb-foot">
           {given.length > 0 && (
@@ -284,6 +288,54 @@ function YearPicker({ years, year, onYear }: { years: number[]; year: number; on
   )
 }
 
+const QUARTER_ROWS = [2, 86, 170, 254] as const
+
+/**
+ * The year as a small tree: four quarter boxes, two halves, one winner.
+ * A decided box shows a tinted cover, an undecided one is dashed, and the
+ * duel being asked right now has a solid primary frame. A picture of the
+ * state, drawn from it: nothing here is stored.
+ */
+function BracketTree({ state, now }: { state: Bracket; now: { stage: 'quarter' | 'half' | 'year'; index: number } }) {
+  const { t } = useLanguage()
+  const box = (key: string, book: Book | null, x: number, y: number, w: number, h: number, current: boolean) => (
+    <rect
+      key={key}
+      x={x}
+      y={y}
+      width={w}
+      height={h}
+      className={`yb-tb${book ? ' is-set' : ''}${current ? ' is-now' : ''}`}
+      style={book ? ({ '--tint': tintFor(bookKey(book)) } as CSSProperties) : undefined}
+    />
+  )
+  // Quarter centres sit at row + 32; a half sits midway between its two quarters.
+  const mid = (i: number) => (QUARTER_ROWS[i * 2]! + 32 + QUARTER_ROWS[i * 2 + 1]! + 32) / 2
+  const win = (QUARTER_ROWS[0] + 32 + QUARTER_ROWS[3] + 32) / 2
+  return (
+    <svg className="yb-tree" viewBox="0 0 270 330" role="img" aria-label={t.yearBook.treeAlt}>
+      {[0, 1, 2, 3].map((i) => (
+        <text key={`l${i}`} x="0" y={QUARTER_ROWS[i]! + 36} className="yb-tl">
+          {t.yearBook.stage.quarter(i)}
+        </text>
+      ))}
+      <g className="yb-tline" fill="none">
+        {[0, 1].map((h) => (
+          <path
+            key={`h${h}`}
+            d={`M72 ${QUARTER_ROWS[h * 2]! + 32} H96 V${mid(h)} M72 ${QUARTER_ROWS[h * 2 + 1]! + 32} H96 V${mid(h)} M96 ${mid(h)} H118`}
+          />
+        ))}
+        <path d={`M164 ${mid(0)} H188 V${win} M164 ${mid(1)} H188 V${win} M188 ${win} H214`} />
+      </g>
+      {[0, 1, 2, 3].map((i) => box(`q${i}`, state.quarters[i] ?? null, 30, QUARTER_ROWS[i]!, 42, 64, now.stage === 'quarter' && now.index === i))}
+      {[0, 1].map((h) => box(`hh${h}`, state.halves[h] ?? null, 118, mid(h) - 32, 46, 64, now.stage === 'half' && now.index === h))}
+      {box('w', state.winner ?? null, 214, win - 41, 54, 82, now.stage === 'year')}
+      <path d={`M232 ${win + 6} l-5 -14 9 7 5 -12 5 12 9 -7 -5 14z`} className="yb-tcrown" transform="translate(-9 0)" />
+    </svg>
+  )
+}
+
 function Back({ onBack, year }: { onBack: () => void; year: number }) {
   const { t } = useLanguage()
   return (
@@ -302,20 +354,7 @@ function Result({ state, year, count, onBack }: { state: Bracket; year: number; 
     <div className="yb">
       <Back onBack={onBack} year={year} />
       <h3 className="list-label yb-label">{t.yearBook.resultLabel(year)}</h3>
-      {winner && (
-        <div className="yb-result">
-          <div className="yb-result-book">
-            <Cover book={winner} className="yb-champ is-pick">
-              <Crown />
-            </Cover>
-            <p className="yb-author">
-              <span className="yb-sr">{winner.title} — </span>
-              {winner.author}
-            </p>
-          </div>
-          <ShareCard state={state} winner={winner} year={year} count={count} />
-        </div>
-      )}
+      {winner && <ShareCard state={state} winner={winner} year={year} count={count} />}
       <div className="yb-foot">
         <button type="button" className="ghost" onClick={onBack}>
           {t.yearBook.change}
@@ -422,65 +461,113 @@ function ShareCard({ state, winner, year, count }: { state: Bracket; winner: Boo
     URL.revokeObjectURL(url)
   }
 
+  async function share() {
+    if (!canvas) return
+    const blob = await canvasToPng(canvas)
+    const file = new File([blob], `best-of-${year}.png`, { type: 'image/png' })
+    const text = shareText(
+      y.card.caption(winner.title, winner.author, year),
+      photo?.photographer ? y.card.credit(photo.photographer) : undefined,
+    )
+    if (navigator.canShare?.({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], text })
+        return
+      } catch (error) {
+        // Closing the share sheet is an answer, not a failure.
+        if (error instanceof DOMException && error.name === 'AbortError') return
+      }
+    }
+    await download()
+  }
+
   const { width, height } = SIZES[shape]
+  const shapeIcon = { story: [10, 17], post: [14, 17], square: [15, 15] } as const
   return (
-    <div className="yb-card">
-      <div className="yb-chips" role="group" aria-label={y.format.label}>
-        {formats.map((f) => (
-          <button key={f} type="button" className="ghost" aria-pressed={f === shown} onClick={() => setFormat(f)}>
-            {y.format[f]}
-          </button>
-        ))}
+    <div className="yb-share">
+      <div className="yb-share-pic">
+        <div className="yb-card-img" ref={host} style={{ aspectRatio: `${width} / ${height}` }} />
       </div>
-      <div className="yb-chips" role="group" aria-label={y.shape.label}>
-        {(['story', 'post', 'square'] as const).map((s) => (
-          <button key={s} type="button" className="ghost" aria-pressed={s === shape} onClick={() => setShape(s)}>
-            {y.shape[s]}
-          </button>
-        ))}
-      </div>
-      {backgrounds.length > 0 && (
-        <div className="yb-backs" role="group" aria-label={y.background.label}>
-          <button
-            type="button"
-            className="yb-back yb-back-plain"
-            aria-pressed={photo === null}
-            aria-label={y.background.plain}
-            title={y.background.plain}
-            onClick={() => setBackgroundId(null)}
-          />
-          {backgrounds.map((b, i) => (
-            <button
-              key={b.id}
-              type="button"
-              className="yb-back"
-              aria-pressed={b.id === photo?.id}
-              aria-label={y.background.option(i + 1)}
-              onClick={() => setBackgroundId(b.id)}
-            >
-              <img src={`/${b.file}`} alt="" loading="lazy" width="36" height="64" />
-            </button>
-          ))}
-        </div>
-      )}
-      {credited.length > 0 && (
-        <details className="yb-credits">
-          <summary>{y.credits.title}</summary>
-          <p>{y.credits.intro}</p>
-          <ul>
-            {credited.map((b) => (
-              <li key={b.id}>
-                <img src={`/${b.file}`} alt="" loading="lazy" width="18" height="32" />
-                {b.photographer}
-              </li>
+      <div className="yb-share-controls">
+        <div>
+          <p className="yb-lab">{y.format.label}</p>
+          <div className="yb-chips" role="group" aria-label={y.format.label}>
+            {formats.map((f) => (
+              <button key={f} type="button" className="yb-chip" aria-pressed={f === shown} onClick={() => setFormat(f)}>
+                {y.format[f]}
+              </button>
             ))}
-          </ul>
-        </details>
-      )}
-      <div className="yb-card-img" ref={host} style={{ aspectRatio: `${width} / ${height}` }} />
-      <button type="button" className="yb-btn" disabled={!canvas} onClick={download}>
-        {y.download}
-      </button>
+          </div>
+        </div>
+        <div>
+          <p className="yb-lab">{y.shape.label}</p>
+          <div className="yb-chips" role="group" aria-label={y.shape.label}>
+            {(['story', 'post', 'square'] as const).map((s) => (
+              <button key={s} type="button" className="yb-chip yb-shape" aria-pressed={s === shape} onClick={() => setShape(s)}>
+                <svg width={shapeIcon[s][0]} height={shapeIcon[s][1]} viewBox={`0 0 ${shapeIcon[s][0]} ${shapeIcon[s][1]}`} aria-hidden="true">
+                  <rect x=".5" y=".5" width={shapeIcon[s][0] - 1} height={shapeIcon[s][1] - 1} fill="none" stroke="currentColor" />
+                </svg>
+                {y.shape[s]}
+              </button>
+            ))}
+          </div>
+        </div>
+        {backgrounds.length > 0 && (
+          <div>
+            <p className="yb-lab">{y.background.label}</p>
+            <div className="yb-bgs" role="group" aria-label={y.background.label}>
+              <button
+                type="button"
+                className="yb-bg yb-bg-plain"
+                aria-pressed={photo === null}
+                aria-label={y.background.plain}
+                onClick={() => setBackgroundId(null)}
+              >
+                <span>{y.background.plain}</span>
+              </button>
+              {backgrounds.map((b, i) => (
+                <button
+                  key={b.id}
+                  type="button"
+                  className="yb-bg"
+                  aria-pressed={b.id === photo?.id}
+                  aria-label={y.background.option(i + 1)}
+                  onClick={() => setBackgroundId(b.id)}
+                >
+                  <img src={`/${b.file}`} alt="" loading="lazy" width="54" height="96" />
+                </button>
+              ))}
+            </div>
+            {photo?.photographer && (
+              <p className="yb-credit">
+                {y.card.credit(photo.photographer)}. {y.background.creditNote}
+              </p>
+            )}
+            {credited.length > 0 && (
+              <details className="yb-credits">
+                <summary>{y.credits.title}</summary>
+                <p>{y.credits.intro}</p>
+                <ul>
+                  {credited.map((b) => (
+                    <li key={b.id}>
+                      <img src={`/${b.file}`} alt="" loading="lazy" width="18" height="32" />
+                      {b.photographer}
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            )}
+          </div>
+        )}
+        <div className="yb-actions">
+          <button type="button" className="yb-btn" disabled={!canvas} onClick={share}>
+            {y.share}
+          </button>
+          <button type="button" className="ghost" disabled={!canvas} onClick={download}>
+            {y.download}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
