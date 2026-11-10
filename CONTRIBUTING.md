@@ -22,6 +22,10 @@ Open the printed URL, drop in a Goodreads export, and you have the whole app.
 series lookups work locally with no server to set up. There is no database
 in development; every lookup goes straight to Hardcover.
 
+The **AI lookup** tab is optional and needs two more things; without them it
+says it is not configured and everything else works as before. See
+[The AI lookup tab](#the-ai-lookup-tab-experimental) below.
+
 ### The token
 
 Get your own from [hardcover.app](https://hardcover.app) → **account settings
@@ -41,10 +45,11 @@ the code.
 
 | | |
 |---|---|
-| `npm run dev` | Vite, with `/api/series` served locally |
-| `npm test` | 47 tests on Node's own runner, no framework |
+| `npm run dev` | Vite, with `/api/series` and `/api/ai-series` served locally |
+| `npm test` | 303 tests on Node's own runner, no framework |
 | `npm run lint` | oxlint |
 | `npm run build` | typecheck, then build |
+| `npm run ai-explain` | the AI lookup for one series, or the benchmark set |
 
 `tests/fixtures/classics.csv` is a synthetic export covering every state the
 board can show — useful for manual testing without using your own library.
@@ -90,6 +95,76 @@ Two modules are worth reading before changing anything:
   middleware, so a change to the resolver affects both. The HTTP handling
   around it is *not* shared — see the gotchas.
 
+## The AI lookup tab (experimental)
+
+A second way to find what's next in a series, beside Hardcover: a web search
+finds pages about the series, a model reads them and lists the books, and
+plain code keeps only what the pages actually say. It is labelled
+experimental, can be wrong, and links every book to the page it came from.
+
+It never mixes with Hardcover. It has its own endpoint, cache table, client
+module and tab; nothing falls back from one source to the other. Only
+favourites and set-asides are shared, because they are the reader's choices,
+not lookup data.
+
+```
+AiLookupPanel.tsx ── the tab: before, during, after, stopped
+   │
+aiResolve.ts ─────── POST /api/ai-series + pass
+   │                   1. on opening the tab: cached only, whole library, free
+   │                   2. on the button: one series per request, in board order
+   │                                      │
+   │                             worker/ai.ts (same gate as /api/series,
+   │                             own AI_LIMITER, 12 a minute)
+   │                                      │
+   │              worker/aiCache.ts (D1) ──miss──▶ src/shared/aiLookup.ts
+   │              worker/aiBudget.ts (searches per UTC day)   │
+   │                                      │      search → read → verify
+   ◀──────── books per series, with sources ┘    (Tavily)  (model) (code)
+   ▼
+aiState.ts ───────── the reader's books matched to the list by title
+```
+
+### Running it locally
+
+Add to `.env.local`:
+
+- `TAVILY_KEY` — from [tavily.com](https://tavily.com), free plan, no card,
+  1,000 searches a month. A lookup is one search, sometimes two.
+- A local model through [Ollama](https://ollama.com): `ollama pull qwen3.5:9b`.
+  `OLLAMA_MODEL` and `OLLAMA_URL` override the defaults (see `.env.example`).
+
+Then `npm run dev`. In development the same pipeline runs with Ollama in place
+of Workers AI and files in place of D1, with no daily allowance and no lookup
+pass. Everything is recorded under the git-ignored `.dev-cache/` and replayed:
+
+- `tavily/` — every search. Replayed, so a series costs a credit only once.
+- `model/` — every model reply. Replayed, so a change to the checking rules
+  can be re-scored without asking the model again.
+- `ai-series/` — every finished answer, standing in for the D1 cache. Delete
+  a file to look that series up again.
+
+### The modules
+
+- **`src/shared/aiLookup.ts`** is the whole pipeline, shared by the Worker,
+  the dev middleware and the benchmark script. The search and the model are
+  passed in as functions (`src/shared/aiProviders.ts` holds Tavily, Workers AI
+  and Ollama), so tests run it against stubs.
+- **The verify step is the point of the design.** The model proposes; code
+  decides. A title must appear on the page it cites, and that page must be
+  one the search returned. A date, an audiobook year or a publisher is kept
+  only if it sits between that book's title and the next one on the page.
+  Positions are voted on by the pages, with the model as one more vote.
+  Fewer than two verified books means not found. `tests/aiLookup.test.ts`
+  covers each rule.
+- **`src/aiState.ts`** matches the reader's books to an AI list by title,
+  not by number, because web sources often disagree on numbering (novellas
+  counted or not). A list off by one would otherwise mark the wrong books
+  as read.
+- **The words** live under `ai` in `src/i18n/en.ts` and `uk.ts`, like the rest
+  of the page. The server's failure details are read by `aiFailureKind`, not
+  shown, so they stay as they are.
+
 ## Diagnostics
 
 Two scripts, for the two things that actually go wrong in production.
@@ -106,7 +181,24 @@ npm run explain -- "Mistborn" --author "Brandon Sanderson"
 npm run evict -- ~/Downloads/goodreads_library_export.csv --run
 ```
 
-Both import the real functions rather than reimplementing them. A diagnostic
+And one for the AI lookup, which runs the real pipeline from your laptop and
+compares each series with Hardcover, book by book:
+
+```bash
+npm run ai-explain -- "Zodiac Academy" --author "Caroline Peckham"
+npm run ai-explain -- --all --limit 5      # a first try of the benchmark set
+npm run ai-explain -- --all --model gemma4:e4b
+npm run ai-explain -- --all --workers-ai   # the production model, via REST
+```
+
+`--all` reads the benchmark list from `.issue-bodies/ai-benchmark-series.json`,
+which is the maintainer's and not in the repo; pass a series by name instead.
+`--workers-ai` needs `WORKERS_AI_ACCOUNT_ID` and `WORKERS_AI_API_TOKEN`
+(see `.env.example`) and spends the account's free neurons. A local model's
+score does not predict the production model's, so this is the run to trust
+before changing the checking rules.
+
+All three import the real functions rather than reimplementing them. A diagnostic
 that guesses at the logic will eventually disagree with it and tell you
 something false.
 
@@ -168,7 +260,7 @@ them through the parser rather than predicted.
 
 ## Where this is fragile
 
-Three things a contributor should know before trusting the output.
+Four things a contributor should know before trusting the output.
 
 - **Matching is name-based, so it can mis-hit.** Series come out of Goodreads
   title strings and are matched to Hardcover by name, narrowed by author. The
@@ -204,6 +296,16 @@ Three things a contributor should know before trusting the output.
   series. Decide once per series, never per position, or a list comes back
   mixed.
 
+- **The AI lookup can be wrong in ways the checks can't see.** Being on a page
+  is not proof: a shared-world reading order lists several series as one, and
+  a site may count novellas as books. The page voting catches most of this,
+  not all. Web lists also often stop short of the newest book, which is why
+  the AI tab says "You've read every book AI found" rather than "finished".
+  Some sites refuse to give their text to the search, and the search itself
+  returns unrelated pages about one call in ten; a result scoring under 0.3
+  counts as a failed search, and the author-first second search usually
+  recovers it.
+
 ## Gotchas
 
 - **Dev and production share the resolver but not the HTTP handling.**
@@ -215,7 +317,15 @@ Three things a contributor should know before trusting the output.
   lookup pass, but `vite.config.ts` hands out Cloudflare's always-pass test
   key and a dummy pass, and the dev `/api/series` doesn't check it. The real
   check (`worker/pass.ts`, `worker/index.ts`) is covered by `tests/pass.test.ts`.
-- **There is no cache in development.** Every lookup is a live Hardcover call,
+- **The AI tab in development is not the AI tab in production.** A local
+  model reads pages differently from Workers AI: the larger production model
+  proposes more books, so the checks remove more. The dev server has no
+  allowance and no pass, and replays saved searches. Re-run
+  `npm run ai-explain -- --workers-ai` before trusting a change.
+- **An AI lookup spends a search before the model can refuse.** When Workers
+  AI's daily neurons run out, the search has already been made and counted.
+  The search runs first; checking the model's state before it is not done yet.
+- **There is no Hardcover cache in development.** Every lookup is a live Hardcover call,
   paced at 1.1 seconds, so a large library takes a while. That is expected,
   not a hang.
 - **Log what you *did* find.** Several failures in this project were the same
